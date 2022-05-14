@@ -32,6 +32,9 @@
         // sets correct stack pointer (x86 stack grows downward)
         mov $stack_top, %esp
 
+        # Call the global constructors.
+	    call _init
+
         // calls the kernel main function
         call kernel_main
 

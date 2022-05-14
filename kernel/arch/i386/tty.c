@@ -1,13 +1,5 @@
-// gcc provided header files
-#include <stddef.h>
+#include <kernel/tty.h>
 #include <stdint.h>
-
-// aborts compilation if not compiled with correct cross compiler
-#ifdef __linux__
-#error "This code must be compiled with a cross compiler"
-#elif !__i386__
-#error "This code must be compiled with an x86-elf compiler"
-#endif
 
 // VGA buffer configuration
 #define VGA_COLS 80
@@ -37,7 +29,7 @@ void term_init()
     }
 }
 
-void term_putc(char c)
+void term_put(char c)
 {
     if (c == '\n')
     {
@@ -81,21 +73,14 @@ void term_putc(char c)
     }
 }
 
-void term_print(const char *str)
+void term_writestring(const char *str)
 {
     for (size_t i = 0; str[i] != '\0'; i++)
-        term_putc(str[i]);
+        term_put(str[i]);
 }
 
-void kernel_main()
+void term_write(const char *data, size_t size)
 {
-    // init kernel
-    term_init();
-
-    // kernel header
-    term_print("Project Islay, version 0.0.1 (pre-alpha)\n");
-    for (size_t i = 0; i < VGA_COLS; i++)
-        term_putc('=');
-
-    term_print("Kernel successfully started");
+    for (size_t i = 0; i < size; i++)
+        term_put(data[i]);
 }
