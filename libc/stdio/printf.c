@@ -13,6 +13,33 @@ static bool print(const char *data, size_t length)
     return true;
 }
 
+// Converts unsigned int to string, returns number of chars
+static size_t unsigned_to_str(unsigned int n, char *buffer, size_t len)
+{
+    size_t i; // buffer index, equals to strlen after first loop
+    unsigned int tmp = n;
+
+    // Writing digits to buffer, first to last
+    for (i = 0; tmp > 0 && i < (len - 1); i++)
+    {
+        char c = '0' + (tmp % 10);
+        buffer[i] = c; //'0' + (tmp % 10);
+        tmp = tmp / 10;
+    }
+    buffer[i] = '\0';
+
+    // Reverse buffer
+    for (size_t j = 0; j < i / 2; j++)
+    {
+        // swap(j, i - j - 1)
+        char tmp = buffer[j];
+        buffer[j] = buffer[i - j - 1];
+        buffer[i - j - 1] = tmp;
+    }
+
+    return i;
+}
+
 int printf(const char *restrict format, ...)
 {
     va_list params;
@@ -69,6 +96,17 @@ int printf(const char *restrict format, ...)
                 return -1;
             }
             if (!print(str, len))
+                return -1;
+            written += len;
+        }
+        else if (*format == 'u')
+        {
+            format++;
+            unsigned int num = va_arg(params, unsigned int);
+            char numstr[100]; // TODO: replace with not hardcoded number (heap alloacted?)
+            size_t len = unsigned_to_str(num, numstr, sizeof(numstr));
+
+            if (!print(numstr, len))
                 return -1;
             written += len;
         }
