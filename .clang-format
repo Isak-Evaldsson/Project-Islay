@@ -1,0 +1,27 @@
+---
+BasedOnStyle: Google
+IndentWidth: 4
+ColumnLimit: 100
+---
+Language:    	Cpp
+
+# Alignment options
+AlignAfterOpenBracket: Align
+AlignConsecutiveMacros: true
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignEscapedNewlines: true
+AlignArrayOfStructures: Left
+AlignOperands: Align
+AlignTrailingComments: true
+
+# Braces
+BreakBeforeBraces: Linux
+
+# Misc
+PointerAlignment: Right
+AllowShortEnumsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: Empty
+
+# Includes
+IncludeBlocks: Regroup
