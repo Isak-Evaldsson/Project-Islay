@@ -11,6 +11,6 @@ __attribute__((__noreturn__)) void abort()
     printf("abort()\n");
 #endif
     while (1)
-        ; // empty
+        ;  // empty
     __builtin_unreachable();
 }

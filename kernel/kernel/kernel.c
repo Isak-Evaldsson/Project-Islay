@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <kernel/tty.h>
+#include <stdio.h>
 
 void kernel_main()
 {
@@ -7,8 +7,7 @@ void kernel_main()
 
     // kernel header
     printf("Project Islay, version 0.0.1 (pre-alpha)\n");
-    for (size_t i = 0; i < 80; i++)
-        putchar('=');
+    for (size_t i = 0; i < 80; i++) putchar('=');
 
-    printf("Kernel successfully started");
+    printf("Kernel successfully started at addr %u", &kernel_main);
 }
