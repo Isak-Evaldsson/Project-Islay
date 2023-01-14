@@ -13,16 +13,22 @@ static bool print(const char *data, size_t length)
 }
 
 // Converts unsigned int to string, returns number of chars
-static size_t unsigned_to_str(unsigned int n, char *buffer, size_t len)
+static size_t unsigned_to_str(unsigned int n, char *buffer, size_t len, char radix)
 {
     size_t       i;  // buffer index, equals to strlen after first loop
-    unsigned int tmp = n;
+    unsigned int tmp     = n;
+    unsigned int divisor = 10;
+
+    if (radix == 'x')
+        divisor = 16;
+    else if (radix == 'o')
+        divisor = 8;
 
     // Writing digits to buffer, first to last
     for (i = 0; tmp > 0 && i < (len - 1); i++) {
-        char c    = '0' + (tmp % 10);
-        buffer[i] = c;  //'0' + (tmp % 10);
-        tmp       = tmp / 10;
+        char c    = (tmp % divisor);
+        buffer[i] = (c < 10) ? ('0' + c) : (c - 10 + 'a');
+        tmp       = tmp / divisor;
     }
     buffer[i] = '\0';
 
@@ -41,6 +47,7 @@ int printf(const char *restrict format, ...)
 {
     va_list params;
     va_start(params, format);
+    char radix;
 
     int written = 0;
 
@@ -82,11 +89,11 @@ int printf(const char *restrict format, ...)
             }
             if (!print(str, len)) return -1;
             written += len;
-        } else if (*format == 'u') {
+        } else if ((radix = *format) == 'u' || radix == 'o' || radix == 'x') {
             format++;
             unsigned int num = va_arg(params, unsigned int);
             char         numstr[100];  // TODO: replace with not hardcoded number (heap alloacted?)
-            size_t       len = unsigned_to_str(num, numstr, sizeof(numstr));
+            size_t       len = unsigned_to_str(num, numstr, sizeof(numstr), radix);
 
             if (!print(numstr, len)) return -1;
             written += len;
