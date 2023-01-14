@@ -63,11 +63,23 @@ table_loop:
     cmpl $(_kernel_end - HIGHER_HALF_ADDR), %esi
 	jge end
 
-	# Map physical address as "present, writable". Note that this maps
-	# .text and .rodata as writable. Mind security and map them as non-writable.
+	# Map physical address with correct permissions
+	cmpl $(_wdata_start - HIGHER_HALF_ADDR), %esi
+	jl default
+	cmpl $(_wdata_end - HIGHER_HALF_ADDR), %esi
+	jg default
+
+	# If within writeable are map to "present, writeble"
 	movl %esi, %edx
 	orl $0x003, %edx
-	movl %edx, (%edi)
+	movl %edx, (%edi)	
+	jmp skip
+
+default:	
+	# Else in read-only are  "present, readable"
+	movl %esi, %edx
+	orl $0x001, %edx
+	movl %edx, (%edi)	
 
 skip:
 	addl $4096, %esi # Increment page address by 4 KiB page size

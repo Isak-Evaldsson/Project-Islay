@@ -28,7 +28,7 @@ SECTIONS
 	/* Incremeting our addresses to HIGH_HALF */
 	. += HIGHER_HALF_ADDR;
 
-	/* Add a symbol that indicates the start address of the kernel. */
+	/* Defining our binary sections, includig symbols marking the start/end of the writable data sections */
 	.text ALIGN (4K) : AT (ADDR (.text) - HIGHER_HALF_ADDR)
 	{
 		*(.text)
@@ -39,6 +39,7 @@ SECTIONS
 	}
 	.data ALIGN (4K) : AT (ADDR (.data) - HIGHER_HALF_ADDR)
 	{
+		_wdata_start = .;
 		*(.data)
 	}
 	.bss ALIGN (4K) : AT (ADDR (.bss) - HIGHER_HALF_ADDR)
@@ -46,6 +47,7 @@ SECTIONS
 		*(COMMON)
 		*(.bss)
 		*(.bootstrap_stack)
+		_wdata_end = .;
 	}
 
 	/* Add a symbol that indicates the end address of the kernel. */
