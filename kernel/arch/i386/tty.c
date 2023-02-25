@@ -12,6 +12,9 @@
 // half address 0xE0000000 page directory. 0xE0000000 + 1023 * 4096
 volatile uint16_t *vga_buffer = (uint16_t *)0xE03FF000;
 
+const int TERM_WIDTH  = VGA_COLS;
+const int TERM_HEIGHT = VGA_ROWS;
+
 // Current terminal postion
 int     term_col   = 0;
 int     term_row   = 0;
@@ -72,4 +75,17 @@ void term_writestring(const char *str)
 void term_write(const char *data, size_t size)
 {
     for (size_t i = 0; i < size; i++) term_put(data[i]);
+}
+
+void term_clear()
+{
+    term_col = 0;
+    term_row = 0;
+
+    for (size_t col = 0; col < VGA_COLS; col++) {
+        for (size_t row = 0; row < VGA_ROWS; row++) {
+            const size_t index = (VGA_COLS * row) + col;
+            vga_buffer[index]  = (term_color << 8) | ' ';
+        }
+    }
 }
