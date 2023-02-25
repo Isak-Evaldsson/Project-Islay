@@ -2,4 +2,4 @@
 set -e
 . ./iso.sh
 
-qemu-system-$(./target-triplet-to-arch.sh $HOST) -d int -action reboot=shutdown -action shutdown=pause -cdrom islayos.iso
+qemu-system-$(./target-triplet-to-arch.sh $HOST) -action reboot=shutdown -d int -action shutdown=pause -cdrom islayos.iso
