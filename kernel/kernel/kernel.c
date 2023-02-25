@@ -1,9 +1,11 @@
+#include <kernel/gdt.h>
 #include <kernel/tty.h>
 #include <stdio.h>
 
 void kernel_main()
 {
     term_init();
+    init_gdt();
 
     // kernel header
     printf("Project Islay, version 0.0.1 (pre-alpha)\n");
