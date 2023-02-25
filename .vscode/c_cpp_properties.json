@@ -1,0 +1,17 @@
+{
+    "configurations": [
+        {
+            "name": "Islay OS i386 config",
+            "includePath": [
+                "${workspaceFolder}/kernel/**",
+                "${workspaceFolder}/libc/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/i386-elf-gcc ",
+            "cStandard": "c17",
+            "cppStandard": "c++14",
+            "intelliSenseMode": "gcc-x86"
+        }
+    ],
+    "version": 4
+}

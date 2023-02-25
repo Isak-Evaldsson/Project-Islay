@@ -1,4 +1,7 @@
 isodir
 sysroot
-.vscode
 *.iso
+
+# Only backup important vscode files
+.vscode/**
+!.vscode/c_cpp_properties.json
