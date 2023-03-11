@@ -3,6 +3,7 @@
 */
 
 #include <stdint.h>
+#include <stdio.h>
 
 /*
     Segment entry macros:
@@ -58,7 +59,7 @@
         base  - table address
         limit - table size
 */
-extern void setGdt(uint16_t limit, uint32_t base);
+extern void load_gdt(uint16_t limit, uint32_t base);
 
 /* The global descriptor table, hardcode size since it will only be filled with the bare minimum
  * required for flat mode  */
@@ -98,6 +99,7 @@ uint64_t create_descriptor(uint32_t base, uint32_t limit, uint16_t flag)
     // Create the low 32 bit segment
     descriptor |= base << 16;          // set base bits 15:0
     descriptor |= limit & 0x0000FFFF;  // set limit bits 15:0 printf("0x%.16llX\n", descriptor);
+    return descriptor;
 }
 
 /*
@@ -126,6 +128,6 @@ void init_gdt()
     gdt[3] = user_code_segment;
     gdt[4] = user_data_segment;
 
-    setGdt(sizeof(gdt), &gdt);
+    load_gdt(sizeof(gdt), (uint32_t)&gdt);
     printf("Successfully initiated GDT\n");
 }
