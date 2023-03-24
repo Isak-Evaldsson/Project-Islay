@@ -2,6 +2,8 @@
     Functions to setup/handle gpt tables for x86
 */
 
+#include "gdt.h"
+
 #include <stdint.h>
 #include <stdio.h>
 
@@ -51,15 +53,6 @@
 #define GDT_DATA_PL3                                                                        \
     SEG_DESCTYPE(1) | SEG_PRES(1) | SEG_SAVL(0) | SEG_LONG(0) | SEG_SIZE(1) | SEG_GRAN(1) | \
         SEG_PRIV(3) | SEG_DATA_RDWR
-
-/*
-    Assembly routine for properly loading the GDT registers (see sgdt.S)
-
-    Parameters:
-        base  - table address
-        limit - table size
-*/
-extern void load_gdt(uint16_t limit, uint32_t base);
 
 /* The global descriptor table, hardcode size since it will only be filled with the bare minimum
  * required for flat mode  */
@@ -128,6 +121,9 @@ void init_gdt()
     gdt[3] = user_code_segment;
     gdt[4] = user_data_segment;
 
-    load_gdt(sizeof(gdt), (uint32_t)&gdt);
+    gdt_ptr_t ptr;
+    ptr.size    = sizeof(gdt) - 1;
+    ptr.address = (uint32_t)&gdt;
+    load_gdt(&ptr);
     printf("Successfully initiated GDT\n");
 }
