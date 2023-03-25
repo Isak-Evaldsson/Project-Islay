@@ -1,4 +1,5 @@
 #include <kernel/gdt.h>
+#include <kernel/interrupt.h>
 #include <kernel/tty.h>
 #include <stdio.h>
 
@@ -13,6 +14,7 @@ void kernel_main()
     term_init();
     printf("Starting boot sequence...\n");
     init_gdt();
+    init_interrupts();
     printf("Kernel successfully booted at vaddr 0xE0100000 (3.5 GiB + 1 MiB)\n\n");
 
     // TODO: nice looking boot animation (requires timers)
