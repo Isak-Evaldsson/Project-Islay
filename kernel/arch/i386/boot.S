@@ -37,7 +37,7 @@ boot_page_table1:
 
 # Intitial kernel boot code, contained in multiboot section.
 # Serves the purpose of setting up the initial paging before entering higher half
-.section .multiboot.text, "a"
+.section .multiboot.text, "ax"
 .global _start
 .type _start, @function
 _start:
@@ -63,28 +63,26 @@ table_loop:
     cmpl $(_kernel_end - HIGHER_HALF_ADDR), %esi
 	jge end
 
-	# Map physical address with correct permissions
-	cmpl $(_wdata_start - HIGHER_HALF_ADDR), %esi
-	jl default
-	cmpl $(_wdata_end - HIGHER_HALF_ADDR), %esi
-	jg default
+	# Set default permisisons, "present, read-only"
+    movl $0x001, %ecx
 
-	# If within writeable are map to "present, writeble"
-	movl %esi, %edx
-	orl $0x003, %edx
-	movl %edx, (%edi)	
-	jmp skip
-
-default:	
-	# Else in read-only are  "present, readable"
-	movl %esi, %edx
-	orl $0x001, %edx
-	movl %edx, (%edi)	
+	# If within are the write area (data, bss and stack), enable writing
+   	cmpl $(_wdata_start - HIGHER_HALF_ADDR), %esi
+   	jl  set_permission
+   	cmpl $(_wdata_end - HIGHER_HALF_ADDR), %esi
+   	jge  set_permission
+   	orl  $0x002, %ecx
+   
+set_permission:
+	# Map physical address with specified permissions
+   	movl %esi, %edx
+   	orl  %ecx, %edx
+   	movl %edx, (%edi)
 
 skip:
 	addl $4096, %esi # Increment page address by 4 KiB page size
 	addl $4, %edi    # Increment page table address by 4B (each entry is 32 bits)
-	loop table_loop
+	jmp table_loop
    
 end:
 	# Map VGA video memory to 0xC03FF000 as "present, writable".
@@ -130,7 +128,7 @@ kernel_start:
     # sets correct stack pointer (x86 stack grows downward)
     mov $stack_top, %esp
 
-    # Call the global constructojrs.
+    # Call the global constructors.
     call _init
 
     # calls the kernel main function
