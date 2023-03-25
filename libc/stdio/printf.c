@@ -13,11 +13,18 @@ static bool print(const char *data, size_t length)
 }
 
 // Converts unsigned int to string, returns number of chars
-static size_t unsigned_to_str(unsigned int n, char *buffer, size_t len, char radix)
+static size_t itoa(unsigned int n, char *buffer, size_t len, char radix)
 {
     size_t       i;  // buffer index, equals to strlen after first loop
     unsigned int tmp     = n;
     unsigned int divisor = 10;
+
+    // if n == zero, place a 0 in the buffer and return
+    if (n == 0 && len > 1) {
+        buffer[0] = '0';
+        buffer[1] = '\n';
+        return 1;
+    }
 
     if (radix == 'x')
         divisor = 16;
@@ -92,8 +99,8 @@ int printf(const char *restrict format, ...)
         } else if ((radix = *format) == 'u' || radix == 'o' || radix == 'x') {
             format++;
             unsigned int num = va_arg(params, unsigned int);
-            char         numstr[100];  // TODO: replace with not hardcoded number (heap alloacted?)
-            size_t       len = unsigned_to_str(num, numstr, sizeof(numstr), radix);
+            char         numstr[32 + 1];  // buffer can fit a 32bit binary number string
+            size_t       len = itoa(num, numstr, sizeof(numstr), radix);
 
             if (!print(numstr, len)) return -1;
             written += len;
