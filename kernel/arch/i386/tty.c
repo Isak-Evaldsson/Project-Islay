@@ -1,4 +1,4 @@
-#include <kernel/tty.h>
+#include <arch/tty.h>
 #include <stdint.h>
 
 // VGA buffer configuration

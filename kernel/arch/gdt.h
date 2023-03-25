@@ -1,7 +1,7 @@
-#ifndef _KERNEL_GDT_H
-#define _KERNEL_GDT_H
+#ifndef ARCH_GDT_H
+#define ARCH_GDT_H
 
 // Initialisation for architectures (x86) requiring GDT
 void init_gdt();
 
-#endif
+#endif /* ARCH_GDT_H */

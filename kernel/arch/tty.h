@@ -1,5 +1,5 @@
-#ifndef _KERNEL_TTY_H
-#define _KERNEL_TTY_H
+#ifndef ARCH_TTY_H
+#define ARCH_TTY_H
 
 #include <stddef.h>
 
@@ -12,4 +12,4 @@ void term_write(const char *data, size_t size);
 void term_writestring(const char *data);
 void term_clear();
 
-#endif
+#endif /* ARCH_TTY_H */

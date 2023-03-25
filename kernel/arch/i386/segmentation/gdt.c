@@ -4,8 +4,8 @@
 
 #include "gdt.h"
 
+#include <klib/klib.h>
 #include <stdint.h>
-#include <stdio.h>
 
 /*
     Segment entry macros:
@@ -125,5 +125,5 @@ void init_gdt()
     ptr.size    = sizeof(gdt) - 1;
     ptr.address = (uint32_t)&gdt;
     load_gdt(&ptr);
-    printf("Successfully initiated GDT\n");
+    kprintf("Successfully initiated GDT\n");
 }

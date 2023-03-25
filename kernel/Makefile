@@ -1,5 +1,5 @@
 DEFAULT_HOST!=../default-host.sh
-HOST?=DEFAULT_HOST
+HOST?=$(DEFAULT_HOST)
 HOSTARCH!=../target-triplet-to-arch.sh $(HOST)
 
 CFLAGS?=-O2 -g
@@ -14,9 +14,9 @@ BOOTDIR?=$(EXEC_PREFIX)/boot
 INCLUDEDIR?=$(PREFIX)/include
 
 CFLAGS:=$(CFLAGS) -ffreestanding -Wall -Wextra
-CPPFLAGS:=$(CPPFLAGS) -D__is_kernel -Iinclude
+CPPFLAGS:=$(CPPFLAGS) -D__is_kernel -I.
 LDFLAGS:=$(LDFLAGS)
-LIBS:=$(LIBS) -nostdlib -lk -lgcc
+LIBS:=$(LIBS) -nostdlib -lgcc
 
 ARCHDIR=arch/$(HOSTARCH)
 
@@ -29,8 +29,11 @@ LIBS:=$(LIBS) $(KERNEL_ARCH_LIBS)
 
 KERNEL_OBJS=\
 $(KERNEL_ARCH_OBJS) \
-kernel/kernel.o \
-kernel/ssp.o \
+main.o \
+ssp.o \
+klib/kpanic.o \
+klib/kprintf.o \
+klib/libc.o \
 
 OBJS=\
 $(ARCHDIR)/crti.o \
@@ -48,14 +51,17 @@ $(LIBS) \
 $(ARCHDIR)/crtend.o \
 $(ARCHDIR)/crtn.o \
 
-.PHONY: all clean install install-headers install-kernel
+BUILD=build
+KERNEL_ELF=$(BUILD)/kernel.elf
+
+.PHONY: all clean install install-headers install-kernel qemu gdb
 .SUFFIXES: .o .c .S
 
-all: islayos.kernel
+all: $(KERNEL_ELF)
 
-islayos.kernel: $(OBJS) $(ARCHDIR)/linker.ld
+$(KERNEL_ELF): $(BUILD) $(OBJS) $(ARCHDIR)/linker.ld
 	$(CC) -T $(ARCHDIR)/linker.ld -o $@ $(CFLAGS) $(LINK_LIST)
-	grub-file --is-x86-multiboot islayos.kernel
+	grub-file --is-x86-multiboot $(KERNEL_ELF)
 
 $(ARCHDIR)/crtbegin.o $(ARCHDIR)/crtend.o:
 	OBJ=`$(CC) $(CFLAGS) $(LDFLAGS) -print-file-name=$(@F)` && cp "$$OBJ" $@
@@ -66,8 +72,11 @@ $(ARCHDIR)/crtbegin.o $(ARCHDIR)/crtend.o:
 .S.o:
 	$(CC) -MD -c $< -o $@ $(CFLAGS) $(CPPFLAGS)
 
+$(BUILD):
+	mkdir $(BUILD)
+
 clean:
-	rm -f islayos.kernel
+	rm -rf $(BUILD)
 	rm -f $(OBJS) *.o */*.o */*/*.o
 	rm -f $(OBJS:.o=.d) *.d */*.d */*/*.d
 
@@ -77,8 +86,22 @@ install-headers:
 	mkdir -p $(DESTDIR)$(INCLUDEDIR)
 	cp -R --preserve=timestamps include/. $(DESTDIR)$(INCLUDEDIR)/.
 
-install-kernel: islayos.kernel
+install-kernel: $(KERNEL_ELF)
 	mkdir -p $(DESTDIR)$(BOOTDIR)
-	cp islayos.kernel $(DESTDIR)$(BOOTDIR)
+	cp $(KERNEL_ELF) $(DESTDIR)$(BOOTDIR)
+
+qemu: $(KERNEL_ELF)
+	objdump -dj .text  $(KERNEL_ELF) > $(BUILD)/kernel_text_section  
+	qemu-system-$(HOSTARCH) -kernel $(KERNEL_ELF) -no-shutdown -no-reboot -d int -D $(BUILD)/log.txt
+
+gdb: $(KERNEL_ELF)
+	objdump -dj .text  $(KERNEL_ELF) > $(BUILD)/kernel_text  
+	qemu-system-$(HOSTARCH) -kernel $(KERNEL_ELF) -no-shutdown -no-reboot -d int -D $(BUILD)/log.txt -S -s &
+	gdb $(KERNEL_ELF) \
+        -ex 'target remote localhost:1234' \
+        -ex 'layout src' \
+        -ex 'layout regs' \
+        -ex 'break *_start' \
+        -ex 'continue'
 
 -include $(OBJS:.o=.d)

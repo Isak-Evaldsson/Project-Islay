@@ -4,8 +4,8 @@
     Currently a minimal possible implementation, currently more used for debugging than security
 */
 
+#include <klib/klib.h>
 #include <stdint.h>
-#include <stdio.h>
 
 #if UINT32_MAX == UINTPTR_MAX
 #define STACK_CHK_GUARD 0xe2dee396
@@ -19,6 +19,6 @@ uintptr_t __stack_chk_guard = STACK_CHK_GUARD;
 // Handler called we stack smashing is detected
 __attribute__((noreturn)) void __stack_chk_fail(void)
 {
-    printf("\nStack smashing detected\n");
+    kprintf("\nStack smashing detected\n");
     abort();
 }

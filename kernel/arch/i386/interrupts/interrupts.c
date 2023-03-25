@@ -1,8 +1,8 @@
 #include "interrupts.h"
 
-#include <kernel/interrupt.h>
+#include <arch/interrupt.h>
+#include <klib/klib.h>
 #include <stdint.h>
-#include <stdio.h>
 
 /*
     Interrupt descriptor
@@ -60,15 +60,15 @@ void set_interrupt_descriptor(uint8_t index, uint32_t isr_addr)
 void init_interrupts()
 {
     // TODO: fill interrupt table...
-    set_interrupt_descriptor(0, interrupt_handler_0);
-    set_interrupt_descriptor(14, interrupt_handler_14);
+    set_interrupt_descriptor(0, (uint32_t)interrupt_handler_0);
+    set_interrupt_descriptor(14, (uint32_t)interrupt_handler_14);
 
     // Load interrupt table
     gdt_ptr_t ptr;
     ptr.size    = sizeof(idt) - 1;
     ptr.address = (uint32_t)&idt;
     load_idt(&ptr);
-    printf("Interrupts initalized\n");
+    kprintf("Interrupts initalized\n");
 }
 
 /*
@@ -82,18 +82,16 @@ void interrupt_handler(cpu_state_t registers, uint32_t interrupt_number, stack_s
 
     switch (interrupt_number) {
         case 0:
-            printf("Division by zero in kernel at 0x%x\n", stack.eip);
-            abort();
+            kpanic("Division by zero in kernel at 0x%x\n", stack.eip);
             break;
 
         case 14:
-            printf("Page fault at (0x%x) not currently handled, error code %x\n", stack.eip,
+            kpanic("Page fault at (0x%x) not currently handled, error code %x\n", stack.eip,
                    stack.error_code);
-            abort();
             break;
 
         default:
-            printf("Received interrupt %u\n", interrupt_number);
+            kprintf("Received interrupt %u\n", interrupt_number);
             break;
     }
 }
