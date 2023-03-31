@@ -4,17 +4,17 @@
 /*
     Acknowledge the interrupts sent by the PIC
 */
-void pic_acknowledge(unsigned int interrupt)
+void pic_acknowledge(unsigned int irq_num)
 {
     // Check that the interrupt is within range
-    if (interrupt < PIC1_START_INTERRUPT || interrupt > PIC2_END_INTERRUPT) {
+    if (irq_num > 15) {
         return;
     }
 
-    if (interrupt < PIC2_START_INTERRUPT)
-        outb(PIC1_COMMAND, PIC_ACK);
-    else
-        outb(PIC2_COMMAND, PIC_ACK);
+    if (irq_num >= 8) outb(PIC2_COMMAND, PIC_ACK);
+
+    // Primary must always be ack:ed
+    outb(PIC1_COMMAND, PIC_ACK);
 }
 
 void pic_remap(unsigned int offset1, unsigned int offset2)
@@ -64,4 +64,18 @@ void pic_irq_disable(uint8_t irq_num)
     uint16_t port  = (irq_num < 8) ? PIC1_DATA : PIC2_DATA;
     uint8_t  value = inb(port) | (1 << irq_num);
     outb(port, value);
+}
+
+static uint16_t pic_get_irq_reg(int ocw3)
+{
+    /* OCW3 to PIC CMD to get the register values.  PIC2 is chained, and
+     * represents IRQs 8-15.  PIC1 is IRQs 0-7, with 2 being the chain */
+    outb(PIC1_COMMAND, ocw3);
+    outb(PIC2_COMMAND, ocw3);
+    return (inb(PIC2_COMMAND) << 8) | inb(PIC2_COMMAND);
+}
+
+uint16_t pic_get_isr()
+{
+    return pic_get_irq_reg(PIC_READ_ISR);
 }

@@ -29,11 +29,13 @@
 #define ICW4_BUF_SLAVE  0x08 /* Buffered mode/slave */
 #define ICW4_BUF_MASTER 0x0C /* Buffered mode/master */
 #define ICW4_SFNM       0x10 /* Special fully nested (not) */
+#define PIC_READ_IRR    0x0a /* OCW3 irq ready next CMD read */
+#define PIC_READ_ISR    0x0b /* OCW3 irq service next CMD read */
 
 /*
     Acknowledge the interrupts sent by the PIC
 */
-void pic_acknowledge(unsigned int interrupt);
+void pic_acknowledge(unsigned int irq_num);
 
 /*
     Reinitialize the PIC controllers, giving them specified vector offsets
@@ -55,5 +57,11 @@ void pic_irq_enable(uint8_t irq_num);
     Disable interrupts at a irq number
 */
 void pic_irq_disable(uint8_t irq_num);
+
+/*
+    Returns the combined value of the cascaded PICs in-service register,
+    low byte for PIC1 and upper for PIC2
+*/
+uint16_t pic_get_isr();
 
 #endif /* ARCH_i386_PIC_H */

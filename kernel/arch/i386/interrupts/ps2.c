@@ -141,10 +141,10 @@ void ps2_init()
 }
 
 /*
-    Reads the scancode from PS/2 device,
-    assumes the data to be available
+    Interrupt handler to be run when the PS/2 device sends an interrupt through the PIC
 */
-unsigned char ps2_read_scancode()
+void ps2_interrupt_handler()
 {
-    return inb(PS2_DATA_PORT);
+    unsigned char scancode = inb(PS2_DATA_PORT);
+    kprintf("Received scancode '%x' from keyboard input\n", scancode);
 }
