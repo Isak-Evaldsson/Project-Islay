@@ -1,5 +1,7 @@
 #include "interrupts.h"
 
+#include <arch/i386/interrupts/pic.h>
+#include <arch/i386/interrupts/ps2.h>
 #include <arch/interrupt.h>
 #include <klib/klib.h>
 #include <stdint.h>
@@ -62,12 +64,23 @@ void init_interrupts()
     // TODO: fill interrupt table...
     set_interrupt_descriptor(0, (uint32_t)interrupt_handler_0);
     set_interrupt_descriptor(14, (uint32_t)interrupt_handler_14);
+    set_interrupt_descriptor(PS2_KEYBOARD_INTERRUPT, (uint32_t)interrupt_handler_33);
 
     // Load interrupt table
     gdt_ptr_t ptr;
     ptr.size    = sizeof(idt) - 1;
     ptr.address = (uint32_t)&idt;
     load_idt(&ptr);
+
+    // PIC setup
+    pic_irq_disable_all();  // Each individual device is responsible for interrupt handling
+    pic_remap(PIC1_START_INTERRUPT, PIC2_START_INTERRUPT);
+
+    // PS/2 keyboard setup (maybe to be moved somewhere else)
+    pic_irq_enable(PS2_KEYBOARD_IRQ_NUM);
+    ps2_init();
+
+    asm volatile("sti");  // enable interrupts
     kprintf("Interrupts initalized\n");
 }
 
@@ -80,6 +93,11 @@ void interrupt_handler(cpu_state_t registers, uint32_t interrupt_number, stack_s
     (void)registers;
     (void)stack;
 
+    /*
+        TODO:
+            * handle more interrupts
+            * handle spurious interrupts from PIC
+    */
     switch (interrupt_number) {
         case 0:
             kpanic("Division by zero in kernel at 0x%x\n", stack.eip);
@@ -88,6 +106,12 @@ void interrupt_handler(cpu_state_t registers, uint32_t interrupt_number, stack_s
         case 14:
             kpanic("Page fault at (0x%x) not currently handled, error code %x\n", stack.eip,
                    stack.error_code);
+            break;
+
+        case PS2_KEYBOARD_INTERRUPT:
+            unsigned char scancode = ps2_read_scancode();
+            kprintf("Received scancode '%u' from keyboard input\n", scancode);
+            pic_acknowledge(interrupt_number);
             break;
 
         default:

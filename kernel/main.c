@@ -19,4 +19,10 @@ void kernel_main()
 
     // TODO: nice looking boot animation (requires timers)
     print_kernel_header();
+    // asm("int $33");
+
+    // Keep kernel alive, waiting for interrupts
+    for (;;) {
+        asm("hlt");
+    }
 }

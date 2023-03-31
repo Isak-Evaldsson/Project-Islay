@@ -41,6 +41,9 @@ boot_page_table1:
 .global _start
 .type _start, @function
 _start:
+	# Disable interrupts at boot
+	cli
+
     # Physical address of boot_page_table1.
 	# TODO: I recall seeing some assembly that used a macro to do the
 	#       conversions to and from physical. Maybe this should be done in this

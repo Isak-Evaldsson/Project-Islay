@@ -50,3 +50,4 @@ common_interrupt_handler:               # the common parts of the generic interr
 .section .text
 no_error_code_interrupt_handler 0 	# division by zero
 error_code_interrupt_handler 14 	# page fault
+no_error_code_interrupt_handler 33  # PIC1 first interrupt, i.e. keyboard

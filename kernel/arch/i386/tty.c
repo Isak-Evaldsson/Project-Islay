@@ -1,3 +1,4 @@
+#include <arch/i386/io.h>
 #include <arch/tty.h>
 #include <stdint.h>
 

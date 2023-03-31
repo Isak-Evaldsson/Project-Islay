@@ -14,5 +14,6 @@ extern void load_idt(gdt_ptr_t *ptr);
 */
 void interrupt_handler_0();   // division by zero
 void interrupt_handler_14();  // page fault
+void interrupt_handler_33();  // PIC1 first interrupt, i.e. keyboard
 
 #endif /* ARCH_i386_INTERRUPTS_H */
