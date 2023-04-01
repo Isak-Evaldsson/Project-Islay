@@ -34,6 +34,7 @@ ssp.o \
 klib/kpanic.o \
 klib/kprintf.o \
 klib/libc.o \
+devices/timer.o \
 
 OBJS=\
 $(ARCHDIR)/crti.o \

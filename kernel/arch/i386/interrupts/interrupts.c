@@ -1,5 +1,6 @@
 #include "interrupts.h"
 
+#include <arch/i386/drivers/pit.h>
 #include <arch/i386/interrupts/pic.h>
 #include <arch/i386/interrupts/ps2.h>
 #include <arch/interrupt.h>
@@ -130,6 +131,9 @@ void init_interrupts()
 
     ps2_init();
     register_interrupt(PS2_KEYBOARD_INTERRUPT, ps2_interrupt_handler);
+
+    pit_init();
+    register_interrupt(PIT_INTERRUPT_NUM, pit_interrupt_handler);
 
     asm volatile("sti");  // enable interrupts
     kprintf("Interrupts initalized\n");
