@@ -6,11 +6,15 @@
 
 #define EOF (-1)  // End of file
 
-// Kernel equivalent of libc macro
+// Kernel equivalent of libc macro, can be disabled using NDEBUG
+#ifdef NDEBUG
+#define kassert() ()
+#else
 #define kassert(expr)                                                                 \
     if (!(expr)) {                                                                    \
         kpanic("kernel assertion '%s' failed at %s:%u\n", #expr, __FILE__, __LINE__); \
     }
+#endif
 
 /* Kernel equivalent to libc printf */
 int kprintf(const char *restrict, ...);
