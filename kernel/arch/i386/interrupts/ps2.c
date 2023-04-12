@@ -5,7 +5,9 @@
 #include <arch/i386/interrupts/pic.h>
 #include <arch/i386/interrupts/ps2.h>
 #include <arch/i386/io.h>
+#include <devices/ps2_keyboard.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #define GET_BIT(num, bit) ((num & (1 << bit)) >> bit)
 
@@ -26,6 +28,9 @@
 #define WAIT_FOR_WRITE()                    \
     while ((inb(PS2_CMD_PORT) & 0x02) != 0) \
         ;
+
+/* Marks successfull initiation */
+static bool initialised = false;
 
 /*
     Initialises the PS/2 Controller
@@ -62,10 +67,9 @@ void ps2_init()
         kprintf("No second port\n");
     }
 
-    // Clear bit 0,1 and 6 (i.e. disable interrupts)
+    // Clear bit 0, 1 (i.e. disable interrupts)
     config_byte = config_byte & ~(1 << 0);
     config_byte = config_byte & ~(1 << 1);
-    config_byte = config_byte & ~(1 << 6);
 
     // Write config back to controller
     outb(PS2_CMD_PORT, WRITE_CONFIG_BYTE);
@@ -122,7 +126,9 @@ void ps2_init()
 
     // enable interrupt on port 1
     config_byte = config_byte | 0x01;
-    kprintf("Device config %x\n", config_byte);
+
+    // enable translation to set 1
+    config_byte = config_byte | (1 << 6);
 
     outb(PS2_CMD_PORT, WRITE_CONFIG_BYTE);
     WAIT_FOR_WRITE();
@@ -137,7 +143,12 @@ void ps2_init()
         kprintf("Failed to reset device on PS/2 port 1\n");
     }
 
-    kprintf("PS/2 controller enabled\n");
+    kprintf("i8042 PS/2 controller enabled\n");
+}
+
+static void ps2_receive_data(unsigned char data)
+{
+    kprintf("Received data '%x' from ps2 driver \n", data);
 }
 
 /*
@@ -146,5 +157,12 @@ void ps2_init()
 void ps2_interrupt_handler()
 {
     unsigned char scancode = inb(PS2_DATA_PORT);
-    kprintf("Received scancode '%x' from keyboard input\n", scancode);
+
+    if (scancode == 0xaa && !initialised) {
+        initialised = true;
+        ps2_keyboard_register("i8042", ps2_receive_data);
+        return;
+    }
+
+    ps2_keyboard_send(scancode);
 }

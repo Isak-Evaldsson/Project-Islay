@@ -36,6 +36,7 @@ klib/kprintf.o \
 klib/libc.o \
 devices/input_manager.o \
 devices/timer.o \
+devices/ps2_keyboard.o \
 
 OBJS=\
 $(ARCHDIR)/crti.o \

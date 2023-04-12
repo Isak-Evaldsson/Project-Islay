@@ -4,7 +4,7 @@
     Macros to define/use a fixed size statically allocated ring buffer.
     Designed to be used for smaller queues with stack allocated elements.
 */
-#include <stdlib.h>
+#include <stddef.h>
 
 /*
     Macros defining the ring buffer struct
