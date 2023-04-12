@@ -34,6 +34,7 @@ ssp.o \
 klib/kpanic.o \
 klib/kprintf.o \
 klib/libc.o \
+devices/input_manager.o \
 devices/timer.o \
 
 OBJS=\
