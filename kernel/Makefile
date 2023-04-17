@@ -1,6 +1,6 @@
-DEFAULT_HOST!=../default-host.sh
+DEFAULT_HOST:=$(shell ../default-host.sh)
 HOST?=$(DEFAULT_HOST)
-HOSTARCH!=../target-triplet-to-arch.sh $(HOST)
+HOSTARCH:=$(shell ../target-triplet-to-arch.sh $(HOST))
 
 CFLAGS?=-O2 -g
 CPPFLAGS?=
@@ -87,7 +87,7 @@ install: install-headers install-kernel
 
 install-headers:
 	mkdir -p $(DESTDIR)$(INCLUDEDIR)
-	cp -R --preserve=timestamps include/. $(DESTDIR)$(INCLUDEDIR)/.
+	cp -rp include/. $(DESTDIR)$(INCLUDEDIR)/.
 
 install-kernel: $(KERNEL_ELF)
 	mkdir -p $(DESTDIR)$(BOOTDIR)

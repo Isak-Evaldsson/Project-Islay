@@ -5,3 +5,6 @@ sysroot
 # Only backup important vscode files
 .vscode/**
 !.vscode/c_cpp_properties.json
+
+# MacOS files
+**/.DS_Store
