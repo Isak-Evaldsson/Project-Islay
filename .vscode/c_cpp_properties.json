@@ -1,7 +1,7 @@
 {
     "configurations": [
         {
-            "name": "Islay OS i386 config",
+            "name": "Islay OS i386 (Linux)",
             "includePath": [
                 "${workspaceFolder}/kernel/**",
                 "${workspaceFolder}/libc/**",
@@ -11,6 +11,21 @@
                 "__STDC_HOSTED__=0",
             ],
             "compilerPath": "/usr/bin/i386-elf-gcc ",
+            "cStandard": "c17",
+            "cppStandard": "c++14",
+            "intelliSenseMode": "gcc-x86",
+        },
+        {
+            "name": "Islay OS i386 (MacOS)",
+            "includePath": [
+                "${workspaceFolder}/kernel/**",
+                "${workspaceFolder}/libc/**",
+                "/usr/local/Cellar/i686-elf-gcc/**"
+            ],
+            "defines": [
+                "__STDC_HOSTED__=0",
+            ],
+            "compilerPath": "/usr/local/bin/i686-elf-gcc",
             "cStandard": "c17",
             "cppStandard": "c++14",
             "intelliSenseMode": "gcc-x86",
