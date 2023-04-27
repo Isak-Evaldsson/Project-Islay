@@ -59,7 +59,7 @@ size_t strlen(const char *str)
     return len;
 }
 
-strcmp(const char *lhs, const char *rhs)
+int strcmp(const char *lhs, const char *rhs)
 {
     while (*lhs && (*lhs == *rhs)) {
         lhs++;

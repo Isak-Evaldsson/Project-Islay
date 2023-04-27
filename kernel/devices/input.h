@@ -117,7 +117,7 @@ typedef enum {
     KEY_PAGEDOWN,
     KEY_INSERT,
     KEY_DELETE,
-};
+} input_event_status;
 
 /* Initialises the input manager */
 void input_manager_init();

@@ -11,7 +11,7 @@
 // TODO: Allow multiple keyboard support
 static struct {
     char*                   name;
-    keyboard_receive_data_t callback
+    keyboard_receive_data_t callback;
 } device;
 
 // Keyboard state, driving the internal state machine
@@ -83,7 +83,6 @@ void send_event(uint16_t keycode, bool released)
 
 void ps2_keyboard_send(unsigned char scancode)
 {
-    unsigned char key_code;
     // kprintf("State: %u, Scancode: %u\n", state, scancode);
 
     // Keyboard mealy state machine

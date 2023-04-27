@@ -6,6 +6,7 @@
 #include <arch/i386/interrupts/ps2.h>
 #include <arch/i386/io.h>
 #include <devices/ps2_keyboard.h>
+#include <klib/klib.h>
 #include <stdbool.h>
 #include <stddef.h>
 
