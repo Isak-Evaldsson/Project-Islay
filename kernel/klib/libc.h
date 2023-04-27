@@ -11,6 +11,8 @@ void  *memcpy(void *__restrict dest, const void *__restrict src, size_t count);
 void  *memmove(void *dest, const void *src, size_t count);
 void  *memset(void *dest, int ch, size_t count);
 size_t strlen(const char *str);
+int    strcmp(const char *lhs, const char *rhs);
+
 __attribute__((__noreturn__)) void abort();
 
 #endif /* KLIB_LIBC_H */

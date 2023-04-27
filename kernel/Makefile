@@ -30,6 +30,7 @@ LIBS:=$(LIBS) $(KERNEL_ARCH_LIBS)
 KERNEL_OBJS=\
 $(KERNEL_ARCH_OBJS) \
 main.o \
+kshell.o \
 ssp.o \
 klib/kpanic.o \
 klib/kprintf.o \

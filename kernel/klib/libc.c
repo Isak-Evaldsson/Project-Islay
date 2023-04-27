@@ -59,6 +59,15 @@ size_t strlen(const char *str)
     return len;
 }
 
+strcmp(const char *lhs, const char *rhs)
+{
+    while (*lhs && (*lhs == *rhs)) {
+        lhs++;
+        rhs++;
+    }
+    return *(const unsigned char *)lhs - *(const unsigned char *)rhs;
+}
+
 __attribute__((__noreturn__)) void abort()
 {
     kpanic("abort()");
