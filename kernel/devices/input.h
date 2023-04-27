@@ -9,9 +9,12 @@
     independent on whatever it's a usb devices or ps2 device etc.
 */
 
+/* Represeting system input as an input event object */
 typedef struct input_event_t {
     uint16_t      key_code; /* The key input */
-    unsigned char status;   /* flags, bit 0 indicates pressed or not  */
+    unsigned char status;   /* status flags:
+                               - 0 indicates pressed or not
+                               - 1 is set high if upper case */
 } input_event_t;
 
 /*
@@ -19,11 +22,13 @@ typedef struct input_event_t {
 */
 #define INPUT_PRESSED 0x00
 #define INPUT_RELEASE 0x01
+#define UPPER_CASE    0x02
 
 /*
     Macros to check the flags
 */
-#define CHECK_IF_PRESSED(x) (x & 0x01)
+#define CHECK_IF_PRESSED(x)    (x & 0x01)
+#define CHECK_IF_UPPER_CASE(x) (x & UPPER_CASE)
 
 /*
     All key-codes
@@ -56,6 +61,7 @@ typedef enum {
     KEY_X,
     KEY_Y,
     KEY_Z,
+    KEY_0,
     KEY_1,
     KEY_2,
     KEY_3,
@@ -65,12 +71,52 @@ typedef enum {
     KEY_7,
     KEY_8,
     KEY_9,
-    KEY_0,
     KEY_ESCAPE,
     KEY_MINUS,
     KEY_EQUAL,
     KEY_BACKSPACE,
     KEY_TAB,
+    KEY_ENTER,
+    KEY_CTRL,
+    KEY_LBRACKET,
+    KEY_RBRACKET,
+    KEY_SEMI,
+    KEY_APPOSTRPHE,
+    KEY_BACKTICKS,
+    KEY_LSLASH,
+    KEY_COMMA,
+    KEY_DOT,
+    KEY_RSLASH,
+    KEY_LSHIFT,
+    KEY_RSHIFT,
+    KEY_PRTSC,
+    KEY_ALT,
+    KEY_SPACE,
+    KEY_CAPS,
+    KEY_F1,
+    KEY_F2,
+    KEY_F3,
+    KEY_F4,
+    KEY_F5,
+    KEY_F6,
+    KEY_F7,
+    KEY_F8,
+    KEY_F9,
+    KEY_F10,
+    KEY_NUMLOCK,
+    KEY_SCROLLOCK,
+    KEY_HOME,
+    KEY_UP,
+    KEY_PAGEUP,
+    KEY_LEFT,
+    KEY_CENTER,
+    KEY_RIGHT,
+    KEY_PLUS,
+    KEY_END,
+    KEY_DOWN,
+    KEY_PAGEDOWN,
+    KEY_INSERT,
+    KEY_DELETE,
 };
 
 /* Initialises the input manager */

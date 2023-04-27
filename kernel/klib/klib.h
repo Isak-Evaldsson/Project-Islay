@@ -22,6 +22,9 @@ int kprintf(const char *restrict, ...);
 /* Equivalent to kprintf except it allows passthrough of varargs */
 int kvprintf(const char *restrict, va_list);
 
+/* Read line from keyboard into string of a give size, allowing basic kernel shell input */
+void kreadline(size_t size, char *str);
+
 /* Kernel panic, displays error message and halts the kernel */
 __attribute__((__noreturn__)) void kpanic(const char *restrict, ...);
 
