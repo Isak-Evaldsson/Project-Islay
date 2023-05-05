@@ -32,6 +32,7 @@ $(KERNEL_ARCH_OBJS) \
 main.o \
 kshell.o \
 ssp.o \
+boot/init.o \
 klib/kpanic.o \
 klib/kprintf.o \
 klib/kreadline.o \
