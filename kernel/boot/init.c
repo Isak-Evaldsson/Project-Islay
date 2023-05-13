@@ -2,10 +2,13 @@
 #include <arch/tty.h>
 #include <boot/multiboot.h>
 #include <klib/klib.h>
+#include <memory/page_frame_manager.h>
 #include <stdint.h>
 
 /* The kernel main function */
 extern void kernel_main();
+
+#define MiB (2 ^ 20)
 
 /*
     The kernel initialisation code that is run, after the boot assembly code, but before
@@ -16,7 +19,7 @@ extern void kernel_main();
     2. Removes identity mapping
     3. Calls kernel main function
 */
-void kernel_init(multiboot_info_t* mbd, uint32_t magic)
+void kernel_init(multiboot_info_t *mbd, uint32_t magic)
 {
     /* Make sure the magic number matches for memory mapping */
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
@@ -28,7 +31,25 @@ void kernel_init(multiboot_info_t* mbd, uint32_t magic)
         kpanic("invalid memory map given by GRUB bootloader");
     }
 
-    /* Read relevant multiboot info... */
+    /* Reading memory map */
+    size_t           n_entries = mbd->mmap_length / sizeof(multiboot_memory_map_t);
+    memory_segment_t available_segments[n_entries];
+    memory_map_t     map = {.memory_amount = 0, .n_segments = 0, .segments = available_segments};
+    multiboot_memory_map_t *mmap = (multiboot_memory_map_t *)mbd->mmap_addr;
+
+    for (size_t i = 0; i < n_entries; i++) {
+        multiboot_memory_map_t *entry = mmap + i;
+
+        // Find available memory area above 1 MiB
+        if (entry->type == MULTIBOOT_MEMORY_AVAILABLE && entry->addr > MiB) {
+            map.memory_amount = entry->addr + entry->len;
+
+            available_segments[map.n_segments++] =
+                (memory_segment_t){.addr = entry->addr, .length = entry->len};
+        }
+    }
+
+    page_frame_manager_init(&map);
 
     /* Remove identity mapping, doing anything with the mbd pointer at this point will lead to
      * unrecoverable page faults */

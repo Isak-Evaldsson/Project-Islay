@@ -1,5 +1,6 @@
 #include <arch/tty.h>
 #include <klib/klib.h>
+#include <memory/page_frame_manager.h>
 #include <stdbool.h>
 
 /*
@@ -8,6 +9,7 @@
 
 // Internal helper function
 static void print_help();
+static void mem_stats();
 
 typedef struct command_t {
     const char *name;
@@ -16,8 +18,9 @@ typedef struct command_t {
 } command_t;
 
 static command_t commands[] = {
-    (command_t){.name = "help",  .description = "prints all available shell commands", print_help},
-    (command_t){.name = "clear", .description = "clears the terminal window",          term_clear},
+    {.name = "help",    .description = "prints all available shell commands", print_help},
+    {.name = "clear",   .description = "clears the terminal window",          term_clear},
+    {.name = "memstat", .description = "show kernel memory statistics",       mem_stats },
 };
 
 static void print_kernel_header()
@@ -31,6 +34,15 @@ static void print_help()
     kprintf("Available commands:\n");
     for (size_t i = 0; i < sizeof(commands) / sizeof(commands[0]); i++)
         kprintf("   %s: %s\n", commands[i].name, commands[i].description);
+}
+
+static void mem_stats()
+{
+    memory_stats_t mem;
+    page_frame_manger_memory_stats(&mem);
+    kprintf("Memory statistics:\n");
+    kprintf("Amount of memory: %u MiB\n", mem.memory_amount >> 20);
+    kprintf("%u of %u available page frames\n", mem.n_available_frames, mem.n_frames);
 }
 
 static void parse_command(const char *cmd)

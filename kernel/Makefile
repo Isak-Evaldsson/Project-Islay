@@ -40,6 +40,7 @@ klib/libc.o \
 devices/input_manager.o \
 devices/timer.o \
 devices/ps2_keyboard.o \
+memory/page_frame_manager.o \
 
 OBJS=\
 $(ARCHDIR)/crti.o \
