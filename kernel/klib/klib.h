@@ -1,7 +1,10 @@
 #ifndef KLIB_KLIB_H
 #define KLIB_KLIB_H
+#include <klib/bit_manipulation.h>
 #include <klib/libc.h>
 #include <stdarg.h>
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #define EOF (-1)  // End of file

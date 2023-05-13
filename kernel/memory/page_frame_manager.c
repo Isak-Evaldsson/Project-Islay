@@ -1,27 +1,16 @@
 #include <arch/boot.h>
 #include <klib/klib.h>
 #include <memory/page_frame_manager.h>
+#include <memory/paging.h>
 #include <stdbool.h>
 
 /*
     Page frame manger - responsible for the management of physical memory frames
 */
 
-#define PAGE_SIZE (4096)
-
 #define FRAME_NUMBER(addr) ((addr) / (PAGE_SIZE))
 #define BITMAP_INDX(fnum)  ((fnum) >> 3)  // Division by 8
 #define BITMAP_BIT(fnum)   ((fnum) % 8)
-
-// Rounds up a number to a multiple of n, assuming n is a factor of 2
-#define ALIGN_BY_MULTIPLE(num, n) (((num) + ((n)-1)) & ~((n)-1))
-
-// Ensures the num is aligned by page size
-#define ALIGN_BY_PAGE_SIZE(num) ALIGN_BY_MULTIPLE(num, PAGE_SIZE)
-
-#define SET_BIT(b, n)  ((b) |= (1 << (n)))
-#define CLR_BIT(b, n)  ((b) &= ~((1) << (n)))
-#define MASK_BIT(b, n) (b & (1 << n))
 
 // Bitmap marking available page frames with a 1, not that fast (O(N) allocation) or space efficient
 // (always full 4 GiB bitmap no matter actual ram size). A simple solution for 32-bit systems, but
