@@ -23,26 +23,26 @@ SECTIONS
 	/* The kernel will live at 3.5 GiB + 1MiB in the virtual address space, */
 	/* which will be mapped to 1MiB in the physical address space. */
 	/* Note that we page-align the sections. */
-	HIGHER_HALF_ADDR = 0xE0000000;
+	_higher_half_addr = 0xE0000000;
 
 	/* Incremeting our addresses to HIGH_HALF */
-	. += HIGHER_HALF_ADDR;
+	. += _higher_half_addr;
 
 	/* Defining our binary sections, includig symbols marking the start/end of the writable data sections */
-	.text ALIGN (4K) : AT (ADDR (.text) - HIGHER_HALF_ADDR)
+	.text ALIGN (4K) : AT (ADDR (.text) - _higher_half_addr)
 	{
 		*(.text)
 	}
-	.rodata ALIGN (4K) : AT (ADDR (.rodata) - HIGHER_HALF_ADDR)
+	.rodata ALIGN (4K) : AT (ADDR (.rodata) - _higher_half_addr)
 	{
 		*(.rodata)
 	}
-	.data ALIGN (4K) : AT (ADDR (.data) - HIGHER_HALF_ADDR)
+	.data ALIGN (4K) : AT (ADDR (.data) - _higher_half_addr)
 	{
 		_wdata_start = .;
 		*(.data)
 	}
-	.bss ALIGN (4K) : AT (ADDR (.bss) - HIGHER_HALF_ADDR)
+	.bss ALIGN (4K) : AT (ADDR (.bss) - _higher_half_addr)
 	{
 		*(COMMON)
 		*(.bss)
