@@ -7,6 +7,11 @@
     Page frame manger - responsible for the management of physical memory frames
 */
 
+/*
+    Allocation options
+*/
+#define PF_OPT_HIGH_MEM (1 << 0)  // First bit indicates request allocate high memory
+
 // Memory segment in memory map
 typedef struct memory_segment {
     uint32_t addr;
@@ -34,9 +39,14 @@ void page_frame_manager_init(memory_map_t *mmap);
 void page_frame_manger_memory_stats(memory_stats_t *stats);
 
 // Returns physical address to the page that was allocated, 0 marks failure
-uint32_t page_frame_alloc();
+uint32_t page_frame_alloc_page(uint8_t options);
 
-// Frees the page starting at the supplied physical address
-void page_frame_free(uint32_t addr);
+// Allocations 8 * n pages, returns physical address to the first page that was allocated, 0 marks
+// failure
+uint32_t page_frame_alloc_pages(uint8_t options, unsigned int n);
+
+// Frees the segment of 8 * n pages starting at the supplied physical address, to free a single page
+// set n = 0.
+void page_frame_free(uint32_t addr, unsigned int n);
 
 #endif /* MEMORY_PAGE_FRAME_MANAGER_H */
