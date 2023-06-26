@@ -1,5 +1,6 @@
 #ifndef MEMORY_PAGE_FRAME_MANAGER_H
 #define MEMORY_PAGE_FRAME_MANAGER_H
+#include <arch/arch.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -39,14 +40,14 @@ void page_frame_manager_init(memory_map_t *mmap);
 void page_frame_manger_memory_stats(memory_stats_t *stats);
 
 // Returns physical address to the page that was allocated, 0 marks failure
-uint32_t page_frame_alloc_page(uint8_t options);
+physaddr_t page_frame_alloc_page(uint8_t options);
 
 // Allocations 8 * n pages, returns physical address to the first page that was allocated, 0 marks
 // failure
-uint32_t page_frame_alloc_pages(uint8_t options, unsigned int n);
+physaddr_t page_frame_alloc_pages(uint8_t options, unsigned int n);
 
 // Frees the segment of 8 * n pages starting at the supplied physical address, to free a single page
 // set n = 0.
-void page_frame_free(uint32_t addr, unsigned int n);
+void page_frame_free(physaddr_t addr, unsigned int n);
 
 #endif /* MEMORY_PAGE_FRAME_MANAGER_H */
