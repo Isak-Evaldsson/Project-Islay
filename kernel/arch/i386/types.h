@@ -1,6 +1,6 @@
 #ifndef ARCH_i386_TYPES_H
 #define ARCH_i386_TYPES_H
-#include <stddef.h>
+#include <stdint.h>
 /*
     Defintions of X86-specific type information
 */

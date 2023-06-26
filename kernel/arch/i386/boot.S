@@ -27,6 +27,7 @@
 # Preallocate page tables. Placed BSS section since we what the page tables to be initialised to 0
 .section .bss, "aw", @nobits
 	.align 4096 # 4096 Aligend since 12 lsb is used for flags 
+.global boot_page_directory
 boot_page_directory:
 	.skip 4096 # One directory fits 1024 (32 bit) entries
 boot_page_table1:

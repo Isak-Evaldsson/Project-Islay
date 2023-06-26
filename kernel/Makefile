@@ -2,7 +2,7 @@ DEFAULT_HOST:=$(shell ../default-host.sh)
 HOST?=$(DEFAULT_HOST)
 HOSTARCH:=$(shell ../target-triplet-to-arch.sh $(HOST))
 
-CFLAGS?=-O2 -g
+CFLAGS?= -g
 CPPFLAGS?=
 LDFLAGS?=
 LIBS?=
@@ -41,6 +41,7 @@ devices/input_manager.o \
 devices/timer.o \
 devices/ps2_keyboard.o \
 memory/page_frame_manager.o \
+memory/vmem_manager.o \
 
 OBJS=\
 $(ARCHDIR)/crti.o \

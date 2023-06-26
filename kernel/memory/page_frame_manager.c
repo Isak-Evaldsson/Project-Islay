@@ -1,7 +1,6 @@
-#include <arch/boot.h>
+#include <arch/paging.h>
 #include <klib/klib.h>
 #include <memory/page_frame_manager.h>
-#include <memory/paging.h>
 #include <stdbool.h>
 
 /*
