@@ -62,6 +62,7 @@ int kvprintf(const char *restrict format, va_list args)
 {
     char radix;
     int  written = 0;
+    char numstr[32 + 1];  // buffer can fit a 32bit binary number string
 
     while (*format != '\0') {
         size_t maxrem = INT_MAX - written;
@@ -104,7 +105,6 @@ int kvprintf(const char *restrict format, va_list args)
         } else if ((radix = *format) == 'u' || radix == 'o' || radix == 'x') {
             format++;
             unsigned int num = va_arg(args, unsigned int);
-            char         numstr[32 + 1];  // buffer can fit a 32bit binary number string
             size_t       len = itoa(num, numstr, sizeof(numstr), radix);
 
             if (!print(numstr, len)) return -1;
