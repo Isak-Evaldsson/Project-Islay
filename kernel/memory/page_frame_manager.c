@@ -107,8 +107,6 @@ static uint32_t find_available_8n_pages(unsigned int n)
     // Increase speed by not starting at zero every time
     size_t i = first_available_frame_idx & ~(0b11);  // round down to multiple of 4
 
-    kprintf("Seach\n");
-
     // Increase speed by searching 4 bytes at the time
     for (; i < sizeof(memory_bitmap); i += 4) {
         uint32_t bytes = *(uint32_t *)(memory_bitmap + i);
@@ -122,7 +120,6 @@ static uint32_t find_available_8n_pages(unsigned int n)
                 first_available_frame_idx = i;
             }
 
-            kprintf("i = %u\n", i);
             char offset = 0;
 
             // Are there any free bytes? Assumes little-endianness
@@ -142,7 +139,6 @@ static uint32_t find_available_8n_pages(unsigned int n)
             bool found = true;
 
             for (size_t j = 0; j < n; j++) {
-                kprintf("j = %u\n", j);
                 if (memory_bitmap[i + offset + j] != 0xff) {
                     found = false;
                 }
