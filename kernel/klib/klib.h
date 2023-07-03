@@ -28,6 +28,12 @@ int kvprintf(const char *restrict, va_list);
 /* Read line from keyboard into string of a give size, allowing basic kernel shell input */
 void kreadline(size_t size, char *str);
 
+/* kernel heap functions */
+void *kmalloc(size_t size);
+void  kfree(void *ptr);
+void *kcalloc(size_t num, size_t size);
+void *krealloc(void *ptr, size_t new_size);
+
 /* Kernel panic, displays error message and halts the kernel */
 __attribute__((__noreturn__)) void kpanic(const char *restrict, ...);
 

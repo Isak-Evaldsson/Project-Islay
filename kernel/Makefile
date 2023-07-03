@@ -33,6 +33,7 @@ main.o \
 kshell.o \
 ssp.o \
 boot/init.o \
+klib/heap_allocator.o \
 klib/kpanic.o \
 klib/kprintf.o \
 klib/kreadline.o \
