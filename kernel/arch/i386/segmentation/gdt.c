@@ -2,8 +2,8 @@
     Functions to setup/handle gpt tables for x86
 */
 
-#include "gdt.h"
-
+#include <arch/i386/segmentation/gdt.h>
+#include <arch/i386/segmentation/tss.h>
 #include <klib/klib.h>
 #include <stdint.h>
 
@@ -21,22 +21,23 @@
 #define SEG_GRAN(x)     ((x) << 0x0F)         // Granularity (0 for 1B - 1MB, 1 for 4KB - 4GB)
 #define SEG_PRIV(x)     (((x)&0x03) << 0x05)  // Set privilege level (0 - 3)
 
-#define SEG_DATA_RD        0x00  // Read-Only
-#define SEG_DATA_RDA       0x01  // Read-Only, accessed
-#define SEG_DATA_RDWR      0x02  // Read/Write
-#define SEG_DATA_RDWRA     0x03  // Read/Write, accessed
-#define SEG_DATA_RDEXPD    0x04  // Read-Only, expand-down
-#define SEG_DATA_RDEXPDA   0x05  // Read-Only, expand-down, accessed
-#define SEG_DATA_RDWREXPD  0x06  // Read/Write, expand-down
-#define SEG_DATA_RDWREXPDA 0x07  // Read/Write, expand-down, accessed
-#define SEG_CODE_EX        0x08  // Execute-Only
-#define SEG_CODE_EXA       0x09  // Execute-Only, accessed
-#define SEG_CODE_EXRD      0x0A  // Execute/Read
-#define SEG_CODE_EXRDA     0x0B  // Execute/Read, accessed
-#define SEG_CODE_EXC       0x0C  // Execute-Only, conforming
-#define SEG_CODE_EXCA      0x0D  // Execute-Only, conforming, accessed
-#define SEG_CODE_EXRDC     0x0E  // Execute/Read, conforming
-#define SEG_CODE_EXRDCA    0x0F  // Execute/Read, conforming, accessed
+#define SEG_TSS_AVAIL      0x09               // Mark tss segment available
+#define SEG_DATA_RD        0x00               // Read-Only
+#define SEG_DATA_RDA       0x01               // Read-Only, accessed
+#define SEG_DATA_RDWR      0x02               // Read/Write
+#define SEG_DATA_RDWRA     0x03               // Read/Write, accessed
+#define SEG_DATA_RDEXPD    0x04               // Read-Only, expand-down
+#define SEG_DATA_RDEXPDA   0x05               // Read-Only, expand-down, accessed
+#define SEG_DATA_RDWREXPD  0x06               // Read/Write, expand-down
+#define SEG_DATA_RDWREXPDA 0x07               // Read/Write, expand-down, accessed
+#define SEG_CODE_EX        0x08               // Execute-Only
+#define SEG_CODE_EXA       0x09               // Execute-Only, accessed
+#define SEG_CODE_EXRD      0x0A               // Execute/Read
+#define SEG_CODE_EXRDA     0x0B               // Execute/Read, accessed
+#define SEG_CODE_EXC       0x0C               // Execute-Only, conforming
+#define SEG_CODE_EXCA      0x0D               // Execute-Only, conforming, accessed
+#define SEG_CODE_EXRDC     0x0E               // Execute/Read, conforming
+#define SEG_CODE_EXRDCA    0x0F               // Execute/Read, conforming, accessed
 
 #define GDT_CODE_PL0                                                                        \
     SEG_DESCTYPE(1) | SEG_PRES(1) | SEG_SAVL(0) | SEG_LONG(0) | SEG_SIZE(1) | SEG_GRAN(1) | \
@@ -54,9 +55,11 @@
     SEG_DESCTYPE(1) | SEG_PRES(1) | SEG_SAVL(0) | SEG_LONG(0) | SEG_SIZE(1) | SEG_GRAN(1) | \
         SEG_PRIV(3) | SEG_DATA_RDWR
 
+#define GDT_TSS SEG_PRES(1) | SEG_PRIV(0) | SEG_DESCTYPE(0) | SEG_TSS_AVAIL
+
 /* The global descriptor table, hardcode size since it will only be filled with the bare minimum
  * required for flat mode  */
-uint64_t gdt[5];
+uint64_t gdt[6];
 
 /*
     Creates a segment descriptor according the following layout:
@@ -91,7 +94,7 @@ uint64_t create_descriptor(uint32_t base, uint32_t limit, uint16_t flag)
 
     // Create the low 32 bit segment
     descriptor |= base << 16;          // set base bits 15:0
-    descriptor |= limit & 0x0000FFFF;  // set limit bits 15:0 printf("0x%.16llX\n", descriptor);
+    descriptor |= limit & 0x0000FFFF;  // set limit bits 15:0
     return descriptor;
 }
 
@@ -113,6 +116,7 @@ void init_gdt()
     uint64_t kernel_data_segment = create_descriptor(0, 0x000FFFFF, (GDT_DATA_PL0));
     uint64_t user_code_segment   = create_descriptor(0, 0x000FFFFF, (GDT_CODE_PL3));
     uint64_t user_data_segment   = create_descriptor(0, 0x000FFFFF, (GDT_DATA_PL3));
+    uint64_t tss_segment = create_descriptor((uint32_t)&kernel_tss, sizeof(kernel_tss), (GDT_TSS));
 
     /* Filling the table */
     gdt[0] = null_segment;
@@ -120,10 +124,12 @@ void init_gdt()
     gdt[2] = kernel_data_segment;
     gdt[3] = user_code_segment;
     gdt[4] = user_data_segment;
+    gdt[5] = tss_segment;
 
     gdt_ptr_t ptr;
     ptr.size    = sizeof(gdt) - 1;
     ptr.address = (uint32_t)&gdt;
     load_gdt(&ptr);
+    init_kernel_tss();
     kprintf("Successfully initiated GDT\n");
 }
