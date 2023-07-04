@@ -1,3 +1,4 @@
+#include <arch/interrupt.h>
 #include <devices/input.h>
 #include <klib/klib.h>
 #include <klib/ring_buffer.h>
@@ -67,7 +68,7 @@ void input_manager_wait_for_event(input_event_t* event)
 
     // else wait
     do {
-        asm("hlt");  // TODO: Implement/replace for a better wait mechanism (once we have a
-                     // scheduler with a proper wait queue)
+        wait_for_interrupt();  // TODO: Implement/replace for a better wait mechanism (once we have
+                               // a scheduler with a proper wait queue)
     } while (!input_manager_get_event(event));
 }

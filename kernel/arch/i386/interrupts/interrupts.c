@@ -57,7 +57,7 @@ void set_interrupt_descriptor(uint8_t index, uint32_t isr_addr)
     interrupt_descriptor_t* entry = idt + index;
 
     entry->offset_low      = isr_addr & 0xffff;
-    entry->selector        = 0x08;  // kernel code segment on index 1
+    entry->selector        = 0x08;                        // kernel code segment on index 1
     entry->reserved        = 0x00;
     entry->type_attributes = (0x01 << 7) |                // P - set present
                              (0x00 << 6) | (0x00 << 5) |  // DPL - set ring 0
@@ -135,7 +135,7 @@ void init_interrupts()
     pit_init();
     register_interrupt(PIT_INTERRUPT_NUM, pit_interrupt_handler);
 
-    asm volatile("sti");  // enable interrupts
+    enable_interrupts();
     kprintf("Interrupts initalized\n");
 }
 
@@ -209,4 +209,19 @@ void interrupt_handler(cpu_state_t registers, uint32_t interrupt_number, stack_s
     } else {
         // TODO: Software interrupt
     }
+}
+
+void wait_for_interrupt()
+{
+    asm volatile("hlt");
+}
+
+void enable_interrupts()
+{
+    asm volatile("sti");
+}
+
+void disable_interrupts()
+{
+    asm volatile("cli");
 }

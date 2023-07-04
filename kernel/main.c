@@ -17,6 +17,6 @@ void kernel_main()
 
     // Keep kernel alive, waiting for interrupts
     for (;;) {
-        asm("hlt");
+        wait_for_interrupt();
     }
 }

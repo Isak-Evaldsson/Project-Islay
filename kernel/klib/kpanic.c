@@ -1,3 +1,4 @@
+#include <arch/interrupt.h>
 #include <klib/klib.h>
 #include <klib/libc.h>
 
@@ -14,10 +15,10 @@ __attribute__((__noreturn__)) void kpanic(const char *restrict format, ...)
     va_end(args);
 
     // Stop the kernel
-    asm volatile("hlt");
+    while (1) {
+        disable_interrupts();
+        wait_for_interrupt();
+    }
 
-    // Don't return
-    while (1)
-        ;  // empty
     __builtin_unreachable();
 }
