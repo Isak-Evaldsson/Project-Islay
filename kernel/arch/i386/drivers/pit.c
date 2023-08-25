@@ -69,5 +69,5 @@ void pit_init()
 
 void pit_interrupt_handler()
 {
-    timer_report_clock_pulse(period_ms);
+    timer_report_clock_pulse(period_ms * 1000000);
 }
