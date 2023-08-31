@@ -38,6 +38,8 @@ klib/kpanic.o \
 klib/kprintf.o \
 klib/kreadline.o \
 klib/libc.o \
+klib/log.o \
+klib/__fwriter.o \
 devices/input_manager.o \
 devices/timer.o \
 devices/ps2_keyboard.o \
@@ -101,7 +103,7 @@ install-kernel: $(KERNEL_ELF)
 
 qemu: $(KERNEL_ELF)
 	objdump -dj .text  $(KERNEL_ELF) > $(BUILD)/kernel_text_section  
-	qemu-system-$(HOSTARCH) -kernel $(KERNEL_ELF) -no-shutdown -no-reboot -d int -D $(BUILD)/log.txt
+	qemu-system-$(HOSTARCH) -kernel $(KERNEL_ELF) -no-shutdown -no-reboot -d int -D $(BUILD)/log.txt -serial file:$(BUILD)/serial
 
 gdb: $(KERNEL_ELF)
 	objdump -dj .text  $(KERNEL_ELF) > $(BUILD)/kernel_text  

@@ -25,6 +25,9 @@ int kprintf(const char *restrict, ...);
 /* Equivalent to kprintf except it allows passthrough of varargs */
 int kvprintf(const char *restrict, va_list);
 
+/* Logs formated message to serial output */
+int log(const char *restrict format, ...);
+
 /* Read line from keyboard into string of a give size, allowing basic kernel shell input */
 void kreadline(size_t size, char *str);
 

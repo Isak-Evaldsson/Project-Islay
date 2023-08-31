@@ -1,11 +1,16 @@
 #include <arch/gdt.h>
 #include <arch/interrupt.h>
+#include <arch/serial.h>
 #include <arch/tty.h>
 #include <klib/klib.h>
 #include <kshell.h>
 
 void kernel_main()
 {
+    if (serial_init() == 1) {
+        kpanic("No serial\n");
+    }
+
     term_init();
     kprintf("Starting boot sequence...\n");
     init_gdt();
