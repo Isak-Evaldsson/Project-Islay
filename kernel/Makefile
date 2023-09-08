@@ -39,6 +39,7 @@ klib/kprintf.o \
 klib/kreadline.o \
 klib/libc.o \
 klib/log.o \
+klib/sleep.o \
 klib/__fwriter.o \
 devices/input_manager.o \
 devices/timer.o \
@@ -69,7 +70,7 @@ KERNEL_ELF=$(BUILD)/kernel.elf
 
 QEMU_ARGS=-kernel $(KERNEL_ELF) -no-shutdown -no-reboot -d int -D $(BUILD)/log.txt -serial file:$(BUILD)/serial
 
-.PHONY: all clean install install-headers install-kernel qemu gdb
+.PHONY: all clean install install-headers install-kernel qemu gdb cloc
 .SUFFIXES: .o .c .S
 
 all: $(KERNEL_ELF)
@@ -118,5 +119,8 @@ gdb: $(KERNEL_ELF)
         -ex 'layout regs' \
         -ex 'break *_start' \
         -ex 'continue'
+
+cloc:
+	cloc --exclude-dir=$(BUILD) --exclude-ext=d,md, .
 
 -include $(OBJS:.o=.d)
