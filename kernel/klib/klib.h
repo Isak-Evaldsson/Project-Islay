@@ -37,6 +37,10 @@ void  kfree(void *ptr);
 void *kcalloc(size_t num, size_t size);
 void *krealloc(void *ptr, size_t new_size);
 
+/* sleep functions */
+void sleep(uint64_t seconds);
+void nano_sleep(uint64_t nanoseconds);
+
 /* Kernel panic, displays error message and halts the kernel */
 __attribute__((__noreturn__)) void kpanic(const char *restrict, ...);
 

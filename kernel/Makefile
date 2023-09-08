@@ -45,6 +45,8 @@ devices/timer.o \
 devices/ps2_keyboard.o \
 memory/page_frame_manager.o \
 memory/vmem_manager.o \
+tasks/scheduler.o \
+tasks/task_queue.o \
 
 OBJS=\
 $(ARCHDIR)/crti.o \
@@ -64,6 +66,8 @@ $(ARCHDIR)/crtn.o \
 
 BUILD=build
 KERNEL_ELF=$(BUILD)/kernel.elf
+
+QEMU_ARGS=-kernel $(KERNEL_ELF) -no-shutdown -no-reboot -d int -D $(BUILD)/log.txt -serial file:$(BUILD)/serial
 
 .PHONY: all clean install install-headers install-kernel qemu gdb
 .SUFFIXES: .o .c .S
@@ -103,11 +107,11 @@ install-kernel: $(KERNEL_ELF)
 
 qemu: $(KERNEL_ELF)
 	objdump -dj .text  $(KERNEL_ELF) > $(BUILD)/kernel_text_section  
-	qemu-system-$(HOSTARCH) -kernel $(KERNEL_ELF) -no-shutdown -no-reboot -d int -D $(BUILD)/log.txt -serial file:$(BUILD)/serial
+	qemu-system-$(HOSTARCH) $(QEMU_ARGS)
 
 gdb: $(KERNEL_ELF)
 	objdump -dj .text  $(KERNEL_ELF) > $(BUILD)/kernel_text  
-	qemu-system-$(HOSTARCH) -kernel $(KERNEL_ELF) -no-shutdown -no-reboot -d int -D $(BUILD)/log.txt -serial file:$(BUILD)/serial  -S -s &
+	qemu-system-$(HOSTARCH) $(QEMU_ARGS)  -S -s &
 	gdb $(KERNEL_ELF) \
         -ex 'target remote localhost:1234' \
         -ex 'layout src' \

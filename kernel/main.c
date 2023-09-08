@@ -4,6 +4,7 @@
 #include <arch/tty.h>
 #include <klib/klib.h>
 #include <kshell.h>
+#include <tasks/scheduler.h>
 
 void kernel_main()
 {
@@ -16,6 +17,8 @@ void kernel_main()
     init_gdt();
     init_interrupts();
     kprintf("Kernel successfully booted at vaddr 0xE0100000 (3.5 GiB + 1 MiB)\n\n");
+
+    scheduler_init();
 
     // TODO: nice looking boot animation (requires timers)
     kshell();
