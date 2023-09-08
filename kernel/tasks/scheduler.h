@@ -7,6 +7,9 @@
 // How long is the thread allowed to run before pre-emption
 #define TIME_SLICE_NS 50000000  // 50 ms
 
+// If set to 1, indicates that the task is to be preempted
+#define TASK_STATUS_PREEMPT (1 << 0)
+
 /* The possible state a task can be in */
 typedef enum {
     READY_TO_RUN,
@@ -32,6 +35,7 @@ struct task {
     task_state_t state;         // The state of the task
     uint64_t     sleep_expiry;  // Until when shall the task sleep
     uint64_t     time_used;     // Allows us to have time statistics
+    uint8_t      status;        // Task status flags
 };
 
 /*
@@ -55,13 +59,6 @@ void scheduler_nano_sleep_until(uint64_t when);
 
 /* Allows the clock driver to invoke the scheduler to check if any sleeping task are allowed to run.
  */
-void scheduler_check_sleep_queue(uint64_t time_since_boot);
-
-/* Stores how long time the currently runing task has left before being preempted */
-extern uint64_t time_slice_remaning;
-
-/* Varible storing the earliest wakeup time (in ns since boot) for any sleeping task. Allows
- * clock drivers check if it's necessary to call the 'scheduler_check_sleep_queue' */
-extern uint64_t scheduler_earliest_wakeup;
+void scheduler_timer_interrupt(uint64_t time_since_boot_ns, uint64_t period_ns);
 
 #endif /* TASK_SCHEDULER_H */

@@ -26,10 +26,8 @@ void timer_report_clock_pulse(uint64_t period_ns)
         TODO: Decouple the timer from scheduler by having an internal priority queue within the
         timer where other parts of the kernel, such as the scheduler could insert callbacks to at
         specfic timestamps
-    */
 
-    // Do we have any sleeping threads waiting that should be woken up
-    if (time_since_boot_ns >= scheduler_earliest_wakeup) {
-        scheduler_check_sleep_queue(time_since_boot_ns);
-    }
+        TODO: Handle proper interrupt handling
+    */
+    scheduler_timer_interrupt(time_since_boot_ns, period_ns);
 }

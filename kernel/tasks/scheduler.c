@@ -8,7 +8,7 @@
 #include <tasks/scheduler.h>
 #include <tasks/task_queue.h>
 
-#define LOG_SCHEDULER 1
+#define LOG_SCHEDULER 0
 
 #if LOG_SCHEDULER
 #define LOG(...) log("[SCHEDULER]: " __VA_ARGS__)
@@ -23,7 +23,9 @@
 /*
    TODO:
    * Be careful about interrupts, not always a good idea to purely enable/disable them. See
-   discussion in https://forum.osdev.org/viewtopic.php?f=1&t=14293
+   discussion in https://forum.osdev.org/viewtopic.php?f=1&t=56206
+   * Handle schedules when appriate after interrupts, see thread above
+   * Handle timer/scheduler decoupling
    * Wrapper for all threads, ensuring proper locking before runing actual function
    * Doublecheck so that the time counting works correctly
    * Better alogritm than round robin
@@ -46,7 +48,7 @@ static uint64_t idle_time_ns = 0;
 static task_t *current_task;
 
 /* Stores how long time the currently runing task has left before being preempted */
-uint64_t time_slice_remaning = 0;
+static uint64_t time_slice_remaining = TIME_SLICE_NS;
 
 // Counter ensuring that no thread what to disable interrupt when re-enabling them. Useful since the
 // primary locking mechanism for a single core cpu is simply to disable interrupts.
@@ -58,6 +60,8 @@ static int IRQ_disable_counter = 0;
 unsigned int postpone_task_switch_counter = 0;  // If above 0 we're in a postpone state
 bool         task_switch_postponed = false;     // Any tries to task switch during postpone state?
 
+/* Varible storing the earliest wakeup time (in ns since boot) for any sleeping task. Allows
+ * clock drivers check if it's necessary to call the 'scheduler_check_sleep_queue' */
 uint64_t scheduler_earliest_wakeup = UINT64_MAX;
 
 // The caller is resposbile for approrpriatly locking/unlocking the scheduler when calling it
@@ -79,11 +83,23 @@ static void switch_task(task_t *new_task)
         return;
     }
 
+    // TODO: Handle calls to switch task when in sleep mode, i.e. current_task == NULL
     kassert(current_task != NULL);
     // Re-add current task to list if it's still in running state
     if (current_task->state == RUNNING) {
         current_task->state = READY_TO_RUN;
         task_queue_enque(&ready_queue, current_task);
+    }
+
+    if (current_task == NULL) {
+        // Task unblocked and stopped us being idle, so only one task can be running
+        time_slice_remaining = 0;
+    } else if ((ready_queue.start == NULL) && (current_task->state != RUNNING)) {
+        // Currently running task blocked and the task we're switching to is the only task left
+        time_slice_remaining = 0;
+    } else {
+        // More than one task wants the CPU, so set a time slice length
+        time_slice_remaining = TIME_SLICE_NS;
     }
 
     // Switch state for our new task
@@ -93,7 +109,7 @@ static void switch_task(task_t *new_task)
     old_task     = current_task;
     current_task = new_task;
 
-    LOG("Swich task from %x to %x", old_task, new_task);
+    LOG("Swich task from %x to %x (%u)", old_task, new_task);
     kernel_thread_switch(new_task->regs, old_task->regs);
 }
 
@@ -174,6 +190,12 @@ void scheduler_unblock_task(task_t *task)
     LOG("Unblock: put %x in ready_queue", task);
     task_queue_enque(&ready_queue, task);
 
+    // Ensure that the currently running thread is preempted, maybe do something smarter like having
+    // a better time remaning system
+    if (time_slice_remaining == 0) {
+        time_slice_remaining = TIME_SLICE_NS;
+    }
+
     scheduler_unlock();
 }
 
@@ -233,8 +255,8 @@ void schedule()
         current_task = task;
         LOG("Exit sleep state");
 
-        // Switch to the task that unblocked (unless the task that unblocked happens to be the task
-        // we borrowed)
+        // Switch to the task that unblocked (unless the task that unblocked happens to be the
+        // task we borrowed)
         task = task_queue_dequeue(&ready_queue);
         if (task != current_task) {
             switch_task(task);
@@ -271,45 +293,57 @@ void scheduler_nano_sleep_until(uint64_t when)
     scheduler_block_task(SLEEPING);
 }
 
-void scheduler_check_sleep_queue(uint64_t time_since_boot)
+void scheduler_timer_interrupt(uint64_t time_since_boot_ns, uint64_t period_ns)
 {
     task_t *next;
     task_t *task;
 
     lock_stuff();
 
-    // Remove all task from sleep queue
-    next              = sleep_queue.start;
-    sleep_queue.start = NULL;
-    sleep_queue.end   = NULL;
+    if (time_since_boot_ns >= scheduler_earliest_wakeup) {
+        // Remove all task from sleep queue
+        next              = sleep_queue.start;
+        sleep_queue.start = NULL;
+        sleep_queue.end   = NULL;
 
-    // Reset first wakeup flag
-    scheduler_earliest_wakeup = UINT64_MAX;
+        // Reset first wakeup flag
+        scheduler_earliest_wakeup = UINT64_MAX;
 
-    while (next != NULL) {
-        task       = next;
-        next       = task->next;
-        task->next = NULL;  // ensure that we don't accidentally insert multiple tasks in lists
+        while (next != NULL) {
+            task       = next;
+            next       = task->next;
+            task->next = NULL;  // ensure that we don't accidentally insert multiple tasks in lists
 
-        // Unblock task if succeficcent time has passed
-        if (task->sleep_expiry <= time_since_boot) {
-            LOG("Wake-up task %x from sleep at %u", task, time_since_boot);
-            scheduler_unblock_task(task);
-        } else {
-            // Re-add into queue
-            LOG("CHECK SLEEP QUEUE: put %x in sleep queue", task);
-            task_queue_enque(&sleep_queue, task);
+            // Unblock task if succeficcent time has passed
+            if (task->sleep_expiry <= time_since_boot_ns) {
+                LOG("Wake-up task %x from sleep at %u", task, time_since_boot_ns);
+                scheduler_unblock_task(task);
+            } else {
+                // Re-add into queue
+                LOG("CHECK SLEEP QUEUE: put %x in sleep queue", task);
+                task_queue_enque(&sleep_queue, task);
 
-            // Decrement first wakeup flag if necessary
-            if (task->sleep_expiry < scheduler_earliest_wakeup) {
-                scheduler_earliest_wakeup = task->sleep_expiry;
+                // Decrement first wakeup flag if necessary
+                if (task->sleep_expiry < scheduler_earliest_wakeup) {
+                    scheduler_earliest_wakeup = task->sleep_expiry;
+                }
             }
         }
     }
 
+    // Handle "end of time slice" preemption
+    if (time_slice_remaining != 0) {
+        // There is a time slice length
+        if (time_slice_remaining <= period_ns) {
+            schedule();
+        } else {
+            time_slice_remaining -= period_ns;
+        }
+    }
+
     // Done, unlock the scheduler (and do any postponed task switches!)
-    // TODO/WARRING/BUG: Be more careful with unlocking, this may potentially enable interrupts will
-    // were still in an an interrupt handler that later will call iret
+    // TODO/WARRING/BUG: Be more careful with unlocking, this may potentially enable interrupts
+    // will were still in an an interrupt handler that later will call iret
     unlock_stuff();
 }
 
@@ -355,7 +389,7 @@ void sleeper()
     int i = 0;
 
     for (;;) {
-        kprintf("Sleeper %u\n", ++i);
+        log("Sleeper %u", ++i);
         sleep(1);
     }
 }
@@ -386,16 +420,8 @@ void scheduler_init()
     kprintf("Spawn new task\n");
     scheduler_create_task(&sleeper);
 
-    // Hand over to new task lock_scheduler();
-    scheduler_lock();
-    schedule();
-    scheduler_unlock();
-
     kprintf("Back to main\n");
     for (int i = 0; i < 20; i++) {
         sleep(1);
-        scheduler_lock();
-        schedule();
-        scheduler_unlock();
     }
 }
