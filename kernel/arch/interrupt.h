@@ -1,5 +1,6 @@
 #ifndef ARCH_INTERRUPT_H
 #define ARCH_INTERRUPT_H
+#include <stdint.h>
 
 typedef void (*interrupt_handler_t)();
 
@@ -12,5 +13,9 @@ void wait_for_interrupt();
 void enable_interrupts();
 
 void disable_interrupts();
+
+uint32_t get_register_and_disable_interrupts();
+
+void resture_interrupt_register(uint32_t);
 
 #endif /* ARCH_INTERRUPT_H */

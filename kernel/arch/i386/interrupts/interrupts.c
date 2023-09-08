@@ -57,7 +57,7 @@ void set_interrupt_descriptor(uint8_t index, uint32_t isr_addr)
     interrupt_descriptor_t* entry = idt + index;
 
     entry->offset_low      = isr_addr & 0xffff;
-    entry->selector        = 0x08;                        // kernel code segment on index 1
+    entry->selector        = 0x08;  // kernel code segment on index 1
     entry->reserved        = 0x00;
     entry->type_attributes = (0x01 << 7) |                // P - set present
                              (0x00 << 6) | (0x00 << 5) |  // DPL - set ring 0
@@ -224,4 +224,16 @@ void enable_interrupts()
 void disable_interrupts()
 {
     asm volatile("cli");
+}
+
+uint32_t get_register_and_disable_interrupts()
+{
+    unsigned flags;
+    asm volatile("pushfl; cli; popl %0" : "=r"(flags)::"memory");
+    return flags;
+}
+
+void resture_interrupt_register(uint32_t flags)
+{
+    asm("pushl %0; popfl" ::"r"(flags) : "memory", "cc");
 }
