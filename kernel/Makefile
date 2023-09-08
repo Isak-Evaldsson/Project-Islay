@@ -107,7 +107,7 @@ qemu: $(KERNEL_ELF)
 
 gdb: $(KERNEL_ELF)
 	objdump -dj .text  $(KERNEL_ELF) > $(BUILD)/kernel_text  
-	qemu-system-$(HOSTARCH) -kernel $(KERNEL_ELF) -no-shutdown -no-reboot -d int -D $(BUILD)/log.txt -S -s &
+	qemu-system-$(HOSTARCH) -kernel $(KERNEL_ELF) -no-shutdown -no-reboot -d int -D $(BUILD)/log.txt -serial file:$(BUILD)/serial  -S -s &
 	gdb $(KERNEL_ELF) \
         -ex 'target remote localhost:1234' \
         -ex 'layout src' \
