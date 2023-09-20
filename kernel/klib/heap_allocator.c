@@ -4,11 +4,21 @@
 #include <stdalign.h>
 #include <stdbool.h>
 
+/* Eanables logging and extra extra validations of the heap data structure to simplify debugging */
+#define DEBUG_HEAP_ALLOCATOR 1
+
 /*
     Disable/enable ptr input validation to get better error messages with the cost of slightly
     bigger tags
 */
 #define PTR_VALIDATION 1
+
+/* Heap logging macro */
+#if DEBUG_HEAP_ALLOCATOR
+#define LOG(...) log("[HEAP_ALLOCATOR]: " __VA_ARGS__)
+#else
+#define LOG(...)
+#endif
 
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
@@ -140,45 +150,86 @@ free_list_t* free_list = NULL;
 /* The linked list of heap segments */
 heap_segment_t* segments = NULL;
 
+#if DEBUG_HEAP_ALLOCATOR
+#define VERIFY_FREE_LIST() verify_free_list(__FILE__, __FUNCTION__, __LINE__)
+
 // Debug function allowing us to dump the contents of the heap
-__attribute__((unused)) static void dump_heap()
+static void dump_heap()
 {
     size_t          i;
     heap_segment_t* seg;
 
-    kprintf("Dumping free list\n");
+    LOG("Dumping free list");
     for (free_list_t* entry = free_list; entry != NULL; entry = entry->next) {
-        kprintf("(%u) Prev: %u Next: %u Size: %u\n", entry, entry->prev, entry->next, entry->size);
+        LOG("(%x) Prev: %x Next: %x Size: %u", entry, entry->prev, entry->next, entry->size);
     }
 
-    kprintf("Dumping heap segments\n");
+    LOG("Dumping heap segments");
     for (seg = segments, i = 0; seg != NULL; seg = seg->next, i++) {
         boundary_tag_t* seg_start = (boundary_tag_t*)(seg + 1);
         start_tag_t*    entry     = (start_tag_t*)(seg_start + 1);
 
-        kprintf("Segment %u:\n", i);
+        LOG("Segment %u of at %x of size %u:", i, seg, seg->size);
         while ((uintptr_t)entry < ((uintptr_t)seg + seg->size - sizeof(boundary_tag_t))) {
             bool       allocated = entry->size & 0x01;
             end_tag_t* end       = GET_END_TAG(entry, entry->size);
 
-            kprintf("Block at %x(%u) %x(%u) - Allocated: %u\n", entry, GET_SIZE(entry), end,
-                    GET_SIZE(end), allocated);
+            LOG("Block at %x(%u) %x(%u) - Allocated: %u", entry, GET_SIZE(entry), end,
+                GET_SIZE(end), allocated);
             entry = (start_tag_t*)((uintptr_t)entry + GET_SIZE(entry));
         }
     }
 }
 
 // Debug function ensuring that the free list is properly built
-__attribute__((unused)) static void verify_free_list()
+static void verify_free_list(const char* file, const char* function, unsigned int line)
 {
+    bool correct = true;
+
     for (free_list_t* entry = free_list; entry != NULL; entry = entry->next) {
+        if (entry->next != NULL && entry->next->prev != entry) {
+            LOG("Incorrect prev and next pointer for entry %x", entry);
+            correct = false;
+        }
+
         // Get tags
         start_tag_t* start = GET_START_TAG(entry);
         end_tag_t*   end   = GET_END_TAG(start, start->size);
 
-        VERIFY_FREE_BLOCK(start, end);
+        if ((start->size & 0x01) != 0) {
+            LOG("start tag %x is marked 0x01, i.e. allocated", start);
+            correct = false;
+        }
+
+        if ((end->size & 0x01) != 0) {
+            LOG("end tag %x is marked 0x01, i.e. allocated", end);
+            correct = false;
+        }
+
+        if (start->size != end->size) {
+            LOG("start tag %x and end tag %x of different size", start, end);
+            correct = false;
+        }
+
+        if (start->magic != DEAD) {
+            LOG("start tag %x not marked dead", start);
+            correct = false;
+        }
     }
+
+    /* If heap is ill-formated, dump head data and panic */
+    if (!correct) {
+        dump_heap();
+        kpanic("%s():%s:%u: incorrectly formated heap!!!\nSee heap dump in logs", function, file,
+               line);
+    }
+
+    return; /* Success */
 }
+
+#else
+#define VERIFY_FREE_LIST()
+#endif /* DEBUG_HEAP_ALLOCATOR */
 
 /*
     Free list helper functions
@@ -297,6 +348,8 @@ static heap_segment_t* alloc_heap_segment(size_t size)
 
 void* kmalloc(size_t size)
 {
+    LOG("kmalloc(%u)", size);
+
     if (size == 0) {
         return NULL;
     }
@@ -363,8 +416,8 @@ search_free_list:
             start->size |= 0x01;
             end->size |= 0x01;
 
-            // Finally we unlink the allocated node
-            unlink_entry(entry);
+            // ensure a correctly built free-list
+            VERIFY_FREE_LIST();
 
 #if PTR_VALIDATION
             // Allows us to detect correct pointers
@@ -403,6 +456,8 @@ search_free_list:
 
 void kfree(void* ptr)
 {
+    LOG("kfree(%x)", ptr);
+
     if (ptr == NULL) {
         return;
     }
@@ -500,10 +555,14 @@ void kfree(void* ptr)
 
     // Make sure our free block is built correctly
     VERIFY_FREE_BLOCK(start, end);
+
+    // ensure a correctly built free-list
+    VERIFY_FREE_LIST();
 }
 
 void* kcalloc(size_t num, size_t size)
 {
+    LOG("kcalloc(%u, %u)", num, size);
     void* ret;
 
     ret = kmalloc(num * size);
@@ -517,6 +576,8 @@ void* kcalloc(size_t num, size_t size)
 
 void* krealloc(void* ptr, size_t new_size)
 {
+    LOG("krealloc(%x, %u)", ptr, new_size);
+
     if (ptr == NULL) {
         return kmalloc(new_size);
     }
