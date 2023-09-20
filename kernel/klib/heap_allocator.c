@@ -110,7 +110,7 @@
 */
 
 typedef struct start_tag {
-    size_t size;   // Lowest bit is set to 0 if non-free
+    size_t size;  // Lowest bit is set to 1 if allocated
 #if PTR_VALIDATION
     size_t magic;  // Allows pointer input validation
 #endif
@@ -234,13 +234,6 @@ static void verify_free_list(const char* file, const char* function, unsigned in
 /*
     Free list helper functions
 */
-static void insert_entry_after(free_list_t* previous, free_list_t* entry)
-{
-    entry->next    = previous->next;
-    entry->prev    = previous->prev;
-    previous->next = entry;
-}
-
 static void unlink_entry(free_list_t* entry)
 {
     // Handle head of list
@@ -259,7 +252,7 @@ static void unlink_entry(free_list_t* entry)
     }
 }
 
-static void replace_node(free_list_t* old, free_list_t* new)
+static void replace_entry(free_list_t* old, free_list_t* new)
 {
     new->next = old->next;
     new->prev = old->prev;
@@ -406,10 +399,15 @@ search_free_list:
                 VERIFY_FREE_BLOCK(start, end);
                 VERIFY_FREE_BLOCK(new_start, new_end);
 
-                // Add new object block to free list
+                // Find address for the new free list entry
                 free_list_t* new_entry = (free_list_t*)(new_start + 1);
                 new_entry->size        = space_left;
-                insert_entry_after(entry, new_entry);
+
+                // Replace the current free list entry with the new one
+                replace_entry(entry, new_entry);
+            } else {
+                // Block can't be splited, unlink it from list
+                unlink_entry(entry);
             }
 
             // Mark tags
@@ -463,8 +461,8 @@ void kfree(void* ptr)
     }
 
     // Compute tags
-    volatile start_tag_t* start = GET_START_TAG(ptr);
-    volatile end_tag_t*   end   = GET_END_TAG(start, start->size);
+    start_tag_t* start = GET_START_TAG(ptr);
+    end_tag_t*   end   = GET_END_TAG(start, start->size);
 
 #if PTR_VALIDATION
     // Input validation
@@ -532,7 +530,7 @@ void kfree(void* ptr)
         entry->size = new_size;
 
         // Replace our next block list entry, with the new one
-        replace_node(next_entry, entry);
+        replace_entry(next_entry, entry);
 
         // No merging is possible, i.e.insert new free list entry
     } else {
