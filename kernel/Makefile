@@ -91,6 +91,9 @@ $(ARCHDIR)/crtbegin.o $(ARCHDIR)/crtend.o:
 $(BUILD):
 	mkdir $(BUILD)
 
+kernel_text_section: $(KERNEL_ELF)
+	objdump -S -dj .text  $(KERNEL_ELF) > $(BUILD)/kernel_text_section  
+
 clean:
 	rm -rf $(BUILD)
 	rm -f $(OBJS) *.o */*.o */*/*.o
@@ -106,12 +109,10 @@ install-kernel: $(KERNEL_ELF)
 	mkdir -p $(DESTDIR)$(BOOTDIR)
 	cp $(KERNEL_ELF) $(DESTDIR)$(BOOTDIR)
 
-qemu: $(KERNEL_ELF)
-	objdump -dj .text  $(KERNEL_ELF) > $(BUILD)/kernel_text_section  
+qemu: $(KERNEL_ELF) kernel_text_section
 	qemu-system-$(HOSTARCH) $(QEMU_ARGS)
 
-gdb: $(KERNEL_ELF)
-	objdump -dj .text  $(KERNEL_ELF) > $(BUILD)/kernel_text  
+gdb: $(KERNEL_ELF) kernel_text_section 
 	qemu-system-$(HOSTARCH) $(QEMU_ARGS)  -S -s &
 	gdb $(KERNEL_ELF) \
         -ex 'target remote localhost:1234' \
