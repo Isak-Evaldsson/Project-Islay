@@ -266,6 +266,51 @@ void schedule()
     kassert(current_task != NULL);
 }
 
+/*
+    Called within the timer interrupt using the timed event mechanism waking up at least one
+    sleeping task.
+*/
+static void sleep_expiry_callback(uint64_t time_since_boot_ns, uint64_t timestamp_ns)
+{
+    // NOTE: No need to lock scheduler since function will be called within the timer ISR
+    task_t *next;
+    task_t *task;
+
+    // Remove all task from sleep queue
+    next              = sleep_queue.start;
+    sleep_queue.start = NULL;
+    sleep_queue.end   = NULL;
+
+    // Reset first wakeup flag
+    scheduler_earliest_wakeup = UINT64_MAX;
+
+    while (next != NULL) {
+        task       = next;
+        next       = task->next;
+        task->next = NULL;  // ensure that we don't accidentally insert multiple tasks in lists
+
+        // Unblock task if succeficcent time has passed
+        if (task->sleep_expiry <= time_since_boot_ns) {
+            LOG("Wake-up task %x from sleep at %u", task, time_since_boot_ns);
+            scheduler_unblock_task(task);
+        } else {
+            // Re-add into queue
+            LOG("CHECK SLEEP QUEUE: put %x in sleep queue", task);
+            task_queue_enque(&sleep_queue, task);
+
+            // Decrement first wakeup flag if necessary
+            if (task->sleep_expiry < scheduler_earliest_wakeup) {
+                scheduler_earliest_wakeup = task->sleep_expiry;
+            }
+        }
+    }
+
+    // Register new timed event if there are task left to be woken up
+    if (scheduler_earliest_wakeup < UINT64_MAX) {
+        timer_register_timed_event(scheduler_earliest_wakeup, sleep_expiry_callback);
+    }
+}
+
 /* Tells the scheduler to but current task to sleep until the timestamp when */
 void scheduler_nano_sleep_until(uint64_t when)
 {
@@ -281,12 +326,14 @@ void scheduler_nano_sleep_until(uint64_t when)
     current_task->sleep_expiry = when;
 
     // Add task to sleep queue
-    LOG("SLEEP_UNTIL: PUT %x to sleep queue", current_task);
     task_queue_enque(&sleep_queue, current_task);
 
     // Adjust first wakeup if necessary
     if (when < scheduler_earliest_wakeup) {
         scheduler_earliest_wakeup = when;
+
+        // Only register time event if this task needs to wakeup before the previous ones
+        timer_register_timed_event(when, sleep_expiry_callback);
     }
 
     unlock_stuff();
@@ -295,41 +342,7 @@ void scheduler_nano_sleep_until(uint64_t when)
 
 void scheduler_timer_interrupt(uint64_t time_since_boot_ns, uint64_t period_ns)
 {
-    task_t *next;
-    task_t *task;
-
     lock_stuff();
-
-    if (time_since_boot_ns >= scheduler_earliest_wakeup) {
-        // Remove all task from sleep queue
-        next              = sleep_queue.start;
-        sleep_queue.start = NULL;
-        sleep_queue.end   = NULL;
-
-        // Reset first wakeup flag
-        scheduler_earliest_wakeup = UINT64_MAX;
-
-        while (next != NULL) {
-            task       = next;
-            next       = task->next;
-            task->next = NULL;  // ensure that we don't accidentally insert multiple tasks in lists
-
-            // Unblock task if succeficcent time has passed
-            if (task->sleep_expiry <= time_since_boot_ns) {
-                LOG("Wake-up task %x from sleep at %u", task, time_since_boot_ns);
-                scheduler_unblock_task(task);
-            } else {
-                // Re-add into queue
-                LOG("CHECK SLEEP QUEUE: put %x in sleep queue", task);
-                task_queue_enque(&sleep_queue, task);
-
-                // Decrement first wakeup flag if necessary
-                if (task->sleep_expiry < scheduler_earliest_wakeup) {
-                    scheduler_earliest_wakeup = task->sleep_expiry;
-                }
-            }
-        }
-    }
 
     // Handle "end of time slice" preemption
     if (time_slice_remaining != 0) {
