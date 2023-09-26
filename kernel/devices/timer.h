@@ -4,7 +4,26 @@
 #ifndef DEVICE_TIMER_H
 #define DEVICE_TIMER_H
 
+#include <stdbool.h>
 #include <stdint.h>
+
+/*
+    Helper macro converting seconds to nanoseconds, ensuring no integer constant overflow
+*/
+#define SECONDS_TO_NS(second) ((second) * 1000000000ull)
+
+/*
+    Type definition for time event callbacks returns both the time since boot and the registered
+    timestamp allowing the callback to compensate if they differ.
+ */
+typedef void (*timed_event_callback)(uint64_t time_since_boot_ns, uint64_t timestamp_ns);
+
+/*
+    Allows the registration of timed events, one the supplied timestamps is reached the callback
+    will be executed. The time system does not grantee the callback to be invoked at exactly the
+    specified time, however it grantees to not invoke it earlier than the specified timestamp.
+ */
+bool timer_register_timed_event(uint64_t timestamp_ns, timed_event_callback callback);
 
 /*
     Get the system time in ns
