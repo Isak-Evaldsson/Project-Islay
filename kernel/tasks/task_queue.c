@@ -1,4 +1,5 @@
 #include <klib/klib.h>
+#include <stdint.h>
 #include <tasks/task_queue.h>
 
 #include "scheduler.h"

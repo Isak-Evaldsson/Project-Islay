@@ -273,6 +273,8 @@ static void sleep_expiry_callback(uint64_t time_since_boot_ns, uint64_t timestam
     task_t *next;
     task_t *task;
 
+    (void)timestamp_ns;  // silence unused warning
+
     // Remove all task from sleep queue
     next              = sleep_queue.start;
     sleep_queue.start = NULL;
@@ -316,6 +318,8 @@ static void preemption_callback(uint64_t time_since_boot_ns, uint64_t timestamp_
 {
     // NOTE: No need to lock scheduler since function will be called within the timer ISR
     uint64_t next_preemption_timestamp = time_since_boot_ns + TIME_SLICE_NS;
+
+    (void)timestamp_ns;  // silence unused warning
 
     if (preemption_timestamp_ns != 0) {
         /* if preemption_timestamp is less than our time since boot than he callback has fired to
@@ -414,7 +418,7 @@ task_t *scheduler_create_task(void *ip)
     uintptr_t stack_top = task->kstack_bottom + task->kstack_size;
 
     // Setup thread registers
-    task->regs = create_thread_regs_with_stack(stack_top, ip);
+    task->regs = create_thread_regs_with_stack((void *)stack_top, ip);
 
     // If thread registers could not be allocated, cleanup and abort task creation
     if (task->regs == NULL) {
