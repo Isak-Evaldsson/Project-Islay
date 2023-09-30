@@ -109,7 +109,7 @@ static void switch_task(task_t *new_task)
     old_task     = current_task;
     current_task = new_task;
 
-    LOG("Swich task from %x to %x (%u)", old_task, new_task);
+    LOG("Swich task from %x to %x", old_task, new_task);
     kernel_thread_switch(new_task->regs, old_task->regs);
 }
 
@@ -348,7 +348,12 @@ void scheduler_timer_interrupt(uint64_t time_since_boot_ns, uint64_t period_ns)
     if (time_slice_remaining != 0) {
         // There is a time slice length
         if (time_slice_remaining <= period_ns) {
-            schedule();
+            /*
+                Mark the currently running task ready for preemption, allwowing the interrupt system
+                to perfrom preemption when it is safe to do so. This avoids bugs suchs as interrupt
+                controllers not being properly ACK:ed due to a schedule call casuing a task switch
+             */
+            current_task->status |= TASK_STATUS_PREEMPT;
         } else {
             time_slice_remaining -= period_ns;
         }
@@ -358,6 +363,19 @@ void scheduler_timer_interrupt(uint64_t time_since_boot_ns, uint64_t period_ns)
     // TODO/WARRING/BUG: Be more careful with unlocking, this may potentially enable interrupts
     // will were still in an an interrupt handler that later will call iret
     unlock_stuff();
+}
+
+/* Checks if the current task should be preempted and perfroms a task switch if necessary. Allows
+ * the interrupt system to preempt tasks when it's safe to do so.  */
+void scheduler_preempt_current_task()
+{
+    if (current_task != NULL && current_task->status & TASK_STATUS_PREEMPT) {
+        // clear preemption flag
+        current_task->status &= ~TASK_STATUS_PREEMPT;
+
+        LOG("Do preempt");
+        schedule();
+    }
 }
 
 /* Creates a new task executing the code at the address ip and sets it's state to ready-to-run
@@ -373,6 +391,7 @@ task_t *scheduler_create_task(void *ip)
     task->next      = NULL;
     task->time_used = 0;
     task->state     = READY_TO_RUN;
+    task->status    = 0;
 
     // Allocate stack
     task->kstack_bottom = vmem_request_free_page(0);
@@ -419,9 +438,10 @@ void scheduler_init()
         kpanic("Failed to allocate memory for initial task thread registers");
     }
 
-    current_task->next  = NULL;
-    current_task->state = RUNNING;
-    last_count          = timer_get_time_since_boot();
+    current_task->next   = NULL;
+    current_task->state  = RUNNING;
+    current_task->status = 0;
+    last_count           = timer_get_time_since_boot();
 
     kprintf("Current %x\n", current_task);
 

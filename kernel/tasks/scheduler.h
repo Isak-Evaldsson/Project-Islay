@@ -61,4 +61,8 @@ void scheduler_nano_sleep_until(uint64_t when);
  */
 void scheduler_timer_interrupt(uint64_t time_since_boot_ns, uint64_t period_ns);
 
+/* Checks if the current task should be preempted and performs a task switch if necessary. Allows
+ * the interrupt system to preempt tasks when it's safe to do so.  */
+void scheduler_preempt_current_task();
+
 #endif /* TASK_SCHEDULER_H */

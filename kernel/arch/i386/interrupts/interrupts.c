@@ -6,6 +6,7 @@
 #include <arch/interrupt.h>
 #include <klib/klib.h>
 #include <stdint.h>
+#include <tasks/scheduler.h>
 
 /*
     The registers pushed on the stack in the order specified by instruction 'pushad',
@@ -172,7 +173,7 @@ void interrupt_handler(cpu_state_t registers, uint32_t interrupt_number, stack_s
 
         // Spurious interrupt sent form the PIC 1, ignore it
         if (irq == 7 && (pic_get_isr() & (1 << 7))) {
-            return;
+            goto handler_end;
         }
 
         // Spurious interrupt sent form the PIC 2, ignore it
@@ -209,6 +210,10 @@ void interrupt_handler(cpu_state_t registers, uint32_t interrupt_number, stack_s
     } else {
         // TODO: Software interrupt
     }
+
+handler_end:
+    // Performs preemption caused by interrupt handlers
+    scheduler_preempt_current_task();
 }
 
 void wait_for_interrupt()
