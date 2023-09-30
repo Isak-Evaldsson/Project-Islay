@@ -7,6 +7,15 @@
 // Enables verification of the min-heap data structure
 #define DEBUG_TIMER_HEAP 1
 
+// Enables logging of the timer
+#define LOG_TIMER 0
+
+#if LOG_TIMER
+#define LOG(...) log("[TIMER]: " __VA_ARGS__)
+#else
+#define LOG(...)
+#endif
+
 #if DEBUG_TIMER_HEAP
 #define VERIFY_HEAP() verify_minheap_property(0, __FILE__, __FUNCTION__, __LINE__)
 #else
@@ -175,6 +184,8 @@ static void extract_min_element(timed_event_t* event)
  */
 bool timer_register_timed_event(uint64_t timestamp_ns, timed_event_callback callback)
 {
+    LOG("Register timed event to %x at %u", callback, timestamp_ns);
+
     // (re-)allocate array if necesary
     if (event_queue.size == event_queue.max_size) {
         void*  new_array;
@@ -229,6 +240,8 @@ void timer_report_clock_pulse(uint64_t period_ns)
     // Check the event queue for timed event
     if (event_queue.size > 0 && event_queue.array[0].timestamp_ns <= time_since_boot_ns) {
         extract_min_element(&event);
+
+        LOG("Executing callback %x with timestamp %u", event.callback, event.timestamp_ns);
         event.callback(time_since_boot_ns, event.timestamp_ns);
     }
 
