@@ -8,7 +8,7 @@
 #include <tasks/scheduler.h>
 #include <tasks/task_queue.h>
 
-#define LOG_SCHEDULER 0
+#define LOG_SCHEDULER 1
 
 #if LOG_SCHEDULER
 #define LOG(...) log("[SCHEDULER]: " __VA_ARGS__)
@@ -22,13 +22,12 @@
 
 /*
    TODO:
-   * Be careful about interrupts, not always a good idea to purely enable/disable them. See
-   discussion in https://forum.osdev.org/viewtopic.php?f=1&t=56206
-   * Handle schedules when appriate after interrupts, see thread above
-   * Handle timer/scheduler decoupling
-   * Wrapper for all threads, ensuring proper locking before runing actual function
-   * Doublecheck so that the time counting works correctly
-   * Better alogritm than round robin
+   1. Go through we interrupts are enabled/disabled, replace the counter with restoring interrupt
+     flags instead. See discussion in https://forum.osdev.org/viewtopic.php?f=1&t=56206
+   2. Wrapper for all threads, ensuring proper locking before running actual function
+   3. Double-check so that the time counting works correctly
+   4. Task termination and mutexes
+   5. Better algorithm than round robin
  */
 
 // The ready-to-run task queue
@@ -47,8 +46,9 @@ static uint64_t idle_time_ns = 0;
 // Pointer to the currently running task
 static task_t *current_task;
 
-/* Stores how long time the currently runing task has left before being preempted */
-static uint64_t time_slice_remaining = TIME_SLICE_NS;
+/* Stores at which timestamp the currently running task shall be preempted, if set to zero indicate
+ * to never preempt */
+static uint64_t preemption_timestamp_ns = 0;
 
 // Counter ensuring that no thread what to disable interrupt when re-enabling them. Useful since the
 // primary locking mechanism for a single core cpu is simply to disable interrupts.
@@ -60,14 +60,14 @@ static int IRQ_disable_counter = 0;
 unsigned int postpone_task_switch_counter = 0;  // If above 0 we're in a postpone state
 bool         task_switch_postponed = false;     // Any tries to task switch during postpone state?
 
-/* Varible storing the earliest wakeup time (in ns since boot) for any sleeping task. Allows
+/* Variable storing the earliest wakeup time (in ns since boot) for any sleeping task. Allows
  * clock drivers check if it's necessary to call the 'scheduler_check_sleep_queue' */
 uint64_t scheduler_earliest_wakeup = UINT64_MAX;
 
-// The caller is resposbile for approrpriatly locking/unlocking the scheduler when calling it
+// The caller is responsible for appropriately locking/unlocking the scheduler when calling it
 void schedule();
 
-// Performs a context switch by switching the current runing one to a new task
+// Performs a context switch by switching the current running one to a new task
 static void switch_task(task_t *new_task)
 {
     task_t *old_task;
@@ -93,13 +93,13 @@ static void switch_task(task_t *new_task)
 
     if (current_task == NULL) {
         // Task unblocked and stopped us being idle, so only one task can be running
-        time_slice_remaining = 0;
+        preemption_timestamp_ns = 0;
     } else if ((ready_queue.start == NULL) && (current_task->state != RUNNING)) {
         // Currently running task blocked and the task we're switching to is the only task left
-        time_slice_remaining = 0;
+        preemption_timestamp_ns = 0;
     } else {
         // More than one task wants the CPU, so set a time slice length
-        time_slice_remaining = TIME_SLICE_NS;
+        preemption_timestamp_ns = timer_get_time_since_boot() + TIME_SLICE_NS;
     }
 
     // Switch state for our new task
@@ -109,7 +109,8 @@ static void switch_task(task_t *new_task)
     old_task     = current_task;
     current_task = new_task;
 
-    LOG("Swich task from %x to %x", old_task, new_task);
+    LOG("Swich task from %x to %x, preemption timestamp %u", old_task, new_task,
+        preemption_timestamp_ns);
     kernel_thread_switch(new_task->regs, old_task->regs);
 }
 
@@ -140,8 +141,7 @@ void scheduler_unlock()
 void lock_stuff()
 {
 #ifndef SMP
-    disable_interrupts();
-    IRQ_disable_counter++;
+    scheduler_lock();
     postpone_task_switch_counter++;
 #endif
 }
@@ -162,17 +162,13 @@ void unlock_stuff()
         }
     }
 
-    IRQ_disable_counter--;
-
-    // Only re-enable interrupts if all calls to disable them have called to re-enable
-    if (IRQ_disable_counter == 0) {
-        enable_interrupts();
-    }
+    scheduler_unlock();
 #endif
 }
 
 void scheduler_block_task(unsigned int reason)
 {
+    // TODO: replace with proper interrupt state/restore
     scheduler_lock();
 
     LOG("Block task %x, reason %u", current_task, reason);
@@ -184,16 +180,17 @@ void scheduler_block_task(unsigned int reason)
 
 void scheduler_unblock_task(task_t *task)
 {
+    // TODO: replace with proper interrupt state/restore
     scheduler_lock();
 
-    // Never pre-empt, always append to end of queue
+    // Never preempt, always append to end of queue
     LOG("Unblock: put %x in ready_queue", task);
     task_queue_enque(&ready_queue, task);
 
     // Ensure that the currently running thread is preempted, maybe do something smarter like having
-    // a better time remaning system
-    if (time_slice_remaining == 0) {
-        time_slice_remaining = TIME_SLICE_NS;
+    // a better time remaining system
+    if (preemption_timestamp_ns == 0) {
+        preemption_timestamp_ns = timer_get_time_since_boot() + TIME_SLICE_NS;
     }
 
     scheduler_unlock();
@@ -231,7 +228,7 @@ void schedule()
     } else if (current_task->state == RUNNING) {
         // Otherwise, if the task is in running state, let it continue
     } else {
-        // The current runing task is block and there's no other task to be run
+        // The current running task is block and there's no other task to be run
         task         = current_task;
         current_task = NULL;  // mark that CPU currently sleeps
         LOG("Enter sleep state");
@@ -251,7 +248,7 @@ void schedule()
             disable_interrupts();  // disable interrupts again to see if there is something to
         } while (ready_queue.start == NULL);
 
-        // Set the blocked task to runing again
+        // Set the blocked task to running again
         current_task = task;
         LOG("Exit sleep state");
 
@@ -311,9 +308,43 @@ static void sleep_expiry_callback(uint64_t time_since_boot_ns, uint64_t timestam
     }
 }
 
+/*
+    Called within the timer interrupt using the timed event mechanism check if it's time to preempt
+    the currently running task
+*/
+static void preemption_callback(uint64_t time_since_boot_ns, uint64_t timestamp_ns)
+{
+    // NOTE: No need to lock scheduler since function will be called within the timer ISR
+    uint64_t next_preemption_timestamp = time_since_boot_ns + TIME_SLICE_NS;
+
+    if (preemption_timestamp_ns != 0) {
+        /* if preemption_timestamp is less than our time since boot than he callback has fired to
+         * late, indicating something is wrong with the scheduler */
+        kassert(!(preemption_timestamp_ns < time_since_boot_ns));
+
+        /* Should currently running task be preempted?  */
+        if (preemption_timestamp_ns == time_since_boot_ns) {
+            /*
+                Mark the currently running task ready for preemption, allowing the interrupt system
+                to perform preemption when it is safe to do so. This avoids bugs such as interrupt
+                controllers not being properly ACK:ed due to a schedule call causing a task switch
+            */
+            current_task->status |= TASK_STATUS_PREEMPT;
+        } else {
+            /* No, adjust next_preemption timestamp so that the next callback fire when it's time */
+            LOG("No need to preempt %x at %u", current_task, time_since_boot_ns);
+            next_preemption_timestamp = preemption_timestamp_ns;
+        }
+    }
+
+    /* Register a new callback at the appropriate time */
+    timer_register_timed_event(next_preemption_timestamp, preemption_callback);
+}
+
 /* Tells the scheduler to but current task to sleep until the timestamp when */
 void scheduler_nano_sleep_until(uint64_t when)
 {
+    // TODO: replace with proper interrupt state/restore
     lock_stuff();
     LOG("Put task %x to sleep until %u", current_task, when);
 
@@ -340,32 +371,7 @@ void scheduler_nano_sleep_until(uint64_t when)
     scheduler_block_task(SLEEPING);
 }
 
-void scheduler_timer_interrupt(uint64_t time_since_boot_ns, uint64_t period_ns)
-{
-    lock_stuff();
-
-    // Handle "end of time slice" preemption
-    if (time_slice_remaining != 0) {
-        // There is a time slice length
-        if (time_slice_remaining <= period_ns) {
-            /*
-                Mark the currently running task ready for preemption, allwowing the interrupt system
-                to perfrom preemption when it is safe to do so. This avoids bugs suchs as interrupt
-                controllers not being properly ACK:ed due to a schedule call casuing a task switch
-             */
-            current_task->status |= TASK_STATUS_PREEMPT;
-        } else {
-            time_slice_remaining -= period_ns;
-        }
-    }
-
-    // Done, unlock the scheduler (and do any postponed task switches!)
-    // TODO/WARRING/BUG: Be more careful with unlocking, this may potentially enable interrupts
-    // will were still in an an interrupt handler that later will call iret
-    unlock_stuff();
-}
-
-/* Checks if the current task should be preempted and perfroms a task switch if necessary. Allows
+/* Checks if the current task should be preempted and performs a task switch if necessary. Allows
  * the interrupt system to preempt tasks when it's safe to do so.  */
 void scheduler_preempt_current_task()
 {
@@ -373,7 +379,16 @@ void scheduler_preempt_current_task()
         // clear preemption flag
         current_task->status &= ~TASK_STATUS_PREEMPT;
 
-        LOG("Do preempt");
+        /*
+            Enable interrupts since the switched task might not be within an interrupt handler soon
+            to be calling iret.
+
+            TODO: move to somewhere after the actual task switch to eliminate the risk of the task
+            switch being terminated by another interrupt
+        */
+        enable_interrupts();
+
+        /* before task switch */
         schedule();
     }
 }
@@ -410,7 +425,6 @@ task_t *scheduler_create_task(void *ip)
 
     LOG("Create task: %x", task);
 
-    LOG("Create: add  %x to ready_queue", task);
     task_queue_enque(&ready_queue, task);
     return task;
 }
@@ -425,7 +439,6 @@ void sleeper()
         sleep(1);
     }
 }
-
 void scheduler_init()
 {
     current_task = kmalloc(sizeof(task_t));
@@ -438,10 +451,13 @@ void scheduler_init()
         kpanic("Failed to allocate memory for initial task thread registers");
     }
 
-    current_task->next   = NULL;
-    current_task->state  = RUNNING;
-    current_task->status = 0;
-    last_count           = timer_get_time_since_boot();
+    current_task->next      = NULL;
+    current_task->state     = RUNNING;
+    current_task->status    = 0;
+    last_count              = timer_get_time_since_boot();
+    preemption_timestamp_ns = timer_get_time_since_boot() + TIME_SLICE_NS;
+
+    timer_register_timed_event(preemption_timestamp_ns, preemption_callback);
 
     kprintf("Current %x\n", current_task);
 

@@ -186,7 +186,7 @@ bool timer_register_timed_event(uint64_t timestamp_ns, timed_event_callback call
 {
     LOG("Register timed event to %x at %u", callback, timestamp_ns);
 
-    // (re-)allocate array if necesary
+    // (re-)allocate array if necessary
     if (event_queue.size == event_queue.max_size) {
         void*  new_array;
         size_t new_max_size;
@@ -244,13 +244,4 @@ void timer_report_clock_pulse(uint64_t period_ns)
         LOG("Executing callback %x with timestamp %u", event.callback, event.timestamp_ns);
         event.callback(time_since_boot_ns, event.timestamp_ns);
     }
-
-    /*
-        TODO: Decouple the timer from scheduler by having an internal priority queue within the
-        timer where other parts of the kernel, such as the scheduler could insert callbacks to at
-        specfic timestamps
-
-        TODO: Handle proper interrupt handling
-    */
-    scheduler_timer_interrupt(time_since_boot_ns, period_ns);
 }
