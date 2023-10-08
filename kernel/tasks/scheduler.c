@@ -375,25 +375,34 @@ void scheduler_nano_sleep_until(uint64_t when)
     scheduler_block_task(SLEEPING);
 }
 
-/* Checks if the current task should be preempted and performs a task switch if necessary. Allows
- * the interrupt system to preempt tasks when it's safe to do so.  */
-void scheduler_preempt_current_task()
+/* Called by the interrupt handler allowing notifying the scheduler that the interrupt handler is
+ * done executing allowing the scheduler to perform save preemption */
+void scheduler_end_of_interrupt()
 {
+    // Preempt current task if necessary
     if (current_task != NULL && current_task->status & TASK_STATUS_PREEMPT) {
         // clear preemption flag
         current_task->status &= ~TASK_STATUS_PREEMPT;
 
-        /*
-            Enable interrupts since the switched task might not be within an interrupt handler soon
-            to be calling iret.
-
-            TODO: move to somewhere after the actual task switch to eliminate the risk of the task
-            switch being terminated by another interrupt
-        */
-        enable_interrupts();
+        // If preempting an non-running task schedule might start sleeping which leads to unexcpeted
+        // interrupt behaviors
+        kassert(current_task->state == RUNNING);
 
         /* before task switch */
         schedule();
+
+        // clear interrupt flag, done after possible schedule() calls since once tt gets running
+        // again it will still not have called iret
+        current_task->status &= ~TASK_STATUS_INTERRUPT;
+    }
+}
+
+/* Called by the interrupt handler allowing notifying the scheduler that an interrupt has been
+ * called */
+void scheduler_start_of_interrupt()
+{
+    if (current_task != NULL) {
+        current_task->status |= TASK_STATUS_INTERRUPT;
     }
 }
 
@@ -473,8 +482,10 @@ void scheduler_init()
     kprintf("Spawn new task\n");
     scheduler_create_task(&sleeper);
 
-    kprintf("Back to main\n");
+    kprintf("Back to main.");
     for (int i = 0; i < 20; i++) {
+        kprintf(".");
         sleep(1);
     }
+    kprintf("\n");
 }

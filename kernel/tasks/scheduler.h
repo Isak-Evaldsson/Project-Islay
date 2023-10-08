@@ -10,6 +10,9 @@
 // If set to 1, indicates that the task is to be preempted
 #define TASK_STATUS_PREEMPT (1 << 0)
 
+// If set to 1, indicates that the task is currently running an ISR
+#define TASK_STATUS_INTERRUPT (1 << 1)
+
 /* The possible state a task can be in */
 typedef enum {
     READY_TO_RUN,
@@ -61,8 +64,12 @@ void scheduler_nano_sleep_until(uint64_t when);
  */
 void scheduler_timer_interrupt(uint64_t time_since_boot_ns, uint64_t period_ns);
 
-/* Checks if the current task should be preempted and performs a task switch if necessary. Allows
- * the interrupt system to preempt tasks when it's safe to do so.  */
-void scheduler_preempt_current_task();
+/* Called by the interrupt handler allowing notifying the scheduler that an interrupt has been
+ * called */
+void scheduler_start_of_interrupt();
+
+/* Called by the interrupt handler allowing notifying the scheduler that the interrupt handler is
+ * done executing allowing the scheduler to perform save preemption */
+void scheduler_end_of_interrupt();
 
 #endif /* TASK_SCHEDULER_H */

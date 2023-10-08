@@ -167,6 +167,8 @@ void interrupt_handler(cpu_state_t registers, uint32_t interrupt_number, stack_s
     (void)registers;
     (void)stack;
 
+    scheduler_start_of_interrupt();
+
     // hardware interrupts managed by the pic controller
     if (interrupt_number >= PIC1_START_INTERRUPT && interrupt_number <= PIC2_END_INTERRUPT) {
         uint8_t irq = interrupt_number - PIC1_START_INTERRUPT;
@@ -213,7 +215,7 @@ void interrupt_handler(cpu_state_t registers, uint32_t interrupt_number, stack_s
 
 handler_end:
     // Performs preemption caused by interrupt handlers
-    scheduler_preempt_current_task();
+    scheduler_end_of_interrupt();
 }
 
 void wait_for_interrupt()
