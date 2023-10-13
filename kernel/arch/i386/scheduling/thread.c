@@ -11,7 +11,7 @@ struct thread_regs {
 
 /* Creates a set of thread register for a kernel thread. And initiates the stack with the supplied
  * instruction pointer unless it set to NULL */
-thread_regs_t* create_thread_regs_with_stack(void* stack_top, void* ip)
+thread_regs_t* create_thread_regs_with_stack(void* stack_top, void (*ip)(void*), void* arg)
 {
     thread_regs_t* regs = kmalloc(sizeof(thread_regs_t));
     if (regs == NULL) {
@@ -19,18 +19,21 @@ thread_regs_t* create_thread_regs_with_stack(void* stack_top, void* ip)
     }
 
     // New to make enough space on the stack to allow the 4 register pops in
-    // switch_to_task, as well as the implicit pop when it returns
-    regs->esp = (uintptr_t)stack_top - 5 * sizeof(int32_t);
+    // switch_to_task, as well as the implicit pop when it returns and space for the argument of
+    // function ip (need 8 bytes for unkown reasons)
+    regs->esp = (uintptr_t)stack_top - 7 * sizeof(int32_t);
 
-    // Set esp0 == esp for know, may change when we introduce a user-space
+    // Set esp0 == esp for now, may change when we introduce a user-space
     regs->esp0 = regs->esp;
 
     // All kernel processes shares the same page tables
     regs->cr3 = get_cr3();
 
-    // TODO: Implement task startup function, that handles initial unlock + kills process once the
-    // process function returns
+    // push ip and args to task so that when the task switch returns ip is called
     *(uint32_t*)(regs->esp + 4 * sizeof(uint32_t)) = (uint32_t)ip;
+
+    // insert arg in stack frame
+    *(uint32_t*)(regs->esp + 6 * sizeof(uint32_t)) = arg;
 
     return regs;
 }

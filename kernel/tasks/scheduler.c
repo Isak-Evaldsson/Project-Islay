@@ -23,8 +23,7 @@
 /*
    TODO:
    1. Go through we interrupts are enabled/disabled, replace the counter with restoring interrupt
-     flags instead. See discussion in https://forum.osdev.org/viewtopic.php?f=1&t=56206
-   2. Wrapper for all threads, ensuring proper locking before running actual function
+      flags instead. See discussion in https://forum.osdev.org/viewtopic.php?f=1&t=56206
    3. Double-check so that the time counting works correctly
    4. Task termination and mutexes
    5. Better algorithm than round robin
@@ -406,7 +405,36 @@ void scheduler_start_of_interrupt()
     }
 }
 
-/* Creates a new task executing the code at the address ip and sets it's state to ready-to-run
+/* Allows the currently running task to voluntarily stop execution */
+void scheduler_yield()
+{
+    scheduler_lock();
+    schedule();
+    scheduler_unlock();
+}
+
+/*
+    Wrapper functions for new tasks handling proper setup/cleanup
+*/
+static void new_task_wrapper(void *ip)
+{
+    void (*func)() = ip;
+
+    /* setup */
+    scheduler_unlock();
+
+    /* call actual task function */
+    func();
+
+    // TODO: replace with proper termination once implemented
+    for (;;) {
+        LOG("Task %x waiting to be killed (yielding)\n", current_task);
+        scheduler_yield();
+    }
+}
+
+/*
+    Creates a new task executing the code at the address ip and sets it's state to ready-to-run
  */
 task_t *scheduler_create_task(void *ip)
 {
@@ -427,7 +455,7 @@ task_t *scheduler_create_task(void *ip)
     uintptr_t stack_top = task->kstack_bottom + task->kstack_size;
 
     // Setup thread registers
-    task->regs = create_thread_regs_with_stack((void *)stack_top, ip);
+    task->regs = create_thread_regs_with_stack((void *)stack_top, new_task_wrapper, ip);
 
     // If thread registers could not be allocated, cleanup and abort task creation
     if (task->regs == NULL) {
@@ -444,7 +472,6 @@ task_t *scheduler_create_task(void *ip)
 
 void sleeper()
 {
-    scheduler_unlock();
     int i = 0;
 
     for (;;) {
@@ -452,6 +479,7 @@ void sleeper()
         sleep(1);
     }
 }
+
 void scheduler_init()
 {
     current_task = kmalloc(sizeof(task_t));

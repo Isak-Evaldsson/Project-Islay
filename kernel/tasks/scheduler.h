@@ -72,4 +72,7 @@ void scheduler_start_of_interrupt();
  * done executing allowing the scheduler to perform save preemption */
 void scheduler_end_of_interrupt();
 
+/* Allows the currently running task to voluntarily stop execution */
+void scheduler_yield();
+
 #endif /* TASK_SCHEDULER_H */

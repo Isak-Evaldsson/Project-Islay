@@ -9,8 +9,8 @@ typedef struct thread_regs thread_regs_t;
 void kernel_thread_switch(thread_regs_t* new_thread, thread_regs_t* old_thread);
 
 /* Creates a set of thread register for a kernel thread. And initiates the stack with the supplied
- * instruction pointer. */
-thread_regs_t* create_thread_regs_with_stack(void* stack_top, void* ip);
+ * instruction pointer and argument such that ip(arg) is called once the task is started */
+thread_regs_t* create_thread_regs_with_stack(void* stack_top, void (*ip)(void*), void* arg);
 
 /* Create the thread registers for the initial thread */
 thread_regs_t* create_initial_thread_regs();
