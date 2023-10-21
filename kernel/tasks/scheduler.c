@@ -35,6 +35,9 @@ static EMPTY_QUEUE(ready_queue);
 // Sleep queue
 static EMPTY_QUEUE(sleep_queue);
 
+// Task waiting to be terminated
+static EMPTY_QUEUE(termination_queue);
+
 // Counter variables keeping track of the time consumption of each task
 static uint64_t last_count    = 0;
 static uint64_t current_count = 0;
@@ -62,6 +65,9 @@ bool         task_switch_postponed = false;     // Any tries to task switch duri
 /* Variable storing the earliest wakeup time (in ns since boot) for any sleeping task. Allows
  * clock drivers check if it's necessary to call the 'scheduler_check_sleep_queue' */
 uint64_t scheduler_earliest_wakeup = UINT64_MAX;
+
+/* Task responsible of freeing up space for task within the termination queue */
+static task_t *cleanup_task = NULL;
 
 // The caller is responsible for appropriately locking/unlocking the scheduler when calling it
 void schedule();
@@ -418,6 +424,28 @@ void scheduler_yield()
     scheduler_unlock();
 }
 
+/* Terminates the currently running task */
+void scheduler_terminate_task()
+{
+    // Note: Can do any harmless stuff here (close files, free memory in user-space, ...) but
+    // there's none of that yet
+
+    lock_stuff();
+
+    // Insert task in termination queue
+    task_queue_enque(&termination_queue, current_task);
+
+    // block task, so that a task switch occur once the lock is released
+    scheduler_block_task(TERMINATED);
+
+    // make sure our task is not blocked
+    scheduler_unblock_task(cleanup_task);
+
+    LOG("Adding %x to termination queue", current_task);
+
+    unlock_stuff();
+}
+
 /*
     Wrapper functions for new tasks handling proper setup/cleanup
 */
@@ -431,11 +459,10 @@ static void new_task_wrapper(void *ip)
     /* call actual task function */
     func();
 
-    // TODO: replace with proper termination once implemented
-    for (;;) {
-        LOG("Task %x waiting to be killed (yielding)\n", current_task);
-        scheduler_yield();
-    }
+    /* since were done, terminate task */
+    scheduler_terminate_task();
+
+    kassert(false); /* unreachable */
 }
 
 /*
@@ -475,6 +502,36 @@ task_t *scheduler_create_task(void *ip)
     return task;
 }
 
+/*
+    Frees the memory of the task object
+*/
+void *free_task(task_t *task)
+{
+    vmem_free_page(task->kstack_bottom);
+    free_thread_regs(task->regs);
+    kfree(task);
+}
+
+static void cleanup_thread()
+{
+    task_t *task;
+
+    while (true) {
+        lock_stuff();
+
+        // Empty termination queue
+        while (termination_queue.start != NULL) {
+            task = task_queue_dequeue(&termination_queue);
+
+            LOG("Cleaning up memory for task %x", task);
+            free_task(task);
+        }
+
+        scheduler_block_task(PAUSED);
+        unlock_stuff();
+    }
+}
+
 void sleeper()
 {
     int i = 0;
@@ -508,6 +565,9 @@ void scheduler_init()
     kprintf("Current %x\n", current_task);
 
     LOG("Initialise scheduler (root proc: %x)", current_task);
+
+    // Start task cleaning up terminated task
+    cleanup_task = scheduler_create_task(cleanup_thread);
 
     //
     // Sleep tests

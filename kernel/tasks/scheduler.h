@@ -19,6 +19,8 @@ typedef enum {
     RUNNING,
     BLOCKED,
     SLEEPING,
+    PAUSED,
+    TERMINATED,
 } task_state_t;
 
 /*
@@ -74,5 +76,8 @@ void scheduler_end_of_interrupt();
 
 /* Allows the currently running task to voluntarily stop execution */
 void scheduler_yield();
+
+/* Terminates the currently running task */
+void scheduler_terminate_task();
 
 #endif /* TASK_SCHEDULER_H */
