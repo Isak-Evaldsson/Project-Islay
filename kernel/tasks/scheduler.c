@@ -187,10 +187,16 @@ void scheduler_unblock_task(task_t *task)
 {
     // TODO: replace with proper interrupt state/restore
     scheduler_lock();
+    LOG("Unblock task %x", task);
 
-    // Never preempt, always append to end of queue
-    LOG("Unblock: put %x in ready_queue", task);
-    task_queue_enque(&ready_queue, task);
+    // Only enqeue if the task isn't already in the queue
+    if (task->state != READY_TO_RUN) {
+        task->state = READY_TO_RUN;
+
+        // Never preempt, always append to end of queue
+        LOG("Unblock: put %x in ready_queue", task);
+        task_queue_enque(&ready_queue, task);
+    }
 
     // Ensure that the currently running thread is preempted, maybe do something smarter like having
     // a better time remaining system
