@@ -188,7 +188,10 @@ void scheduler_unblock_task(task_t *task)
 
     // Ensure that the currently running thread is preempted, maybe do something smarter like having
     // a better time remaining system
-    if (preemption_timestamp_ns == 0) {
+
+    // If the current task is running and not idle, and it's never preempted (timestamp == 0) make
+    // sure it's preempted so the new process is allowed to run
+    if (current_task != NULL && preemption_timestamp_ns == 0) {
         preemption_timestamp_ns = timer_get_time_since_boot() + TIME_SLICE_NS;
     }
 
@@ -228,8 +231,10 @@ void schedule()
         // Otherwise, if the task is in running state, let it continue
     } else {
         // The current running task is block and there's no other task to be run
-        task         = current_task;
-        current_task = NULL;  // mark that CPU currently sleeps
+        task                    = current_task;
+        current_task            = NULL;  // mark that CPU currently sleeps
+        preemption_timestamp_ns = 0;     // disable preemption checking
+
         LOG("Enter sleep state");
 
         kassert(ready_queue.start == NULL);
