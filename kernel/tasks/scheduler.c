@@ -340,7 +340,7 @@ static void preemption_callback(uint64_t time_since_boot_ns, uint64_t timestamp_
     if (preemption_timestamp_ns != 0) {
         /* if preemption_timestamp is less than our time since boot than he callback has fired to
          * late, indicating something is wrong with the scheduler */
-        kassert(!(preemption_timestamp_ns < time_since_boot_ns));
+        kassert(preemption_timestamp_ns >= time_since_boot_ns);
 
         /* Should currently running task be preempted?  */
         if (preemption_timestamp_ns == time_since_boot_ns) {
