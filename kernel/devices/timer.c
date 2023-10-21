@@ -238,7 +238,7 @@ void timer_report_clock_pulse(uint64_t period_ns)
     time_since_boot_ns += period_ns;
 
     // Check the event queue for timed event
-    if (event_queue.size > 0 && event_queue.array[0].timestamp_ns <= time_since_boot_ns) {
+    while (event_queue.size > 0 && event_queue.array[0].timestamp_ns <= time_since_boot_ns) {
         extract_min_element(&event);
 
         LOG("Executing callback %x with timestamp %u", event.callback, event.timestamp_ns);
