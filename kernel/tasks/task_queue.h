@@ -8,8 +8,14 @@ typedef struct task_queue {
     task_t* end;
 } task_queue_t;
 
+#define QUEUE_INIT()               \
+    (task_queue_t)                 \
+    {                              \
+        .start = NULL, .end = NULL \
+    }
+
 // Initialise an empty task queue
-#define EMPTY_QUEUE(name) task_queue_t name = {.start = NULL, .end = NULL}
+#define EMPTY_QUEUE(name) task_queue_t name = QUEUE_INIT()
 
 // Adds a task to the end of the queue
 void task_queue_enque(task_queue_t* queue, task_t* task);
