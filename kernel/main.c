@@ -5,6 +5,7 @@
 #include <klib/klib.h>
 #include <kshell.h>
 #include <tasks/scheduler.h>
+#include <tests/test.h>
 
 void kernel_main()
 {
@@ -19,6 +20,9 @@ void kernel_main()
     kprintf("Kernel successfully booted at vaddr 0xE0100000 (3.5 GiB + 1 MiB)\n\n");
 
     scheduler_init();
+
+    // Comment to test the scheduler
+    scheduler_test();
 
     // TODO: nice looking boot animation (requires timers)
     kshell();

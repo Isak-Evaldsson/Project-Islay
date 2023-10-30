@@ -543,16 +543,6 @@ static void cleanup_thread()
     }
 }
 
-void sleeper()
-{
-    int i = 0;
-
-    for (;;) {
-        log("Sleeper %u", ++i);
-        sleep(1);
-    }
-}
-
 void scheduler_init()
 {
     current_task = kmalloc(sizeof(task_t));
@@ -579,17 +569,4 @@ void scheduler_init()
 
     // Start task cleaning up terminated task
     cleanup_task = scheduler_create_task(cleanup_thread);
-
-    //
-    // Sleep tests
-    //
-    kprintf("Spawn new task\n");
-    scheduler_create_task(&sleeper);
-
-    kprintf("Back to main.");
-    for (int i = 0; i < 20; i++) {
-        kprintf(".");
-        sleep(1);
-    }
-    kprintf("\n");
 }
