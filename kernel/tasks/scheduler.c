@@ -5,7 +5,9 @@
 #include <klib/klib.h>
 #include <kshell.h>
 #include <memory/vmem_manager.h>
+#include <tasks/locking.h>
 #include <tasks/scheduler.h>
+#include <tasks/scheduler_internals.h>
 #include <tasks/task_queue.h>
 
 #define LOG_SCHEDULER 1
@@ -25,7 +27,6 @@
    1. Go through we interrupts are enabled/disabled, replace the counter with restoring interrupt
       flags instead. See discussion in https://forum.osdev.org/viewtopic.php?f=1&t=56206
    3. Double-check so that the time counting works correctly
-   4. Task termination and mutexes
    5. Better algorithm than round robin
  */
 
@@ -46,7 +47,7 @@ static uint64_t current_count = 0;
 static uint64_t idle_time_ns = 0;
 
 // Pointer to the currently running task
-static task_t *current_task;
+task_t *current_task;
 
 /* Stores at which timestamp the currently running task shall be preempted, if set to zero indicate
  * to never preempt */
@@ -69,8 +70,8 @@ uint64_t scheduler_earliest_wakeup = UINT64_MAX;
 /* Task responsible of freeing up space for task within the termination queue */
 static task_t *cleanup_task = NULL;
 
-// The caller is responsible for appropriately locking/unlocking the scheduler when calling it
-void schedule();
+/* Flag indicating if the scheduler has been initialised */
+bool scheduler_initialised = false;
 
 // Performs a context switch by switching the current running one to a new task
 static void switch_task(task_t *new_task)
@@ -143,7 +144,7 @@ void scheduler_unlock()
 
 // Marks the start of a critical region, during it's execution we can't perform task switches nor
 // interrupts
-void lock_stuff()
+void critical_section_start()
 {
 #ifndef SMP
     scheduler_lock();
@@ -153,7 +154,7 @@ void lock_stuff()
 
 // Marks the end of a critical region, during it's execution we can't perform task switches nor
 // interrupts
-void unlock_stuff()
+void critical_section_end()
 {
 #ifndef SMP
     postpone_task_switch_counter--;
@@ -365,7 +366,7 @@ static void preemption_callback(uint64_t time_since_boot_ns, uint64_t timestamp_
 void scheduler_nano_sleep_until(uint64_t when)
 {
     // TODO: replace with proper interrupt state/restore
-    lock_stuff();
+    critical_section_start();
     LOG("Put task %x to sleep until %u", current_task, when);
 
     // No need to sleep if when has already occurred
@@ -387,7 +388,7 @@ void scheduler_nano_sleep_until(uint64_t when)
         timer_register_timed_event(when, sleep_expiry_callback);
     }
 
-    unlock_stuff();
+    critical_section_end();
     scheduler_block_task(SLEEPING);
 }
 
@@ -400,14 +401,16 @@ void scheduler_end_of_interrupt()
         // clear preemption flag
         current_task->status &= ~TASK_STATUS_PREEMPT;
 
-        // If preempting an non-running task schedule might start sleeping which leads to unexcpeted
+        // If preempting an non-running task schedule might start sleeping which leads to unexpected
         // interrupt behaviors
         kassert(current_task->state == RUNNING);
 
-        /* before task switch */
+        /* perform task switch */
         schedule();
+    }
 
-        // clear interrupt flag, done after possible schedule() calls since once tt gets running
+    if (current_task != NULL) {
+        // clear interrupt flag, done after possible schedule() calls since once it gets running
         // again it will still not have called iret
         current_task->status &= ~TASK_STATUS_INTERRUPT;
     }
@@ -436,7 +439,7 @@ void scheduler_terminate_task()
     // Note: Can do any harmless stuff here (close files, free memory in user-space, ...) but
     // there's none of that yet
 
-    lock_stuff();
+    critical_section_start();
 
     // Insert task in termination queue
     task_queue_enque(&termination_queue, current_task);
@@ -449,7 +452,7 @@ void scheduler_terminate_task()
 
     LOG("Adding %x to termination queue", current_task);
 
-    unlock_stuff();
+    critical_section_end();
 }
 
 /*
@@ -504,14 +507,16 @@ task_t *scheduler_create_task(void *ip)
 
     LOG("Create task: %x", task);
 
+    scheduler_lock();
     task_queue_enque(&ready_queue, task);
+    scheduler_unlock();
     return task;
 }
 
 /*
     Frees the memory of the task object
 */
-void *free_task(task_t *task)
+void free_task(task_t *task)
 {
     vmem_free_page(task->kstack_bottom);
     free_thread_regs(task->regs);
@@ -523,7 +528,7 @@ static void cleanup_thread()
     task_t *task;
 
     while (true) {
-        lock_stuff();
+        critical_section_start();
 
         // Empty termination queue
         while (termination_queue.start != NULL) {
@@ -534,7 +539,7 @@ static void cleanup_thread()
         }
 
         scheduler_block_task(PAUSED);
-        unlock_stuff();
+        critical_section_end();
     }
 }
 
@@ -566,9 +571,9 @@ void scheduler_init()
     last_count              = timer_get_time_since_boot();
     preemption_timestamp_ns = timer_get_time_since_boot() + TIME_SLICE_NS;
 
+    // Mark the scheduler as initialised
+    scheduler_initialised = true;
     timer_register_timed_event(preemption_timestamp_ns, preemption_callback);
-
-    kprintf("Current %x\n", current_task);
 
     LOG("Initialise scheduler (root proc: %x)", current_task);
 

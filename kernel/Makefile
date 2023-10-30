@@ -48,6 +48,7 @@ memory/page_frame_manager.o \
 memory/vmem_manager.o \
 tasks/scheduler.o \
 tasks/task_queue.o \
+tasks/locking.o \
 
 OBJS=\
 $(ARCHDIR)/crti.o \

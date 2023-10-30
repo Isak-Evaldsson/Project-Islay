@@ -21,6 +21,7 @@ typedef enum {
     SLEEPING,
     PAUSED,
     TERMINATED,
+    WAITING_FOR_LOCK,
 } task_state_t;
 
 /*
