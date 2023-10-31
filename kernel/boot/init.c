@@ -1,9 +1,10 @@
 #include <arch/boot.h>
 #include <arch/tty.h>
 #include <boot/multiboot.h>
-#include <klib/klib.h>
+#include <devices/ps2_keyboard.h>
 #include <memory/page_frame_manager.h>
 #include <stdint.h>
+#include <utils.h>
 
 /* The kernel main function */
 extern void kernel_main();

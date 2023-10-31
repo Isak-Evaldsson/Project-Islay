@@ -1,7 +1,7 @@
 /*
     Implements the libc methods required for a gcc freestanding environment
 */
-#include <klib/klib.h>
+#include <utils.h>
 
 int memcmp(const void *lhs, const void *rhs, size_t count)
 {

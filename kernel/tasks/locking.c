@@ -1,10 +1,10 @@
 #include <arch/interrupt.h>
-#include <klib/klib.h>
 #include <tasks/locking.h>
 #include <tasks/scheduler.h>
 #include <tasks/task_queue.h>
+#include <utils.h>
 
-#include "scheduler_internals.h"
+#include "internal.h"
 
 #define LOG_LOCKING 1
 

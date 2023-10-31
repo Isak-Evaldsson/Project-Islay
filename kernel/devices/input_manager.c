@@ -1,7 +1,7 @@
 #include <arch/interrupt.h>
-#include <devices/input.h>
-#include <klib/klib.h>
-#include <klib/ring_buffer.h>
+#include <devices/input_manager.h>
+#include <ring_buffer.h>
+#include <utils.h>
 
 #define EVENT_QUEUE_SIZE 200
 

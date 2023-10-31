@@ -1,8 +1,7 @@
-#include <klib/klib.h>
 #include <stdint.h>
+#include <tasks/scheduler.h>
 #include <tasks/task_queue.h>
-
-#include "scheduler.h"
+#include <utils.h>
 
 void task_queue_enque(task_queue_t* queue, task_t* task)
 {

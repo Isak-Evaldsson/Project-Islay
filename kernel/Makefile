@@ -14,7 +14,7 @@ BOOTDIR?=$(EXEC_PREFIX)/boot
 INCLUDEDIR?=$(PREFIX)/include
 
 CFLAGS:=$(CFLAGS) -ffreestanding -Wall -Wextra
-CPPFLAGS:=$(CPPFLAGS) -D__is_kernel -I.
+CPPFLAGS:=$(CPPFLAGS) -D__is_kernel -I./include
 LDFLAGS:=$(LDFLAGS)
 LIBS:=$(LIBS) -nostdlib -lgcc
 
@@ -33,23 +33,23 @@ main.o \
 kshell.o \
 ssp.o \
 boot/init.o \
-klib/heap_allocator.o \
-klib/kpanic.o \
-klib/kprintf.o \
-klib/kreadline.o \
-klib/libc.o \
-klib/log.o \
-klib/sleep.o \
-klib/__fwriter.o \
 devices/input_manager.o \
 devices/timer.o \
 devices/ps2_keyboard.o \
-memory/page_frame_manager.o \
+memory/heap_allocator.o \
+memory/page_frame_allocator.o \
 memory/vmem_manager.o \
 tasks/scheduler.o \
 tasks/task_queue.o \
 tasks/locking.o \
 tests/scheduler_tests.o \
+utils/kpanic.o \
+utils/kprintf.o \
+utils/kreadline.o \
+utils/libc.o \
+utils/log.o \
+utils/sleep.o \
+utils/__fwriter.o \
 
 OBJS=\
 $(ARCHDIR)/crti.o \

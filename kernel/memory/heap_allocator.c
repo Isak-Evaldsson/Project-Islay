@@ -1,9 +1,9 @@
 #include <arch/paging.h>
-#include <klib/klib.h>
 #include <memory/vmem_manager.h>
 #include <stdalign.h>
 #include <stdbool.h>
 #include <tasks/locking.h>
+#include <utils.h>
 
 /* Enables logging and extra extra validations of the heap data structure to simplify debugging */
 #define DEBUG_HEAP_ALLOCATOR 1

@@ -1,5 +1,6 @@
-#include <arch/i386/io.h>
 #include <arch/serial.h>
+
+#include "io.h"
 
 #define PORT 0x3f8
 
@@ -48,7 +49,7 @@ void serial_write(const char *data, size_t size)
 {
     char c;
 
-    for (char i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++) {
         c = data[i];
 
         // Inserts missing carriage return

@@ -1,6 +1,7 @@
 #include <arch/serial.h>
-#include <klib/klib.h>
-#include <klib/klib_internal.h>
+#include <utils.h>
+
+#include "internal.h"
 
 static int serial_putchar(int ic)
 {

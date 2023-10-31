@@ -1,12 +1,12 @@
-#include "interrupts.h"
-
-#include <arch/i386/drivers/pit.h>
-#include <arch/i386/interrupts/pic.h>
-#include <arch/i386/interrupts/ps2.h>
 #include <arch/interrupt.h>
-#include <klib/klib.h>
-#include <stdint.h>
+#include <utils.h>
 #include <tasks/scheduler.h>
+#include <stdint.h>
+
+#include "../drivers/pit.h"
+#include "interrupts.h"
+#include "pic.h"
+#include "ps2.h"
 
 /*
     The registers pushed on the stack in the order specified by instruction 'pushad',

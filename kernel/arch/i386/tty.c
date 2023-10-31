@@ -1,6 +1,7 @@
-#include <arch/i386/io.h>
 #include <arch/tty.h>
 #include <stdint.h>
+
+#include "io.h"
 
 // VGA buffer configuration
 #define VGA_COLS 80

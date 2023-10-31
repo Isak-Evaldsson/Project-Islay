@@ -1,7 +1,8 @@
 #include <arch/tty.h>
-#include <klib/klib.h>
+#include <devices/ps2_keyboard.h>
 #include <memory/page_frame_manager.h>
 #include <stdbool.h>
+#include <utils.h>
 
 /*
     Basic kernel shell
@@ -14,7 +15,7 @@ static void mem_stats();
 typedef struct command_t {
     const char *name;
     const char *description;
-    void (*function)();
+    void        (*function)();
 } command_t;
 
 static command_t commands[] = {

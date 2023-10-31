@@ -1,5 +1,5 @@
 #include <arch/paging.h>
-#include <klib/klib.h>
+#include <utils.h>
 #include <memory/page_frame_manager.h>
 #include <stdbool.h>
 #include <tasks/locking.h>

@@ -1,5 +1,6 @@
-#include <arch/i386/segmentation/tss.h>
-#include <klib/klib.h>
+#include <utils.h>
+
+#include "tss.h"
 
 /* The internal variable allocating space for the kernel tss */
 static tss_t internal_tss;

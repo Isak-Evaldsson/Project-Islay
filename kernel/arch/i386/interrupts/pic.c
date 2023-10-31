@@ -1,5 +1,5 @@
-#include <arch/i386/interrupts/pic.h>
-#include <arch/i386/io.h>
+#include "../io.h"
+#include "pic.h"
 
 /*
     Acknowledge the interrupts sent by the PIC

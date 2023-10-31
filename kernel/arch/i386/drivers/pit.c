@@ -1,11 +1,12 @@
 /*
     Intel 8253/8254 Programmable Interval Timer (PIT) driver
 */
-#include <arch/i386/io.h>
-#include <devices/timer.h>
-#include <klib/klib.h>
+#include <utils.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <devices/timer.h>
+
+#include "../io.h"
 
 /* Macro for rounded integer division */
 #define ROUND_IDIV(a, b) (((a) + ((b) / 2)) / (b))

@@ -4,7 +4,7 @@
     Currently a minimal possible implementation, currently more used for debugging than security
 */
 
-#include <klib/klib.h>
+#include <utils.h>
 #include <stdint.h>
 
 #if UINT32_MAX == UINTPTR_MAX

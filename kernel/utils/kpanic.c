@@ -1,6 +1,6 @@
 #include <arch/interrupt.h>
-#include <klib/klib.h>
-#include <klib/libc.h>
+#include <utils.h>
+#include <libc.h>
 
 __attribute__((__noreturn__)) void kpanic(const char *restrict format, ...)
 {

@@ -1,6 +1,6 @@
-#include <devices/input.h>
+#include <devices/input_manager.h>
 #include <devices/ps2_keyboard.h>
-#include <klib/klib.h>
+#include <utils.h>
 #include <stdbool.h>
 #include <stddef.h>
 

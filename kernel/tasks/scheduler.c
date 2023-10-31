@@ -2,13 +2,13 @@
 #include <arch/paging.h>
 #include <arch/thread.h>
 #include <devices/timer.h>
-#include <klib/klib.h>
-#include <kshell.h>
 #include <memory/vmem_manager.h>
 #include <tasks/locking.h>
 #include <tasks/scheduler.h>
-#include <tasks/scheduler_internals.h>
 #include <tasks/task_queue.h>
+#include <utils.h>
+
+#include "internal.h"
 
 #define LOG_SCHEDULER 1
 

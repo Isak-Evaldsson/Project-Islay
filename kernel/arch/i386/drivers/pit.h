@@ -1,8 +1,9 @@
 #ifndef ARCH_i386_PIT_H
 #define ARCH_i386_PIT_H
 
-#include <arch/i386/interrupts/pic.h>
 #include <stdbool.h>
+
+#include "../interrupts/pic.h"
 
 #define PIT_INTERRUPT_NUM PIC1_START_INTERRUPT
 

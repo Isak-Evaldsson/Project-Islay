@@ -1,6 +1,7 @@
-#include <klib/klib.h>
-#include <klib/klib_internal.h>
+#include <utils.h>
 #include <limits.h>
+
+#include "internal.h"
 
 // Converts unsigned int to string, returns number of chars
 static size_t itoa(unsigned int n, char *buffer, size_t len, char radix)

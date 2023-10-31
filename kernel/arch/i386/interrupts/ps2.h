@@ -1,7 +1,7 @@
 #ifndef ARCH_i386_PS2_H
 #define ARCH_i386_PS2_H
 
-#include <arch/i386/interrupts/pic.h>
+#include "pic.h"
 
 #define PS2_KEYBOARD_INTERRUPT (PIC1_START_INTERRUPT + 1)
 

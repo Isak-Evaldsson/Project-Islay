@@ -1,6 +1,7 @@
-#include <arch/i386/processor.h>
 #include <arch/thread.h>
-#include <klib/klib.h>
+#include <utils.h>
+
+#include "../processor.h"
 
 // The registers that needs to be stored
 struct thread_regs {
@@ -33,7 +34,7 @@ thread_regs_t* create_thread_regs_with_stack(void* stack_top, void (*ip)(void*),
     *(uint32_t*)(regs->esp + 4 * sizeof(uint32_t)) = (uint32_t)ip;
 
     // insert arg in stack frame
-    *(uint32_t*)(regs->esp + 6 * sizeof(uint32_t)) = arg;
+    *(uint32_t*)(regs->esp + 6 * sizeof(uint32_t)) = (uint32_t)arg;
 
     return regs;
 }

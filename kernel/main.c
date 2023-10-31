@@ -2,10 +2,11 @@
 #include <arch/interrupt.h>
 #include <arch/serial.h>
 #include <arch/tty.h>
-#include <klib/klib.h>
-#include <kshell.h>
 #include <tasks/scheduler.h>
-#include <tests/test.h>
+#include <utils.h>
+
+#include "kshell.h"
+#include "tests/test.h"
 
 void kernel_main()
 {

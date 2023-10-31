@@ -2,13 +2,14 @@
     Simple "8042" PS/2 Controller driver,
     see: https://wiki.osdev.org/%228042%22_PS/2_Controller
 */
-#include <arch/i386/interrupts/pic.h>
-#include <arch/i386/interrupts/ps2.h>
-#include <arch/i386/io.h>
+#include <utils.h>
 #include <devices/ps2_keyboard.h>
-#include <klib/klib.h>
 #include <stdbool.h>
 #include <stddef.h>
+
+#include "../io.h"
+#include "pic.h"
+#include "ps2.h"
 
 #define GET_BIT(num, bit) ((num & (1 << bit)) >> bit)
 

@@ -1,5 +1,5 @@
 #include <devices/timer.h>
-#include <klib/klib.h>
+#include <utils.h>
 
 // The initial priority queue size
 #define INITIAL_QUEUE_SIZE (10)

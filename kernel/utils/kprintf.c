@@ -1,10 +1,11 @@
 #include <arch/tty.h>
-#include <klib/klib.h>
-#include <klib/klib_internal.h>
-#include <klib/libc.h>
+#include <utils.h>
+#include <libc.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>
+
+#include "internal.h"
 
 static int term_putchar(int ic)
 {

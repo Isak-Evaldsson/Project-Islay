@@ -3,8 +3,7 @@
         {
             "name": "Islay OS i386 (Linux)",
             "includePath": [
-                "${workspaceFolder}/kernel/**",
-                "${workspaceFolder}/libc/**",
+                "${workspaceFolder}/kernel/include/**",
                 "/usr/lib/gcc/i386-elf/**"
             ],
             "defines": [
@@ -18,8 +17,7 @@
         {
             "name": "Islay OS i386 (MacOS)",
             "includePath": [
-                "${workspaceFolder}/kernel/**",
-                "${workspaceFolder}/libc/**",
+                "${workspaceFolder}/kernel/include/**",
                 "/usr/local/Cellar/i686-elf-gcc/**"
             ],
             "defines": [

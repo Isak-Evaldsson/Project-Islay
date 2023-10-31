@@ -1,5 +1,5 @@
-#include <devices/input.h>
-#include <klib/klib.h>
+#include <devices/input_manager.h>
+#include <utils.h>
 
 static unsigned char get_char()
 {

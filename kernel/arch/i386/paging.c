@@ -1,6 +1,6 @@
 #include <arch/arch.h>
 #include <arch/paging.h>
-#include <klib/klib.h>
+#include <utils.h>
 
 // asm function to handle TLB invalidation
 extern void tlb_invalid_page(void *addr);

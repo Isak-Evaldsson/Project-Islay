@@ -7,7 +7,9 @@
 */
 
 #if ARCH(i386)
-#include <arch/i386/types.h>
+#include <stdint.h>
+typedef uint32_t virtaddr_t;
+typedef uint32_t physaddr_t;
 #else
 #error "Unkown architecture"
 #endif

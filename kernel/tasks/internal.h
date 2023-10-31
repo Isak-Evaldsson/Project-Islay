@@ -1,3 +1,5 @@
+#ifndef TASKS_INTERNAL_H
+#define TASKS_INTERNAL_H
 #include <stdbool.h>
 #include <tasks/scheduler.h>
 
@@ -18,3 +20,5 @@ void critical_section_end();
 
 // The caller is responsible for appropriately locking/unlocking the scheduler when calling it
 void schedule();
+
+#endif /*TASKS_INTERNAL_H */

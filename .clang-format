@@ -24,4 +24,12 @@ AllowShortEnumsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: Empty
 
 # Includes
+SortIncludes: true
 IncludeBlocks: Regroup
+
+# Place group with <> includes above "" includes
+IncludeCategories:
+  - Regex:           '<*.h>'
+    Priority:        -1
+  - Regex:           '"*.h"'
+    Priority:        0
