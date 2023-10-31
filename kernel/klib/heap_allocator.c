@@ -3,8 +3,9 @@
 #include <memory/vmem_manager.h>
 #include <stdalign.h>
 #include <stdbool.h>
+#include <tasks/locking.h>
 
-/* Eanables logging and extra extra validations of the heap data structure to simplify debugging */
+/* Enables logging and extra extra validations of the heap data structure to simplify debugging */
 #define DEBUG_HEAP_ALLOCATOR 1
 
 /*
@@ -149,6 +150,9 @@ free_list_t* free_list = NULL;
 
 /* The linked list of heap segments */
 heap_segment_t* segments = NULL;
+
+/* Global heat allocator lock */
+static MUTEX_DEFINE(global_heap_lock);
 
 #if DEBUG_HEAP_ALLOCATOR
 #define VERIFY_FREE_LIST() verify_free_list(__FILE__, __FUNCTION__, __LINE__)
@@ -347,6 +351,8 @@ void* kmalloc(size_t size)
         return NULL;
     }
 
+    mutex_lock(&global_heap_lock);
+
     // The total size need to have space for tags and alignment
     size_t total = (size + TAGS_SIZE + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1);
 
@@ -354,6 +360,7 @@ void* kmalloc(size_t size)
     if (segments == NULL) {
         segments = alloc_heap_segment(total);
         if (segments == NULL) {
+            mutex_unlock(&global_heap_lock);
             return NULL;  // out of memory
         }
 
@@ -421,6 +428,7 @@ search_free_list:
             // Allows us to detect correct pointers
             start->magic = MAGIC;
 #endif
+            mutex_unlock(&global_heap_lock);
             return entry;
         }
     }
@@ -428,6 +436,7 @@ search_free_list:
     // No free block of suitable since available, lets request a new one
     heap_segment_t* new_seg = alloc_heap_segment(total);
     if (new_seg == NULL) {
+        mutex_unlock(&global_heap_lock);
         return NULL;  // failed to request more memory
     }
 
@@ -459,6 +468,8 @@ void kfree(void* ptr)
     if (ptr == NULL) {
         return;
     }
+
+    mutex_lock(&global_heap_lock);
 
     // Compute tags
     start_tag_t* start = GET_START_TAG(ptr);
@@ -556,6 +567,7 @@ void kfree(void* ptr)
 
     // ensure a correctly built free-list
     VERIFY_FREE_LIST();
+    mutex_unlock(&global_heap_lock);
 }
 
 void* kcalloc(size_t num, size_t size)
