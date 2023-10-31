@@ -9,7 +9,6 @@ typedef struct task_queue {
 } task_queue_t;
 
 #define QUEUE_INIT()               \
-    (task_queue_t)                 \
     {                              \
         .start = NULL, .end = NULL \
     }

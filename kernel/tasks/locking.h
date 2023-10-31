@@ -3,17 +3,21 @@
 #include <tasks/task_queue.h>
 
 /* Defines an empty semaphore struct */
-#define SEMAPHORE_EMPTY(count)                                                  \
-    (semaphore_t)                                                               \
+#define SEMAPHORE_INIT(count)                                                   \
     {                                                                           \
         .current_count = 0, .max_count = (count), .waiting_tasks = QUEUE_INIT() \
     }
 
+#define MUTEX_INIT()             \
+    {                            \
+        .sem = SEMAPHORE_INIT(1) \
+    }
+
 /* Initialise a staticly allocated semaphore */
-#define SEMAPHORE_INIT(name, count) semaphore_t(name) = SEMAPHORE_INIT(count)
+#define SEMAPHORE_DEFINE(name, count) semaphore_t name = SEMAPHORE_INIT(count)
 
 /* Initialise a staticly allocated mutex */
-#define MUTEX_INIT(name) mutex_t(name) = SEMAPHORE_EMPTY(0)
+#define MUTEX_DEFINE(name) mutex_t name = MUTEX_INIT()
 
 /* Semaphore lock */
 typedef struct semaphore semaphore_t;
