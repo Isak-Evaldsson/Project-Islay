@@ -73,7 +73,7 @@ void semaphore_release(semaphore_t *semaphore)
     }
 
     critical_section_start();
-    LOG("%x released semaphore/mutex", current_task);
+    LOG("%x released semaphore/mutex %x", current_task, semaphore);
 
     if (semaphore->waiting_tasks.start != NULL) {
         // pick the first waiting task
