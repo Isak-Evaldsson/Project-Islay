@@ -16,6 +16,6 @@ void disable_interrupts();
 
 uint32_t get_register_and_disable_interrupts();
 
-void resture_interrupt_register(uint32_t);
+void restore_interrupt_register(uint32_t);
 
 #endif /* ARCH_INTERRUPT_H */

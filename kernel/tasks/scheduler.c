@@ -24,10 +24,8 @@
 
 /*
    TODO:
-   1. Go through we interrupts are enabled/disabled, replace the counter with restoring interrupt
-      flags instead. See discussion in https://forum.osdev.org/viewtopic.php?f=1&t=56206
-   3. Double-check so that the time counting works correctly
-   5. Better algorithm than round robin
+   1. Double-check so that the time counting works correctly
+   2. Better algorithm than round robin
  */
 
 // The ready-to-run task queue
@@ -52,10 +50,6 @@ task_t *current_task;
 /* Stores at which timestamp the currently running task shall be preempted, if set to zero indicate
  * to never preempt */
 static uint64_t preemption_timestamp_ns = 0;
-
-// Counter ensuring that no thread what to disable interrupt when re-enabling them. Useful since the
-// primary locking mechanism for a single core cpu is simply to disable interrupts.
-static int IRQ_disable_counter = 0;
 
 // Variables handling if the scheduler needs to postpone task switches. Necessary if you want to
 // unblock multiple tasks within without running the risk of the first unblocked task preempting the
@@ -121,40 +115,36 @@ static void switch_task(task_t *new_task)
 }
 
 /* Lock scheduler, blocks the task switching process from becoming disturbed by interrupts */
-void scheduler_lock()
+void scheduler_lock(uint32_t *interrupt_flags)
 {
 #ifndef SMP
-    disable_interrupts();
-    IRQ_disable_counter++;
+    // Disable interrupts and save the previous state
+    *interrupt_flags = get_register_and_disable_interrupts();
 #endif
 }
 
 /* Unlock scheduler, allows interrupts */
-void scheduler_unlock()
+void scheduler_unlock(uint32_t interrupt_flags)
 {
 #ifndef SMP
-    IRQ_disable_counter--;
-
-    // Only re-enable interrupts if all calls to disable them have called to re-enable
-    if (IRQ_disable_counter == 0) {
-        enable_interrupts();
-    }
+    // Restore interrupt flags before locking
+    restore_interrupt_register(interrupt_flags);
 #endif
 }
 
 // Marks the start of a critical region, during it's execution we can't perform task switches nor
 // interrupts
-void critical_section_start()
+void critical_section_start(uint32_t *interrupt_flags)
 {
 #ifndef SMP
-    scheduler_lock();
+    scheduler_lock(interrupt_flags);
     postpone_task_switch_counter++;
 #endif
 }
 
 // Marks the end of a critical region, during it's execution we can't perform task switches nor
 // interrupts
-void critical_section_end()
+void critical_section_end(uint32_t interrupt_flags)
 {
 #ifndef SMP
     postpone_task_switch_counter--;
@@ -168,26 +158,26 @@ void critical_section_end()
         }
     }
 
-    scheduler_unlock();
+    scheduler_unlock(interrupt_flags);
 #endif
 }
 
 void scheduler_block_task(unsigned int reason)
 {
-    // TODO: replace with proper interrupt state/restore
-    scheduler_lock();
+    uint32_t flags;
+    scheduler_lock(&flags);
 
     LOG("Block task %x, reason %u", current_task, reason);
     current_task->state = reason;
     schedule();
 
-    scheduler_unlock();
+    scheduler_unlock(flags);
 }
 
 void scheduler_unblock_task(task_t *task)
 {
-    // TODO: replace with proper interrupt state/restore
-    scheduler_lock();
+    uint32_t flags;
+    scheduler_lock(&flags);
     LOG("Unblock task %x", task);
 
     // Only enqeue if the task isn't already in the queue
@@ -208,7 +198,7 @@ void scheduler_unblock_task(task_t *task)
         preemption_timestamp_ns = timer_get_time_since_boot() + TIME_SLICE_NS;
     }
 
-    scheduler_unlock();
+    scheduler_unlock(flags);
 }
 
 static void update_time_used()
@@ -365,13 +355,13 @@ static void preemption_callback(uint64_t time_since_boot_ns, uint64_t timestamp_
 /* Tells the scheduler to but current task to sleep until the timestamp when */
 void scheduler_nano_sleep_until(uint64_t when)
 {
-    // TODO: replace with proper interrupt state/restore
-    critical_section_start();
+    uint32_t flags;
+    critical_section_start(&flags);
     LOG("Put task %x to sleep until %u", current_task, when);
 
     // No need to sleep if when has already occurred
     if (when <= timer_get_time_since_boot()) {
-        scheduler_unlock();  // shouldn't it be unlock_stuff()?
+        critical_section_end(flags);
         return;
     }
 
@@ -388,7 +378,7 @@ void scheduler_nano_sleep_until(uint64_t when)
         timer_register_timed_event(when, sleep_expiry_callback);
     }
 
-    critical_section_end();
+    critical_section_end(flags);
     scheduler_block_task(SLEEPING);
 }
 
@@ -428,9 +418,11 @@ void scheduler_start_of_interrupt()
 /* Allows the currently running task to voluntarily stop execution */
 void scheduler_yield()
 {
-    scheduler_lock();
+    uint32_t flags;
+
+    scheduler_lock(&flags);
     schedule();
-    scheduler_unlock();
+    scheduler_unlock(flags);
 }
 
 /* Terminates the currently running task */
@@ -439,7 +431,8 @@ void scheduler_terminate_task()
     // Note: Can do any harmless stuff here (close files, free memory in user-space, ...) but
     // there's none of that yet
 
-    critical_section_start();
+    uint32_t flags;
+    critical_section_start(&flags);
 
     // Insert task in termination queue
     task_queue_enque(&termination_queue, current_task);
@@ -452,7 +445,7 @@ void scheduler_terminate_task()
 
     LOG("Adding %x to termination queue", current_task);
 
-    critical_section_end();
+    critical_section_end(flags);
 }
 
 /*
@@ -461,9 +454,6 @@ void scheduler_terminate_task()
 static void new_task_wrapper(void *ip)
 {
     void (*func)() = ip;
-
-    /* setup */
-    scheduler_unlock();
 
     /* call actual task function */
     func();
@@ -479,7 +469,8 @@ static void new_task_wrapper(void *ip)
  */
 task_t *scheduler_create_task(void *ip)
 {
-    task_t *task = kmalloc(sizeof(task_t));
+    uint32_t flags;
+    task_t  *task = kmalloc(sizeof(task_t));
     if (task == NULL) {
         return NULL;
     }
@@ -507,9 +498,9 @@ task_t *scheduler_create_task(void *ip)
 
     LOG("Create task: %x", task);
 
-    scheduler_lock();
+    scheduler_lock(&flags);
     task_queue_enque(&ready_queue, task);
-    scheduler_unlock();
+    scheduler_unlock(flags);
     return task;
 }
 
@@ -525,10 +516,11 @@ void free_task(task_t *task)
 
 static void cleanup_thread()
 {
-    task_t *task;
+    uint32_t flags;
+    task_t  *task;
 
     while (true) {
-        critical_section_start();
+        critical_section_start(&flags);
 
         // Empty termination queue
         while (termination_queue.start != NULL) {
@@ -539,7 +531,7 @@ static void cleanup_thread()
         }
 
         scheduler_block_task(PAUSED);
-        critical_section_end();
+        critical_section_end(flags);
     }
 }
 

@@ -1,7 +1,7 @@
 #include <arch/interrupt.h>
-#include <utils.h>
-#include <tasks/scheduler.h>
 #include <stdint.h>
+#include <tasks/scheduler.h>
+#include <utils.h>
 
 #include "../drivers/pit.h"
 #include "interrupts.h"
@@ -240,7 +240,7 @@ uint32_t get_register_and_disable_interrupts()
     return flags;
 }
 
-void resture_interrupt_register(uint32_t flags)
+void restore_interrupt_register(uint32_t flags)
 {
     asm("pushl %0; popfl" ::"r"(flags) : "memory", "cc");
 }

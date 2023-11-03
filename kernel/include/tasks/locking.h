@@ -25,6 +25,7 @@ typedef struct semaphore semaphore_t;
 struct semaphore {
     int          max_count;
     int          current_count;
+    uint32_t     interrupt_flags;
     task_queue_t waiting_tasks;
 };
 

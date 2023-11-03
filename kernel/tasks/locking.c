@@ -40,7 +40,7 @@ void semaphore_acquire(semaphore_t *semaphore)
                current_task, semaphore);
     }
 
-    critical_section_start();
+    critical_section_start(&semaphore->interrupt_flags);
 
     if (semaphore->current_count < semaphore->max_count) {
         semaphore->current_count++;
@@ -52,7 +52,7 @@ void semaphore_acquire(semaphore_t *semaphore)
         task_queue_enque(&semaphore->waiting_tasks, current_task);
         scheduler_block_task(WAITING_FOR_LOCK);
     }
-    critical_section_end();
+    critical_section_end(semaphore->interrupt_flags);
 }
 
 /* Release semaphore */
@@ -72,7 +72,7 @@ void semaphore_release(semaphore_t *semaphore)
                current_task, semaphore);
     }
 
-    critical_section_start();
+    critical_section_start(&semaphore->interrupt_flags);
     LOG("%x released semaphore/mutex %x", current_task, semaphore);
 
     if (semaphore->waiting_tasks.start != NULL) {
@@ -84,7 +84,7 @@ void semaphore_release(semaphore_t *semaphore)
         semaphore->current_count--;
     }
 
-    critical_section_end();
+    critical_section_end(semaphore->interrupt_flags);
 }
 
 /* Allocate and initialise a mutex */
