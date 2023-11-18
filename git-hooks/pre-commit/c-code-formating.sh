@@ -13,5 +13,12 @@ do
             echo "$FILE incorrectly formatted (run 'clang-format -i $FILE')"
             exit 1
         fi
+
+        # Run our custom formater after clang format
+        ./git-hooks/pre-commit/c-format-checker.py $FILE
+        if [ $? -ne 0 ]; then
+            echo "$FILE incorrectly formatted (fix errors above)"
+            exit 1
+        fi
     fi
 done
