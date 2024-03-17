@@ -36,12 +36,14 @@ boot/init.o \
 devices/input_manager.o \
 devices/timer.o \
 devices/ps2_keyboard.o \
+fs/fs.o \
 memory/heap_allocator.o \
 memory/page_frame_allocator.o \
 memory/vmem_manager.o \
 tasks/scheduler.o \
 tasks/task_queue.o \
 tasks/locking.o \
+tests/fs_tests.o \
 tests/scheduler_tests.o \
 utils/kpanic.o \
 utils/kprintf.o \
