@@ -12,6 +12,12 @@ void  *memmove(void *dest, const void *src, size_t count);
 void  *memset(void *dest, int ch, size_t count);
 size_t strlen(const char *str);
 int    strcmp(const char *lhs, const char *rhs);
+int    strncmp(const char *lhs, const char *rhs, size_t count);
+char  *strdup(const char *str1);
+
+/* We deviate from the standard by making strtok reentrant. There's no need of a non-reentrant
+ * strtok in the kernel, it while only cause bugs in reentrant code. */
+char *strtok(char *str, const char *delim, char **saveptr);
 
 __attribute__((__noreturn__)) void abort();
 

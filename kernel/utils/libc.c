@@ -68,6 +68,64 @@ int strcmp(const char *lhs, const char *rhs)
     return *(const unsigned char *)lhs - *(const unsigned char *)rhs;
 }
 
+int strncmp(const char *lhs, const char *rhs, size_t count)
+{
+    while (count && *lhs && (*lhs == *rhs)) {
+        lhs++;
+        rhs++;
+        count--;
+    }
+    return *(const unsigned char *)lhs - *(const unsigned char *)rhs;
+}
+
+char *strdup(const char *str1)
+{
+    size_t len = strlen(str1) + 1;  // Include null termination
+    char  *str = kmalloc(len);
+    if (str)
+        memcpy(str, str1, len);
+
+    return str;
+}
+
+char *strtok(char *str, const char *delim, char **saveptr)
+{
+    const char *d;
+    char       *s, *start = str;
+
+    if (str) {
+        // First parse: Handle string starting with token
+        d = delim;
+        while (*start && *start == *d) {
+            start++;
+            d++;
+        }
+    } else {
+        start = *saveptr;
+    }
+    s = start;
+
+    // Find start of delimiter, i.e. end of token
+    while (*s && *s != *delim) s++;
+
+    // If end of string no need to check the delimiter
+    if (!s[0]) {
+        goto end;
+    }
+
+    *s = '\0';  // mark end of token
+    do {
+        // Skip comparing the first char since we have inserted a null termination,
+        // the first check is done by the previous while anyway.
+        s++;
+        delim++;
+    } while (*s && *s == *delim);
+
+end:
+    *saveptr = s;
+    return start;
+}
+
 __attribute__((__noreturn__)) void abort()
 {
     kpanic("abort()");
