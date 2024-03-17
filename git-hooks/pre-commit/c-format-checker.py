@@ -50,6 +50,7 @@ def check_include_guard(file_name, lines):
 
 def process_file(file_name):
     curly_bracket_counter = 0;
+    in_block_comment = False;
     correct = True
 
     file = open(file_name, 'r')
@@ -67,16 +68,25 @@ def process_file(file_name):
                 curly_bracket_counter += 1
             elif c == '}':
                 curly_bracket_counter -= 1
+
+            elif CHECK_COMMENTS and prev == '*' and c == '/':
+                in_block_comment = False
             elif CHECK_COMMENTS and prev == '/':
+        
+                if c == '*':
+                    in_block_comment = True
+                    # /*...*/-comments within function/struct
+                    if curly_bracket_counter > 0:
+                        correct = False
+                        print("%s: Invalid /*...*/ style comment at line %d" % (file_name, index + 1))
+
+
                 # //-comments outside function/struct
-                if curly_bracket_counter == 0 and c == '/':
+                if not in_block_comment and curly_bracket_counter == 0 and c == '/':
                     correct = False
                     print("%s: Invalid // style comment at line %d" % (file_name, index + 1))
 
-                # /*...*/-comments within function/struct
-                if curly_bracket_counter > 0 and c == '*':
-                    correct = False
-                    print("%s: Invalid /*...*/ style comment at line %d" % (file_name, index + 1))
+
 
             prev = c
 
