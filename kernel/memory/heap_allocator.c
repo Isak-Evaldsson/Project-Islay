@@ -27,13 +27,13 @@
     The minimal size for each heap segment
 */
 #define NPAGES_PER_SEGMENT (16)
-#define MIN_ALLOC          (NPAGES_PER_SEGMENT * PAGE_SIZE)
+#define SEGMENT_SIZE       (NPAGES_PER_SEGMENT * PAGE_SIZE)
 
 /*
     Magic number flags
 */
-#define MAGIC 0xc001c0de  // Allows us to check if free/realloc is provided with a valid pointer
-#define DEAD  0xdeadbeef  // Allows us to catch double frees
+#define MAGIC 0xc001c0de /* Allows us to check if free/realloc is provided with a valid pointer */
+#define DEAD  0xdeadbeef /* Allows us to catch double frees */
 
 /* Ensures correct alignment for the specific architecture  */
 #define ALIGNMENT (alignof(max_align_t))
@@ -121,7 +121,7 @@ typedef struct end_tag {
     size_t size;  // Lowest bit is set to 0 if non-free
 } end_tag_t;
 
-typedef size_t boundary_tag_t;  // As for the rest of the tags, the first bit marks if free
+typedef size_t boundary_tag_t; /* As for the rest of the tags, the first bit marks if free */
 
 /*
     Heap segments
@@ -157,7 +157,7 @@ static MUTEX_DEFINE(global_heap_lock);
 #if DEBUG_HEAP_ALLOCATOR
 #define VERIFY_FREE_LIST() verify_free_list(__FILE__, __FUNCTION__, __LINE__)
 
-// Debug function allowing us to dump the contents of the heap
+/* Debug function allowing us to dump the contents of the heap */
 static void dump_heap()
 {
     size_t          i;
@@ -185,7 +185,7 @@ static void dump_heap()
     }
 }
 
-// Debug function ensuring that the free list is properly built
+/* Debug function ensuring that the free list is properly built */
 static void verify_free_list(const char* file, const char* function, unsigned int line)
 {
     bool correct = true;
@@ -194,6 +194,12 @@ static void verify_free_list(const char* file, const char* function, unsigned in
         if (entry->next != NULL && entry->next->prev != entry) {
             LOG("Incorrect prev and next pointer for entry %x", entry);
             correct = false;
+        }
+
+        if (entry < HIGHER_HALF_ADDR) {
+            correct = false;
+            LOG("Free list contains next pointer with to low address 0x%x (< HIGHER_HALF_ADDR)",
+                entry->next);
         }
 
         // Get tags
@@ -221,14 +227,14 @@ static void verify_free_list(const char* file, const char* function, unsigned in
         }
     }
 
-    /* If heap is ill-formated, dump head data and panic */
+    // If heap is ill-formatted, dump head data and panic
     if (!correct) {
         dump_heap();
-        kpanic("%s():%s:%u: incorrectly formated heap!!!\nSee heap dump in logs", function, file,
+        kpanic("%s():%s:%u: incorrectly formatted heap!!!\nSee heap dump in logs", function, file,
                line);
     }
 
-    return; /* Success */
+    return;  // Success
 }
 
 #else
@@ -307,7 +313,7 @@ static heap_segment_t* alloc_heap_segment(size_t size)
 {
     // Adjust the size to fit the boundary tags and segment header
     size_t header_size = 2 * sizeof(boundary_tag_t) + sizeof(heap_segment_t);
-    size_t alloc_size  = ALIGN_BY_MULTIPLE(MAX(size + header_size, MIN_ALLOC), (8 * PAGE_SIZE));
+    size_t alloc_size  = ALIGN_BY_MULTIPLE(MAX(size + header_size, SEGMENT_SIZE), (8 * PAGE_SIZE));
     size_t n_8pages    = alloc_size / (8 * PAGE_SIZE);
 
     heap_segment_t* heap_seg = (heap_segment_t*)vmem_request_free_pages(FPO_CLEAR, n_8pages);
@@ -320,14 +326,14 @@ static heap_segment_t* alloc_heap_segment(size_t size)
     heap_seg->next = NULL;
     heap_seg->prev = NULL;
 
-    /* Insert our boundary tags */
+    // Insert our boundary tags
     boundary_tag_t* heap_start = (boundary_tag_t*)(heap_seg + 1);
     boundary_tag_t* heap_end =
         (boundary_tag_t*)((uintptr_t)heap_seg + alloc_size - sizeof(boundary_tag_t));
     *heap_start = 0x01;
     *heap_end   = 0x01;
 
-    /* Insert the free object between the boundaries */
+    // Insert the free object between the boundaries
     start_tag_t* start = (start_tag_t*)(heap_start + 1);
     end_tag_t*   end   = (end_tag_t*)(heap_end - 1);
 
@@ -346,6 +352,7 @@ static heap_segment_t* alloc_heap_segment(size_t size)
 void* kmalloc(size_t size)
 {
     LOG("kmalloc(%u)", size);
+    dump_heap();
 
     if (size == 0) {
         return NULL;
@@ -353,8 +360,10 @@ void* kmalloc(size_t size)
 
     mutex_lock(&global_heap_lock);
 
-    // The total size need to have space for tags and alignment
-    size_t total = (size + TAGS_SIZE + (ALIGNMENT - 1)) & ~(ALIGNMENT - 1);
+    // The total size need to have space for tags and be able to fit a freelist entry between them.
+    // It also need to be mutiple of alignment so the object after it starts at an aligned address.
+    size_t total = ALIGN_BY_MULTIPLE(MAX(size, sizeof(free_list_t)) + TAGS_SIZE, ALIGNMENT);
+    LOG("total %u", total);
 
     // Init heap
     if (segments == NULL) {
@@ -383,8 +392,8 @@ search_free_list:
 
             size_t space_left = entry->size - total;
 
-            // The block can be splitted
-            if (space_left > (TAGS_SIZE + ALIGNMENT)) {
+            // The block can be splitted if the space left fits tags and free list entry
+            if (space_left > TAGS_SIZE + sizeof(free_list_t)) {
                 // Create our new block tags
                 start_tag_t* new_start = (start_tag_t*)((uintptr_t)start + total);
                 end_tag_t*   new_end   = GET_END_TAG(new_start, space_left);
@@ -413,7 +422,7 @@ search_free_list:
                 // Replace the current free list entry with the new one
                 replace_entry(entry, new_entry);
             } else {
-                // Block can't be splited, unlink it from list
+                // Block can't be split, unlink it from list
                 unlink_entry(entry);
             }
 
