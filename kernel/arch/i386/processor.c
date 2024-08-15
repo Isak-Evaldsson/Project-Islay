@@ -7,6 +7,13 @@ uint32_t get_esp()
     return esp;
 }
 
+uint32_t get_cr2()
+{
+    uint32_t cr2;
+    asm volatile("mov %%cr2, %0" : "r="(cr2));
+    return cr2;
+}
+
 uint32_t get_cr3()
 {
     uint32_t cr3;
