@@ -6,6 +6,9 @@
 
 #include <stddef.h>
 
+/* static_assert from c23, assumes the gcc ## preprocessor extension to be available */
+#define static_assert(expr, ...) _Static_assert(expr, ##__VA_ARGS__)
+
 int    memcmp(const void *lhs, const void *rhs, size_t count);
 void  *memcpy(void *__restrict dest, const void *__restrict src, size_t count);
 void  *memmove(void *dest, const void *src, size_t count);
