@@ -24,6 +24,7 @@ void kernel_main()
 
     // Comment to test the scheduler
     scheduler_test();
+    fs_tests();
 
     // TODO: nice looking boot animation (requires timers)
     kshell();

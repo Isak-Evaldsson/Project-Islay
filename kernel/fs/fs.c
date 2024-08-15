@@ -1,16 +1,7 @@
 #include <libc.h>
-#include <posix/errno.h>
 #include <utils.h>
 
 #include "fs-internals.h"
-
-#define DEBUG_FS 1
-
-#if DEBUG_FS
-#define LOG(...) log("[FS]: " __VA_ARGS__)
-#else
-#define LOG(...)
-#endif
 
 /*
     VFS main data structures
@@ -139,21 +130,36 @@ static void remove_empty_dir_nodes(struct vfs_node* root)
     }
 }
 
-struct vfs_node* search_vfs(
-    const char*                                                                       path,
-    /*Fill with which pointer within the original path we hit the mountpoint*/ char** mpath)
+/*
+    Helper function for iterating over the vfs tree. Find the node at path and sets the pointer
+    passed in node_path to the part of the path that is within the node.
+ */
+struct vfs_node* search_vfs(char* path, char** node_path)
 {
-    // TODO: Searches the vfs for the node associated to path, used by functions such as open in
-    // order/readdir to find which fs to delegate the traversal to.
+    struct vfs_node* node;
+    char*            token;
 
-    // Implementing open:
-    //  1. search vfs for vfs_node + mpath
-    //  2. allocate slot in open file table (array, hashtable or something)
-    //  3. hand over the file path of the task to vfs_node->fs->open(mpath)
-    //  4. if success, store file_info object + mpath in open file table so that future reads
-    //     doesn't need to traverse the tree
-    //  5. Return file table index, so that processes can implement file descriptors
-    return NULL;
+    token = strtok(path, "/", node_path);
+    if (!*token) {
+        return &root;
+    }
+
+    node = &root;
+    while (*token) {
+        LOG("Token: %s node: %s %s", token, node->name, *node_path);
+        node = search_dir_node(node, token);
+
+        // If the node can't be found, or we have reached a mountpoint, exit
+        if (!node || node->type == VFS_NODE_TYPE_MNT) {
+            LOG("Here: 0x%x", node);
+            goto end;
+        }
+
+        token = strtok(NULL, "/", node_path);
+    }
+
+end:
+    return node;
 }
 
 static int check_required_fs_ops(const struct fs_ops* ops)

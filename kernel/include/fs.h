@@ -24,9 +24,18 @@ struct inode {
     void* data;         // For the specific file system to store relevant data
 };
 
-/* Information about an open file */
-struct file_info {
-    off_t fh;  // Internal file-handle that may be used by the fs implementation
+/*
+    Information about an open file
+
+    Is needed to a separate object and not stored with the task specific filet_table in order to
+    allow a future fork implementation to create child processes that inherit the parents open
+    files.
+ */
+struct open_file {
+    unsigned int   ref_count;  // How many process are referring to this object with their fd table
+    off_t          offset;     // What position within the file are we currently at
+    struct inode*  inode;      // Which file does the object correspond to
+    struct fs_ops* file_ops;   // Copy of inode->vfs_node->fs->fs_ops to speed up file accesses
 };
 
 /* Helper function for the file system to create directory entries */
@@ -43,10 +52,17 @@ struct fs_ops {
 
     // Reads size bytes from the file at the specified path at the given offset. Returns -errno on
     // failure, or number of read byte on success
-    int (*read)(const char* path, char* buf, size_t size, off_t offset, struct file_info* info);
+    int (*read)(char* buf, size_t size, off_t offset, struct open_file* file);
 
-    int (*open)(const char* path, struct file_info* info);
-    int (*readdir)(const char* path, fill_dir_t filler, off_t offset, struct file_info);
+    // Open the file at the specified path and write the inode id into inode_id, returns 0 on
+    // success, -ERRNO otherwise.
+    int (*open)(const char* path, unsigned int* inode_id, struct open_file* file);
+
+    int (*readdir)(const char* path, fill_dir_t filler, off_t offset, struct open_file* file);
+
+    // Called upon when a open file is closed
+    // TODO: Needs two methods, one is called on every close and one when refcount == 0
+    int (*close)(const char* path, struct open_file* file);
 
     // TODO: Add support for writable file systems
 };
@@ -64,20 +80,26 @@ struct task_fs_data {
 };
 
 /**
- * Registers a file system for future mounting. The name of each registered file system is required
- * to be unique and at least 3 characters.
+ * Registers a file system for future mounting. The name of each registered file system is
+ * required to be unique and at least 3 characters.
  * @param fs static file system data such as name, opts etc.
  * @return 0 on success, -EEXIST if there's already exists a file system with the same.
  */
 int register_fs(struct fs* fs);
 
 /**
- * Mounts a file system to a given path, the caller is responsible for supplying correct mounting
- * data for a particular file system.
+ * Mounts a file system to a given path, the caller is responsible for supplying correct
+ * mounting data for a particular file system.
  * @param path were to mount the fs
  * @param name the name of the file system to mount
  * @param data fs specific data needed for mounting
  * @return 0 on success, -errno on failure */
 int mount(const char* path, const char* name, void* data);
+
+/* Open file */
+int open(struct task_fs_data* task_data, const char* path);
+
+/* Close file */
+int close(struct task_fs_data* task_data, int fd);
 
 #endif /* FS_H */

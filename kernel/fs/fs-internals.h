@@ -4,6 +4,14 @@
 #include <posix/errno.h>
 #include <utils.h>
 
+#define DEBUG_FS 1
+
+#if DEBUG_FS
+#define LOG(...) log("[FS]: " __VA_ARGS__)
+#else
+#define LOG(...)
+#endif
+
 typedef enum {
     VFS_NODE_TYPE_DIR,
     VFS_NODE_TYPE_MNT,
@@ -16,18 +24,14 @@ struct vfs_node {
     struct vfs_node* parent;
     struct vfs_node* child;
     struct vfs_node* sibling;
+    // TODO: Once multithreaded, give each node a spinlock
 };
 
 /*
-    Is needed to allow a future fork implementation to create child processes that
-    inherit the parents open files.
-*/
-struct open_file {
-    int           ref_count;  // How many process are referring to this object with their fd table
-    int           offset;     // What position within the file are we currently at
-    struct inode* inode;      // Which file does the object correspond to
-    struct file_info info;    // File information passed to the fs implementation
-};
+    Helper function for iterating over the vfs tree. Find the node at path and sets the pointer
+    passed in node_path to the part of the path that is within the node.
+ */
+struct vfs_node* search_vfs(char* path, char** node_path);
 
 /*
     Gets the inode with id for a certain vfs_node. Ensures that the inode is properly read and
