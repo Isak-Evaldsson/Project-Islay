@@ -1,9 +1,9 @@
-#include <utils.h>
 #include <limits.h>
+#include <utils.h>
 
 #include "internal.h"
 
-// Converts unsigned int to string, returns number of chars
+/* Converts unsigned int to string, returns number of chars */
 static size_t itoa(unsigned int n, char *buffer, size_t len, char radix)
 {
     size_t       i;  // buffer index, equals to strlen after first loop
@@ -41,16 +41,47 @@ static size_t itoa(unsigned int n, char *buffer, size_t len, char radix)
     return i;
 }
 
-static bool print(int (*putchar)(int), const char *data, size_t length)
+static bool print_cdev(int (*putchar)(int), const char *data, size_t length)
 {
     const unsigned char *bytes = (const unsigned char *)data;
     for (size_t i = 0; i < length; i++)
-        if (putchar(bytes[i]) == EOF) return false;
+        if (putchar(bytes[i]) == EOF)
+            return false;
     return true;
 }
 
-/* Generic printf function */
-int __fwriter(int (*putchar)(int), const char *restrict format, va_list args)
+static bool print_buff(char *buff, int buff_len, int written, const char *data, size_t length)
+{
+    if (length + written >= buff_len) {
+        return false;
+    }
+
+    if (buff != NULL) {
+        // if a null pointer is supplied, the functions shall still work. However, it does not write
+        // anything, it only outputs the number chars required.
+        memcpy(buff + written, data, length);
+    }
+    return true;
+}
+
+static bool print(struct fwriter_ops *ops, int written, const char *data, size_t length)
+{
+    switch (ops->type) {
+        case FWRITER_CHARDEV:
+            return print_cdev(ops->args.putchar, data, length);
+        case FWRITER_BUFFER:
+            return print_buff(ops->args.buff_ops.buff, ops->args.buff_ops.len, written, data,
+                              length);
+        default:
+            return false;
+    }
+}
+
+/*
+    Generic formatted writer, allowing formatted printing to any buffer character device.
+    How the printing is done is determined by the supplied fwriter_ops.
+*/
+int __fwriter(struct fwriter_ops *ops, const char *restrict format, va_list args)
 {
     char radix;
     int  written = 0;
@@ -60,14 +91,16 @@ int __fwriter(int (*putchar)(int), const char *restrict format, va_list args)
         size_t maxrem = INT_MAX - written;
 
         if (format[0] != '%' || format[1] == '%') {
-            if (format[0] == '%') format++;
+            if (format[0] == '%')
+                format++;
             size_t amount = 1;
             while (format[amount] && format[amount] != '%') amount++;
             if (maxrem < amount) {
                 // TODO: Set errno to EOVERFLOW.
                 return -1;
             }
-            if (!print(putchar, format, amount)) return -1;
+            if (!print(ops, written, format, amount))
+                return -1;
             format += amount;
             written += amount;
             continue;
@@ -77,12 +110,14 @@ int __fwriter(int (*putchar)(int), const char *restrict format, va_list args)
 
         if (*format == 'c') {
             format++;
-            char c = (char)va_arg(args, int /* char promotes to int */);
+            // char promotes to int
+            char c = (char)va_arg(args, int);
             if (!maxrem) {
                 // TODO: Set errno to EOVERFLOW.
                 return -1;
             }
-            if (!print(putchar, &c, sizeof(c))) return -1;
+            if (!print(ops, written, &c, sizeof(c)))
+                return -1;
             written++;
         } else if (*format == 's') {
             format++;
@@ -92,14 +127,16 @@ int __fwriter(int (*putchar)(int), const char *restrict format, va_list args)
                 // TODO: Set errno to EOVERFLOW.
                 return -1;
             }
-            if (!print(putchar, str, len)) return -1;
+            if (!print(ops, written, str, len))
+                return -1;
             written += len;
         } else if ((radix = *format) == 'u' || radix == 'o' || radix == 'x') {
             format++;
             unsigned int num = va_arg(args, unsigned int);
             size_t       len = itoa(num, numstr, sizeof(numstr), radix);
 
-            if (!print(putchar, numstr, len)) return -1;
+            if (!print(ops, written, numstr, len))
+                return -1;
             written += len;
         } else {
             format     = format_begun_at;
@@ -108,7 +145,8 @@ int __fwriter(int (*putchar)(int), const char *restrict format, va_list args)
                 // TODO: Set errno to EOVERFLOW.
                 return -1;
             }
-            if (!print(putchar, format, len)) return -1;
+            if (!print(ops, written, format, len))
+                return -1;
             written += len;
             format += len;
         }

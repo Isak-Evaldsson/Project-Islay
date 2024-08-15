@@ -3,6 +3,8 @@
 */
 #include <utils.h>
 
+#include "internal.h"
+
 int memcmp(const void *lhs, const void *rhs, size_t count)
 {
     const unsigned char *ul = (const unsigned char *)lhs;
@@ -124,6 +126,34 @@ char *strtok(char *str, const char *delim, char **saveptr)
 end:
     *saveptr = s;
     return start;
+}
+
+int vsnprintf(char *restrict buffer, size_t bufsz, const char *restrict format, va_list vlist)
+{
+    int                ret;
+    struct fwriter_ops ops = {
+        .type = FWRITER_BUFFER,
+        .args = {.buff_ops = {.buff = buffer, .len = bufsz}},
+    };
+
+    ret = __fwriter(&ops, format, vlist);
+    if (buffer != NULL && ret > 0) {
+        buffer[ret] = '\0';
+    }
+
+    return ret;
+}
+
+int snprintf(char *restrict buffer, size_t bufsz, const char *restrict format, ...)
+{
+    int     ret;
+    va_list args;
+
+    va_start(args, format);
+    ret = vsnprintf(buffer, bufsz, format, args);
+    va_end(args);
+
+    return ret;
 }
 
 __attribute__((__noreturn__)) void abort()
