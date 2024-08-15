@@ -4,6 +4,7 @@
 #include <utils.h>
 
 #include "../drivers/pit.h"
+#include "../processor.h"
 #include "interrupts.h"
 #include "pic.h"
 #include "ps2.h"
@@ -201,8 +202,8 @@ void interrupt_handler(cpu_state_t registers, uint32_t interrupt_number, stack_s
                 break;
 
             case 14:
-                kpanic("Page fault at (0x%x) not currently handled, error code %x\n", stack.eip,
-                       stack.error_code);
+                kpanic("Page fault at (0x%x) when accessing address 0x%x error code %x\n",
+                       stack.eip, get_cr2(), stack.error_code);
                 break;
 
             default:
