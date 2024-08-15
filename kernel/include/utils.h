@@ -7,6 +7,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Count the number of elements in a statically allocated array */
+#define COUNT_ARRAY_ELEMS(array) (sizeof(array) / sizeof(array[0]))
+
+/*
+    Returns a pointer to the end of a statically allocated array, useful as a stop condition when
+    iterating over an array.
+*/
+#define END_OF_ARRAY(array) (array + COUNT_ARRAY_ELEMS(array))
+
 #define EOF (-1) /* End of file */
 
 /* Kernel equivalent of libc macro, can be disabled using NDEBUG */

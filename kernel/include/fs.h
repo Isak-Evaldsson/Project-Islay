@@ -1,11 +1,28 @@
 #ifndef FS_H
 #define FS_H
+#include <libc.h>
 #include <posix/stat.h>
-#include <stddef.h>
+#include <stdbool.h>
+
+#define MAX_OPEN_GLOBAL   100
+#define MAX_OPEN_PER_PROC 20
+static_assert(MAX_OPEN_GLOBAL >= MAX_OPEN_PER_PROC, "MAX_OPEN_GLOBAL less than MAX_OPEN_PER_PROC");
 
 #define FS_NAME_MAXLEN (127)
 
 #define DEFINE_FS(_var, _name, _ops) struct fs _var = {.name = (_name), .ops = (_ops), .next = NULL}
+
+/*  The primary data structure for all file-system objects */
+struct inode {
+    unsigned int     id;        // Unique inode_id for all open files with mounted fs
+    unsigned int     count;     // How many processes references this inode
+    struct vfs_node* vfs_node;  // Which mounted file system does this inode belong to
+
+    // TODO: Mode bits
+    bool  inode_dirty;  // Has the inode data changed compared to the one on disk,
+    bool  file_dirty;   // Has the file change compared to the one on disk.
+    void* data;         // For the specific file system to store relevant data
+};
 
 /* Information about an open file */
 struct file_info {
@@ -39,6 +56,11 @@ struct fs {
     const char     name[FS_NAME_MAXLEN + 1];
     struct fs_ops* ops;
     struct fs*     next;
+};
+
+/* Struct containing all per task fs related data */
+struct task_fs_data {
+    struct open_file* file_table[MAX_OPEN_PER_PROC];
 };
 
 /**

@@ -1,16 +1,17 @@
 #ifndef TASK_SCHEDULER_H
 #define TASK_SCHEDULER_H
 #include <arch/thread.h>
+#include <fs.h>
 #include <stddef.h>
 #include <stdint.h>
 
-// How long is the thread allowed to run before pre-emption
-#define TIME_SLICE_NS 50000000  // 50 ms
+/* How long is the thread allowed to run before pre-emption */
+#define TIME_SLICE_NS 50000000 /* 50 ms */
 
-// If set to 1, indicates that the task is to be preempted
+/* If set to 1, indicates that the task is to be preempted */
 #define TASK_STATUS_PREEMPT (1 << 0)
 
-// If set to 1, indicates that the task is currently running an ISR
+/* If set to 1, indicates that the task is currently running an ISR */
 #define TASK_STATUS_INTERRUPT (1 << 1)
 
 /* The possible state a task can be in */
@@ -42,6 +43,9 @@ struct task {
     uint64_t     sleep_expiry;  // Until when shall the task sleep
     uint64_t     time_used;     // Allows us to have time statistics
     uint8_t      status;        // Task status flags
+
+    // File system related data
+    struct task_fs_data fs_data;
 };
 
 /*
