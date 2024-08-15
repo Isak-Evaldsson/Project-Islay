@@ -25,8 +25,15 @@ def check_include_guard(file_name, lines):
         print("%s: header-file missing include guard" % file_name)
         return False
 
-    first = lines[0].split(' ')
-    second = lines[1].split(' ')
+    # Header might begin with a large documentation comment
+    start_idx = 0
+    if "/*" in lines[0]:
+        while "*/" not in lines[start_idx]:
+            start_idx += 1
+        start_idx += 1
+
+    first = lines[start_idx].split(' ')
+    second = lines[start_idx+1].split(' ')
     last = lines[-1].split(' ')
 
     if len(first) != 2 or first[0] != '#ifndef':
