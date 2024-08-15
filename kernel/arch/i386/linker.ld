@@ -42,6 +42,7 @@ SECTIONS
 		_wdata_start = .;
 		*(.data)
 	}
+	/* TODO: Make bss empty (do not file the binary with zeros) and clear the bss within the init code */
 	.bss ALIGN (4K) : AT (ADDR (.bss) - _higher_half_addr)
 	{
 		*(COMMON)
