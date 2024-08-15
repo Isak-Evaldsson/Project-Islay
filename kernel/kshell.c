@@ -1,5 +1,6 @@
 #include <arch/tty.h>
 #include <devices/ps2_keyboard.h>
+#include <fs.h>
 #include <memory/page_frame_manager.h>
 #include <stdbool.h>
 #include <utils.h>
@@ -7,21 +8,23 @@
 /*
     Basic kernel shell
 */
+void dump_vfs();
 
-// Internal helper function
+/* Internal helper function */
 static void print_help();
 static void mem_stats();
 
 typedef struct command_t {
     const char *name;
     const char *description;
-    void        (*function)();
+    void (*function)();
 } command_t;
 
 static command_t commands[] = {
     {.name = "help",    .description = "prints all available shell commands", print_help},
     {.name = "clear",   .description = "clears the terminal window",          term_clear},
     {.name = "memstat", .description = "show kernel memory statistics",       mem_stats },
+    {.name = "dumpfs",  .description = "vfs statists",                        dump_vfs  }
 };
 
 static void print_kernel_header()
@@ -57,7 +60,8 @@ static void parse_command(const char *cmd)
         }
     }
 
-    if (strcmp(cmd, "clear")) kprintf("Invalid command: %s\n", cmd);
+    if (strcmp(cmd, "clear"))
+        kprintf("Invalid command: %s\n", cmd);
 }
 
 void kshell()

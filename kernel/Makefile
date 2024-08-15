@@ -37,6 +37,7 @@ devices/input_manager.o \
 devices/timer.o \
 devices/ps2_keyboard.o \
 fs/fs.o \
+fs/file_operations.o \
 fs/file_table.o \
 fs/inode.o \
 memory/heap_allocator.o \
