@@ -7,9 +7,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define EOF (-1)  // End of file
+#define EOF (-1) /* End of file */
 
-// Kernel equivalent of libc macro, can be disabled using NDEBUG
+/* Kernel equivalent of libc macro, can be disabled using NDEBUG */
 #ifdef NDEBUG
 #define kassert() ()
 #else
@@ -19,7 +19,11 @@
     }
 #endif
 
-/* Kernel equivalent to libc printf */
+/*
+    Kernel equivalent to libc printf
+    TODO: add formater gcc macro
+    TODO: handle signed integers
+*/
 int kprintf(const char *restrict, ...);
 
 /* Equivalent to kprintf except it allows passthrough of varargs */
