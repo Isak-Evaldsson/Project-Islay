@@ -1,9 +1,9 @@
 #include <arch/tty.h>
-#include <utils.h>
 #include <libc.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <utils.h>
 
 #include "internal.h"
 
@@ -16,7 +16,11 @@ static int term_putchar(int ic)
 
 int kvprintf(const char *restrict format, va_list args)
 {
-    return __fwriter(&term_putchar, format, args);
+    struct fwriter_ops ops = {
+        .type = FWRITER_CHARDEV,
+        .args = {.putchar = term_putchar},
+    };
+    return __fwriter(&ops, format, args);
 }
 
 int kprintf(const char *restrict format, ...)

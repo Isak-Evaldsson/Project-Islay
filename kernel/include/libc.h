@@ -4,6 +4,7 @@
     Implements the libc methods required for a gcc freestanding environment
 */
 
+#include <stdarg.h>
 #include <stddef.h>
 
 /* static_assert from c23, assumes the gcc ## preprocessor extension to be available */
@@ -21,6 +22,9 @@ char  *strdup(const char *str1);
 /* We deviate from the standard by making strtok reentrant. There's no need of a non-reentrant
  * strtok in the kernel, it while only cause bugs in reentrant code. */
 char *strtok(char *str, const char *delim, char **saveptr);
+
+int snprintf(char *restrict buffer, size_t bufsz, const char *restrict format, ...);
+int vsnprintf(char *restrict buffer, size_t bufsz, const char *restrict format, va_list vlist);
 
 __attribute__((__noreturn__)) void abort();
 
