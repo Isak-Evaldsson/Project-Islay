@@ -7,6 +7,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/* TODO: Use time_t for time api */
+
 /*
     Helper macro converting seconds to nanoseconds, ensuring no integer constant overflow
 */
