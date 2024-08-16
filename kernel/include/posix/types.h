@@ -15,5 +15,6 @@ typedef unsigned int uid_t;
 typedef unsigned int gid_t;
 typedef unsigned int nlink_t;
 typedef uint64_t     time_t;
+typedef intmax_t     ssize_t;
 
 #endif /* POSIX_TYPES_H */

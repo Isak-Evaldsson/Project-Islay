@@ -2,6 +2,7 @@
 #define FS_H
 #include <libc.h>
 #include <posix/stat.h>
+#include <posix/types.h>
 #include <stdbool.h>
 
 #define MAX_OPEN_GLOBAL   100
@@ -101,5 +102,12 @@ int open(struct task_fs_data* task_data, const char* path);
 
 /* Close file */
 int close(struct task_fs_data* task_data, int fd);
+
+/* Read file continuously */
+ssize_t read(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte);
+
+/* Read file at fixed offset */
+ssize_t pread(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte, off_t offset);
+
 
 #endif /* FS_H */
