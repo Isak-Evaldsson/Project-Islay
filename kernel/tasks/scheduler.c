@@ -562,3 +562,9 @@ void scheduler_init()
     // Start task cleaning up terminated task
     cleanup_task = scheduler_create_task(cleanup_thread);
 }
+
+/* Gets a pointer to the currently executing task */
+task_t *scheduler_get_current_task()
+{
+    return current_task;
+}

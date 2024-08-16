@@ -55,6 +55,9 @@ struct task {
 /* Initialises the scheduler by setting up the inital boot process */
 void scheduler_init();
 
+/* Gets a pointer to the currently executing task */
+task_t *scheduler_get_current_task();
+
 /* Creates a new task executing the code at the address ip and sets it's state to ready-to-run */
 task_t *scheduler_create_task(void *ip);
 
