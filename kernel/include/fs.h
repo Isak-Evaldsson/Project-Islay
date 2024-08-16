@@ -109,5 +109,14 @@ ssize_t read(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte);
 /* Read file at fixed offset */
 ssize_t pread(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte, off_t offset);
 
+/*
+    Sysfs API
+*/
+
+/* Writes formatted strings to the global sysfs read buffer */
+void sysfs_writer(const char* restrict format, ...);
+
+/* Mounts sysfs at the specified path */
+int mount_sysfs(const char* path);
 
 #endif /* FS_H */

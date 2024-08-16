@@ -69,3 +69,14 @@ int free_fd(struct task_fs_data *task_data, int fd)
     task_data->file_table[fd] = NULL;
     return 0;
 }
+
+void sysfs_dump_open_files(char *buff, size_t size)
+{
+    sysfs_writer("open_files table:\n");
+    for (struct open_file *f = open_files; f < END_OF_ARRAY(open_files); f++) {
+        if (f->ref_count > 0) {
+            sysfs_writer("  (0x%x) ref_count: %u, offset %u, inode: 0x%x, file_ops: 0x%x\n", f,
+                         f->ref_count, f->offset, f->inode, f->file_ops);
+        }
+    }
+}

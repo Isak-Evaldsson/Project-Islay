@@ -20,35 +20,33 @@ static struct vfs_node root = {
 /* TODO: Hashtable or similar to make it fast to access open files. Each process maps
  * file-descriptors to indices within the table. */
 
-#if DEBUG_FS
-static void dump_fs_list()
+static void sysfs_dump_fs_list()
 {
     for (struct fs* fs = fs_list; fs != NULL; fs = fs->next) {
-        kprintf("  (%x) name: %s, ops: %x\n", fs, fs->name, fs->ops);
+        sysfs_writer("  (%x) name: %s, ops: %x\n", fs, fs->name, fs->ops);
     }
 }
 
-static void dump_vfs_node(struct vfs_node* node, int indent)
+static void sysfs_dump_vfs_node(struct vfs_node* node, int indent)
 {
-    for (int i = 0; i < indent; i++) kprintf("  ");
+    for (int i = 0; i < indent; i++) sysfs_writer("  ");
 
-    kprintf("%s type: %u fs: %x (%x)\n", node->name, node->type, node->fs, node);
+    sysfs_writer("%s type: %u fs: %x (%x)\n", node->name, node->type, node->fs, node);
     for (node = node->child; node != NULL; node = node->sibling) {
-        dump_vfs_node(node, indent + 1);
+        sysfs_dump_vfs_node(node, indent + 1);
     }
 }
 
-void dump_vfs()
+void sysfs_dump_vfs()
 {
-    kprintf("VFS Dump\n");
-    kprintf("Registered file systems:\n");
-    dump_fs_list();
-    kprintf("\n");
+    sysfs_writer("VFS Dump\n");
+    sysfs_writer("Registered file systems:\n");
+    sysfs_dump_fs_list();
+    sysfs_writer("\n");
 
-    kprintf("VFS tree:\n");
-    dump_vfs_node(&root, 0);
+    sysfs_writer("VFS tree:\n");
+    sysfs_dump_vfs_node(&root, 0);
 }
-#endif
 
 static int create_vfs_node(struct vfs_node* parent, char* name, struct vfs_node** new_node)
 {
