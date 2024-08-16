@@ -40,6 +40,7 @@ fs/fs.o \
 fs/file_operations.o \
 fs/file_table.o \
 fs/inode.o \
+fs/sysfs.o \
 memory/heap_allocator.o \
 memory/page_frame_allocator.o \
 memory/vmem_manager.o \

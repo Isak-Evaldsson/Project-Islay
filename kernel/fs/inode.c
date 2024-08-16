@@ -42,3 +42,14 @@ void put_node(struct inode *node)
     node->count--;
     // TODO: Add logic for inode write-back if node->count == 0 && node->inode_dirty
 }
+
+void sysfs_dump_inodes()
+{
+    sysfs_writer("inode cache:\n");
+    for (struct inode *inode = inode_table; inode < END_OF_ARRAY(inode_table); inode++) {
+        if (inode->count > 0) {
+            sysfs_writer("  (0x%x) id: %u, count: %u, vfs_node: 0x%x\n", inode, inode->id,
+                         inode->count, inode->vfs_node);
+        }
+    }
+}

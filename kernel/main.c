@@ -26,6 +26,8 @@ void kernel_main()
     scheduler_test();
     fs_tests();
 
+    mount_sysfs("/sys");
+
     // TODO: nice looking boot animation (requires timers)
     kshell();
 

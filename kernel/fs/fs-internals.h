@@ -50,4 +50,11 @@ int alloc_fd(struct task_fs_data* task_data, struct open_file** file);
 /* Frees the open file associated with the fd. Returns 0 on success, else errno. */
 int free_fd(struct task_fs_data* task_data, int fd);
 
+/*
+    sysfs debug functions
+*/
+void sysfs_dump_vfs();
+void sysfs_dump_open_files();
+void sysfs_dump_inodes();
+
 #endif /* FS_INTERNALS_H */
