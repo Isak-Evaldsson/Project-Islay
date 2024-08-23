@@ -7,6 +7,29 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Rounds up a number to a multiple of n, assuming n is a factor of 2 */
+#define ALIGN_BY_MULTIPLE(num, n)           \
+    ({                                      \
+        static_assert(n % 2 == 0);          \
+        (((num) + ((n) - 1)) & ~((n) - 1)); \
+    })
+
+/* Maximum value between two ints */
+#define MAX(a, b)           \
+    ({                      \
+        typeof(a) _a = (a); \
+        typeof(b) _b = (b); \
+        _a > _b ? _a : _b;  \
+    })
+
+/* Minimum value between two ints */
+#define MIN(a, b)           \
+    ({                      \
+        typeof(a) _a = (a); \
+        typeof(b) _b = (b); \
+        _a < _b ? _a : _b;  \
+    })
+
 /* Count the number of elements in a statically allocated array */
 #define COUNT_ARRAY_ELEMS(array) (sizeof(array) / sizeof(array[0]))
 
