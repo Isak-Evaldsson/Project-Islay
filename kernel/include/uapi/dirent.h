@@ -1,7 +1,7 @@
 #ifndef POSIX_DIRENT_H
 #define POSIX_DIRENT_H
 #include "limits.h"
-#include "types.h"
+#include "sys/types.h"
 /*
     POSIX defined defined directory entries
 

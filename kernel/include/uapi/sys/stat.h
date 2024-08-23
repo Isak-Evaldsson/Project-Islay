@@ -1,6 +1,6 @@
 #ifndef POSIX_STAT_H
 #define POSIX_STAT_H
-#include <posix/types.h>
+#include "types.h"
 /*
     stat.h: POSIX defined stats struct
 
