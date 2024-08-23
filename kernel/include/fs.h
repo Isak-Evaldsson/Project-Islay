@@ -1,6 +1,7 @@
 #ifndef FS_H
 #define FS_H
 #include <libc.h>
+#include <posix/fnctl.h>
 #include <posix/stat.h>
 #include <posix/types.h>
 #include <stdbool.h>
@@ -98,7 +99,7 @@ int register_fs(struct fs* fs);
 int mount(const char* path, const char* name, void* data);
 
 /* Open file */
-int open(struct task_fs_data* task_data, const char* path);
+int open(struct task_fs_data* task_data, const char* path, int oflag);
 
 /* Close file */
 int close(struct task_fs_data* task_data, int fd);
