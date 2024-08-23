@@ -1,6 +1,7 @@
 #ifndef FS_H
 #define FS_H
 #include <libc.h>
+#include <posix/dirent.h>
 #include <posix/fnctl.h>
 #include <posix/stat.h>
 #include <posix/types.h>
@@ -35,6 +36,7 @@ struct inode {
     files.
  */
 struct open_file {
+    // TODO: ADD type field
     unsigned int   ref_count;  // How many process are referring to this object with their fd table
     off_t          offset;     // What position within the file are we currently at
     struct inode*  inode;      // Which file does the object correspond to
@@ -60,7 +62,10 @@ struct fs_ops {
     // Returns a pointer to the inode at the specified path, or NULL If the inode can't be found
     struct inode* (*open)(const struct vfs_node* node, const char* path);
 
-    int (*readdir)(const char* path, fill_dir_t filler, off_t offset, struct open_file* file);
+    // Called when reading from a directory, the fs is responsible for filling the supplied dirent
+    // entry at the specified offset. On failure return -ERRNO, on success return the next offset or
+    // 0 if the full dir is read.
+    int (*readdir)(const struct open_file* file, struct dirent* dirent, off_t offset);
 
     // Called upon when a open file is closed
     // TODO: Needs two methods, one is called on every close and one when refcount == 0
@@ -109,6 +114,15 @@ ssize_t read(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte);
 
 /* Read file at fixed offset */
 ssize_t pread(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte, off_t offset);
+
+/*
+    Reads from at certain fd into the supplied buffer and returns the number of dirents written to
+    the buffer or -ERRNO on failure.
+
+    Similar to read it automatically increments the read offset. If the return value is 0 or less
+    than buf_count we have reach the end of the dir.
+*/
+int readdirents(struct task_fs_data* task_data, int fd, struct dirent* buf, int buf_count);
 
 /*
     Sysfs API
