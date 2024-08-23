@@ -1,11 +1,10 @@
 #ifndef FS_H
 #define FS_H
 #include <libc.h>
-#include <posix/dirent.h>
-#include <posix/fnctl.h>
-#include <posix/stat.h>
-#include <posix/types.h>
 #include <stdbool.h>
+#include <uapi/dirent.h>
+#include <uapi/sys/fnctl.h>
+#include <uapi/sys/stat.h>
 
 #define MAX_OPEN_GLOBAL   100
 #define MAX_OPEN_PER_PROC 20

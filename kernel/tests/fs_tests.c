@@ -1,5 +1,5 @@
 #include <fs.h>
-#include <posix/errno.h>
+#include <uapi/errno.h>
 #include <utils.h>
 
 struct data {

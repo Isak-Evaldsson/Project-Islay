@@ -1,7 +1,7 @@
 #ifndef FS_INTERNALS_H
 #define FS_INTERNALS_H
 #include <fs.h>
-#include <posix/errno.h>
+#include <uapi/errno.h>
 #include <utils.h>
 
 #define DEBUG_FS 1
