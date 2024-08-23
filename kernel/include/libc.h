@@ -18,6 +18,7 @@ size_t strlen(const char *str);
 int    strcmp(const char *lhs, const char *rhs);
 int    strncmp(const char *lhs, const char *rhs, size_t count);
 char  *strdup(const char *str1);
+char  *strcpy(char *restrict dest, const char *restrict src);
 
 /* We deviate from the standard by making strtok reentrant. There's no need of a non-reentrant
  * strtok in the kernel, it while only cause bugs in reentrant code. */

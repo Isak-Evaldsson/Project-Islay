@@ -90,6 +90,19 @@ char *strdup(const char *str1)
     return str;
 }
 
+char *strcpy(char *restrict dest, const char *restrict src)
+{
+    const char *restrict usrc = src;
+    char *restrict udest      = dest;
+
+    while (*usrc != '\0') {
+        *udest++ = *usrc++;
+    }
+    *udest = '\0';
+
+    return dest;
+}
+
 char *strtok(char *str, const char *delim, char **saveptr)
 {
     const char *d;
@@ -106,7 +119,6 @@ char *strtok(char *str, const char *delim, char **saveptr)
         start = *saveptr;
     }
     s = start;
-
     // Find start of delimiter, i.e. end of token
     while (*s && *s != *delim) s++;
 
