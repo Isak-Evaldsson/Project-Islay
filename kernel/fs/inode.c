@@ -3,11 +3,27 @@
 /* In memory inode cache. */
 static struct inode inode_table[MAX_OPEN_GLOBAL];
 
+/* Checks that the inode is correctly filed in. Returns -ERRN0 or 0 on success */
+int verify_inode(const struct inode *inode)
+{
+    // inode id 0 not allowed
+    if (inode->id == 0) {
+        return -EFAULT;
+    }
+
+    // Must have a file type
+    if ((inode->mode & S_IFMT) == 0) {
+        return -EINVAL;
+    }
+
+    return 0;
+}
+
 /*
     Gets the inode with id for a certain vfs_node. Ensures that the inode is properly read and
     initalized. Returns the inode object on success, NULL if cache is empty.
 */
-struct inode *get_inode(struct vfs_node *vfs_node, unsigned int id)
+struct inode *get_inode(struct vfs_node *vfs_node, ino_t id)
 {
     struct inode *inode, *free = NULL;
 
@@ -33,6 +49,7 @@ struct inode *get_inode(struct vfs_node *vfs_node, unsigned int id)
     free->vfs_node    = vfs_node;
     free->count       = 1;
     free->inode_dirty = false;
+    free->mode        = 0;
     return free;
 }
 

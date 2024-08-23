@@ -28,6 +28,8 @@ static struct sysfs_file files[] = {
     {.name = "inodes", .read = sysfs_dump_inodes    },
 };
 
+static struct sysfs_file root = {.name = ".", .read = NULL};
+
 /*
     File system opreations
 */
@@ -53,18 +55,29 @@ static int sysfs_read(char* buf, size_t size, off_t offset, struct open_file* fi
     return read_size;
 }
 
-static int sysfs_open(const char* path, unsigned int* inode_id, struct file_info* info)
+struct inode* sysfs_open(const struct vfs_node* node, const char* path)
 {
     // Search files, and store point in inode
-    struct sysfs_file* f;
+    struct inode* inode = NULL;
 
-    for (f = files; f < END_OF_ARRAY(files); f++) {
+    if (*path == '\0') {
+        inode       = get_inode(node, (ino_t)&root);
+        inode->mode = S_IFDIR;
+        goto end;
+    }
+
+    for (struct sysfs_file* f = files; f < END_OF_ARRAY(files); f++) {
         if (strcmp(path, f->name) == 0) {
-            *inode_id = f;
-            return 0;
+            inode       = get_inode(node, (ino_t)f);
+            inode->mode = S_IFREG;
+            break;
         }
     }
-    return -ENOENT;
+
+end:
+    return inode;
+}
+
 }
 
 static int sysfs_mount(void* data)

@@ -17,17 +17,32 @@ int open(struct task_fs_data* task_data, const char* path)
     }
 
     // Search vfs for the mountpoint containing the supplied path
-    node = search_vfs(path, &internal_path);
+    node = search_vfs(ppath, &internal_path);
     if (!node) {
         ret = -ENOENT;
         goto end;
+    }
+
+    // We have 3 scenarios to handle:
+    //    1. MNTPOINT - defer to fs implementation
+    //    2. DIR - fallback to root fs?, Or do we want a "vfs-fs"? we're read/writes are not
+    //       allowed, but READDIR is?
+    if (!*internal_path) {
+        // TODO: Handle opening a vfs dir!!!
     }
 
     // TODO: Will this be a problem? Assert for now so it's caught at least.
     kassert(node->type == VFS_NODE_TYPE_MNT);
 
     // Call open within the mounted file system
-    ret = node->fs->ops->open(internal_path, &id, file);
+    inode = node->fs->ops->open(node, internal_path);
+    if (inode == NULL) {
+        ret = -ENOENT;
+        goto end;
+    }
+
+    // Check that the fs implementation has filled in the inode correctly
+    ret = verify_inode(inode);
     if (ret < 0) {
         goto end;
     }
