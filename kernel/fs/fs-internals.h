@@ -33,6 +33,9 @@ struct vfs_node {
  */
 struct vfs_node* search_vfs(char* path, char** node_path);
 
+/* Checks that the inode is correctly filed in. Returns -ERRN0 or 0 on success */
+int verify_inode(const struct inode* inode);
+
 /*
     Gets the inode with id for a certain vfs_node. Ensures that the inode is properly read and
     initalized. Returns the inode object on success, NULL if cache is empty.

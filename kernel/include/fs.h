@@ -15,7 +15,8 @@ static_assert(MAX_OPEN_GLOBAL >= MAX_OPEN_PER_PROC, "MAX_OPEN_GLOBAL less than M
 
 /*  The primary data structure for all file-system objects */
 struct inode {
-    unsigned int     id;        // Unique inode_id for all open files with mounted fs
+    ino_t            id;        // Unique inode_id for all open files with mounted fs
+    mode_t           mode;      // File modes as defined in posix/stat.h
     unsigned int     count;     // How many processes references this inode
     struct vfs_node* vfs_node;  // Which mounted file system does this inode belong to
 
@@ -55,9 +56,8 @@ struct fs_ops {
     // failure, or number of read byte on success
     int (*read)(char* buf, size_t size, off_t offset, struct open_file* file);
 
-    // Open the file at the specified path and write the inode id into inode_id, returns 0 on
-    // success, -ERRNO otherwise.
-    int (*open)(const char* path, unsigned int* inode_id, struct open_file* file);
+    // Returns a pointer to the inode at the specified path, or NULL If the inode can't be found
+    struct inode* (*open)(const struct vfs_node* node, const char* path);
 
     int (*readdir)(const char* path, fill_dir_t filler, off_t offset, struct open_file* file);
 
