@@ -1,6 +1,6 @@
 #include "fs-internals.h"
 
-int open(struct task_fs_data* task_data, const char* path)
+int open(struct task_fs_data* task_data, const char* path, int oflag)
 {
     int               fd, ret;
     unsigned int      id;
@@ -47,9 +47,8 @@ int open(struct task_fs_data* task_data, const char* path)
         goto end;
     }
 
-    inode = get_inode(node, id);
-    if (!inode) {
-        ret = -ENOMEM;
+    if ((oflag & O_DIRECTORY) && !S_ISDIR(inode->mode)) {
+        ret = -ENOTDIR;
         goto end;
     }
 
@@ -91,6 +90,10 @@ static ssize_t read_helper(struct task_fs_data* task_data, int fd, void* buf, si
     file = task_data->file_table[fd];
     if (!file) {
         return -EBADF;
+    }
+
+    if (S_ISDIR(file->inode->mode)) {
+        return -EINVAL;
     }
 
     read_offset = use_file_offset ? file->offset : offset;

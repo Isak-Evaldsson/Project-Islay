@@ -59,7 +59,7 @@ static void read_cmd(char *arg)
     char path[100];
 
     snprintf(path, sizeof(path), "/sys/%s", arg);
-    int fd = open(&scheduler_get_current_task()->fs_data, path);
+    int fd = open(&scheduler_get_current_task()->fs_data, path, 0);
     if (fd < 0) {
         kprintf("failed to open %s, errno -%u\n", path, -fd);
         return;
