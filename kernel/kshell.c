@@ -16,6 +16,7 @@
 static void print_help();
 static void mem_stats();
 static void read_cmd(char *arg);
+static void list_cmd();
 
 typedef struct command_t {
     const char *name;
@@ -30,6 +31,7 @@ static command_t commands[] = {
     {.name = "clear",   .description = "clears the terminal window",          term_clear},
     {.name = "memstat", .description = "show kernel memory statistics",       mem_stats },
     {.name = "sysread", .description = "read file from sysfs",                read_cmd  },
+    {.name = "syslist", .description = "list files in sysfs",                 list_cmd  },
 };
 
 static void print_kernel_header()
@@ -52,6 +54,36 @@ static void mem_stats()
     kprintf("Memory statistics:\n");
     kprintf("Amount of memory: %u MiB\n", mem.memory_amount >> 20);
     kprintf("%u of %u available page frames\n", mem.n_available_frames, mem.n_frames);
+}
+
+static void list_cmd()
+{
+    int ret = 0;
+    int fd  = open(&scheduler_get_current_task()->fs_data, "/sys/files", O_DIRECTORY);
+    if (fd < 0) {
+        kprintf("failed to open %s, errno -%u\n", "/sys", -fd);
+        return;
+    }
+
+    struct dirent dirs[10];
+    int           count = COUNT_ARRAY_ELEMS(dirs);
+    do {
+        ret = readdirents(&scheduler_get_current_task()->fs_data, fd, dirs, count);
+        if (ret < 0) {
+            kprintf("readdirents failed: errno -%u\n", -ret);
+            goto end;
+        }
+
+        for (int i = 0; i < ret; i++) {
+            kprintf("(%u): %s\n", dirs[i].d_ino, dirs[i].d_name);
+        }
+    } while (ret == count);
+
+end:
+    int res = close(&scheduler_get_current_task()->fs_data, fd);
+    if (res < 0) {
+        kprintf("failed to close fd: %u, errno -%u", fd, -res);
+    }
 }
 
 static void read_cmd(char *arg)

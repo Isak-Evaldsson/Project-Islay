@@ -78,6 +78,20 @@ end:
     return inode;
 }
 
+static int sysfs_readdir(const struct open_file* file, struct dirent* dirent, off_t offset)
+{
+    struct sysfs_file* f = files + offset;
+
+    kassert(file->inode->id == (ino_t)&root);
+
+    dirent->d_ino = f;
+    strcpy(dirent->d_name, f->name);
+
+    if (++offset < COUNT_ARRAY_ELEMS(files)) {
+        return offset;
+    }
+
+    return 0;
 }
 
 static int sysfs_mount(void* data)
@@ -95,9 +109,10 @@ static int sysfs_mount(void* data)
 }
 
 static struct fs_ops sysfs_ops = {
-    .mount = sysfs_mount,
-    .open  = sysfs_open,
-    .read  = sysfs_read,
+    .mount   = sysfs_mount,
+    .open    = sysfs_open,
+    .read    = sysfs_read,
+    .readdir = sysfs_readdir,
 };
 
 static DEFINE_FS(sysfs, "sysfs", &sysfs_ops);

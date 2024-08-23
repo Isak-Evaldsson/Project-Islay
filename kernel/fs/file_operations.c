@@ -121,3 +121,57 @@ ssize_t read(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte)
 {
     return read_helper(task_data, fd, buf, nbyte, 0, true);
 }
+
+int readdirents(struct task_fs_data* task_data, int fd, struct dirent* buf, int buf_count)
+{
+    off_t             offset;
+    int               count;
+    struct open_file* file;
+    struct dirent*    dirent;
+
+    if (fd < 0 || fd >= MAX_OPEN_PER_PROC) {
+        return -EBADF;
+    }
+
+    file = task_data->file_table[fd];
+    if (!file) {
+        return -EBADF;
+    }
+
+    if (!S_ISDIR(file->inode->mode) || !file->file_ops->read) {
+        return -ENOTDIR;
+    }
+
+    count  = 0;
+    offset = file->offset;
+    if (offset == EOF) {
+        count = 0;  // No more dirents left to read
+        goto end;
+    }
+
+    // Iterate over the dir until the buffer is full or EOF is reached. Counter needs to be separate
+    // from index variable since its count + 1 when there are more files to read and count when
+    // we're on the last iteration
+    for (int i = 0; i < buf_count; i++) {
+        dirent = buf + i;
+        offset = file->file_ops->readdir(file, dirent, offset);
+        if (offset < 0) {
+            return offset;
+        }
+
+        // Verify the dirent object
+        kassert(dirent->d_ino != 0 && dirent->d_name[0] != '\0');
+        count++;
+
+        if (offset == 0) {
+            offset = EOF;
+            break;
+        }
+    }
+
+    // Store offset so we can continue if the buffer is full at the next call
+    file->offset = offset;
+
+end:
+    return count;
+}
