@@ -21,13 +21,11 @@
 #define LOG(...)
 #endif
 
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
-
 /*
     The minimal size for each heap segment
 */
 #define NPAGES_PER_SEGMENT (16)
-#define SEGMENT_SIZE       (NPAGES_PER_SEGMENT * PAGE_SIZE)
+#define SEGMENT_SIZE       (size_t)(NPAGES_PER_SEGMENT * PAGE_SIZE)
 
 /*
     Magic number flags
@@ -288,8 +286,9 @@ static void append_heap_segment(heap_segment_t* segment)
     heap_segment_t* seg;
 
     // Find last segment in list
-    for (seg = segments; seg->next != NULL; seg = seg->next)
-        ;
+    for (seg = segments; seg->next != NULL; seg = seg->next) {
+        // NOOP
+    }
 
     // append our new segment to it
     seg->next     = segment;
