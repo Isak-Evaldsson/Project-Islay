@@ -1,6 +1,7 @@
 #ifndef KLIB_KLIB_H
 #define KLIB_KLIB_H
 #include <bit_manipulation.h>
+#include <endianness.h>
 #include <libc.h>
 #include <stdarg.h>
 #include <stdbool.h>
