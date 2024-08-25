@@ -61,6 +61,18 @@ size_t strlen(const char *str)
     return len;
 }
 
+size_t strnlen(const char *str, size_t count)
+{
+    size_t len = 0;
+
+    while (count && str[len] != '\0') {
+        len++;
+        count--;
+    }
+
+    return len;
+}
+
 int strcmp(const char *lhs, const char *rhs)
 {
     while (*lhs && (*lhs == *rhs)) {
