@@ -1,8 +1,8 @@
 #include <arch/paging.h>
-#include <utils.h>
 #include <memory/page_frame_manager.h>
 #include <stdbool.h>
 #include <tasks/locking.h>
+#include <utils.h>
 
 /*
     Page frame manger - responsible for the management of physical memory frames
@@ -167,6 +167,7 @@ static void init_mark_segment(size_t addr, size_t length, bool available)
     // reset first available idx
     first_available_frame_idx = 0;
 
+    uint32_t page_count  = length / PAGE_SIZE;
     uint32_t start_frame = FRAME_NUMBER(addr);
     uint32_t start_idx   = BITMAP_INDX(start_frame);
     uint8_t  start_bit   = BITMAP_BIT(start_frame);
@@ -174,7 +175,7 @@ static void init_mark_segment(size_t addr, size_t length, bool available)
     // Handle first byte if segment start in the middle of a byte
     if (start_bit != 0) {
         // Fill the bits for the relevant byte
-        for (uint8_t i = start_bit; i < 8; i++) {
+        for (uint8_t i = start_bit; i < 8 && page_count; i++) {
             if (available) {
                 SET_BIT(memory_bitmap[start_idx], i);
                 n_available_frames++;
@@ -182,6 +183,7 @@ static void init_mark_segment(size_t addr, size_t length, bool available)
                 CLR_BIT(memory_bitmap[start_idx], i);
                 n_available_frames--;
             }
+            page_count--;
         }
 
         // Increment idx to point to first full bit
@@ -201,11 +203,12 @@ static void init_mark_segment(size_t addr, size_t length, bool available)
             memory_bitmap[i] = 0x00;
             n_available_frames -= 8;
         }
+        page_count -= 8;
     }
 
     // Handle if the segment ends in the middle of a byte, fill all bits less than it
     if (end_bit != 0) {
-        for (uint8_t i = 0; i < end_bit; i++) {
+        for (uint8_t i = 0; i < end_bit && page_count; i++) {
             if (available) {
                 SET_BIT(memory_bitmap[end_idx], i);
                 n_available_frames++;
@@ -213,6 +216,7 @@ static void init_mark_segment(size_t addr, size_t length, bool available)
                 CLR_BIT(memory_bitmap[end_idx], i);
                 n_available_frames--;
             }
+            page_count--;
         }
     }
 }
@@ -222,16 +226,16 @@ static void init_mark_segment(size_t addr, size_t length, bool available)
 */
 
 // Initialise the page frame manager based on the supplied memory map
-void page_frame_manager_init(memory_map_t *map)
+void page_frame_manager_init(struct boot_data *boot_data)
 {
     // 1: Initialise bitmap by setting all bytes to zero (i.e. unavailable)
     memset(memory_bitmap, 0, sizeof(memory_bitmap));
 
     // 2: Parse the supplied memory map, marking segments as available
-    amount_of_memory = map->memory_amount;
-    for (size_t i = 0; i < map->n_segments; i++) {
-        memory_segment_t segment = map->segments[i];
-        init_mark_segment(segment.addr, segment.length, true);
+    amount_of_memory = boot_data->mem_size;
+    for (size_t i = 0; i < boot_data->mmap_size; i++) {
+        memory_segment_t *segment = boot_data->mmap_segments + i;
+        init_mark_segment(segment->addr, segment->length, true);
     }
     n_frames = n_available_frames;
 
@@ -239,6 +243,7 @@ void page_frame_manager_init(memory_map_t *map)
     size_t addr   = KERNEL_START;
     size_t length = KERNEL_END - HIGHER_HALF_ADDR - KERNEL_START;
     init_mark_segment(addr, ALIGN_BY_PAGE_SIZE(length), false);
+    init_mark_segment(boot_data->initrd_start, ALIGN_BY_PAGE_SIZE(boot_data->initrd_size), false);
 }
 
 // Returns memory statistics from the page frame manager
@@ -277,7 +282,8 @@ physaddr_t page_frame_alloc_pages(uint8_t options, unsigned int n)
         kpanic("High memory not yet implemented");
     }
 
-    if (n == 0) return 0;
+    if (n == 0)
+        return 0;
 
     mutex_lock(&page_alloc_lock);
     uint32_t page_num = find_available_8n_pages(n);
