@@ -8,14 +8,11 @@
 #include "kshell.h"
 #include "tests/test.h"
 
-void kernel_main()
+void kernel_main(struct boot_data* boot_data)
 {
-    if (serial_init() == 1) {
-        kpanic("No serial\n");
-    }
-
-    term_init();
     kprintf("Starting boot sequence...\n");
+    page_frame_manager_init(boot_data);
+
     init_gdt();
     init_interrupts();
     kprintf("Kernel successfully booted at vaddr 0xE0100000 (3.5 GiB + 1 MiB)\n\n");

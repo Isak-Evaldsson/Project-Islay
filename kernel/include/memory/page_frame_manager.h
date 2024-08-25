@@ -13,19 +13,6 @@
 */
 #define PF_OPT_HIGH_MEM (1 << 0)  // First bit indicates request allocate high memory
 
-// Memory segment in memory map
-typedef struct memory_segment {
-    uint32_t addr;
-    uint32_t length;
-} memory_segment_t;
-
-// Architecture independet memory map
-typedef struct memory_map {
-    size_t            memory_amount;
-    size_t            n_segments;  // Array size
-    memory_segment_t *segments;    // Array of memory segment
-} memory_map_t;
-
 // Struct holding memory statistics provided by the page frame manager
 typedef struct memory_stats {
     size_t memory_amount;
@@ -34,7 +21,7 @@ typedef struct memory_stats {
 } memory_stats_t;
 
 // Initialise the page frame manager based on the supplied memory map
-void page_frame_manager_init(memory_map_t *mmap);
+void page_frame_manager_init(struct boot_data *boot_data);
 
 // Returns memory statistics from the page frame manager
 void page_frame_manger_memory_stats(memory_stats_t *stats);
