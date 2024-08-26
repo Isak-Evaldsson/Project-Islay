@@ -6,11 +6,7 @@
 
 #define DEBUG_FS 1
 
-#if DEBUG_FS
-#define LOG(...) log("[FS]: " __VA_ARGS__)
-#else
-#define LOG(...)
-#endif
+#define LOG(fmt, ...) __LOG(DEBUG_FS, "[FS]", fmt, ##__VA_ARGS__)
 
 typedef enum {
     VFS_NODE_TYPE_DIR,

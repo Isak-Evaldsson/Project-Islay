@@ -15,11 +15,7 @@
 #define PTR_VALIDATION 1
 
 /* Heap logging macro */
-#if DEBUG_HEAP_ALLOCATOR
-#define LOG(...) log("[HEAP_ALLOCATOR]: " __VA_ARGS__)
-#else
-#define LOG(...)
-#endif
+#define LOG(fmt, ...) __LOG(DEBUG_HEAP_ALLOCATOR, "[HEAP_ALLOCATOR]", fmt, ##__VA_ARGS__)
 
 /*
     The minimal size for each heap segment

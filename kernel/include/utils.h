@@ -53,6 +53,17 @@
 #endif
 
 /*
+    Generic function to allow per subsystem log macros, e.g:
+
+    #define LOG(fmt, ...) __LOG(DEBUG_SUBSYS, "[SUBSYS_NAME]", fmt, ##__VA_ARGS__)
+*/
+#define __LOG(var, subsys, fmt, ...)                          \
+    do {                                                      \
+        if (var)                                              \
+            log(subsys " %s: " fmt, __func__, ##__VA_ARGS__); \
+    } while (0)
+
+/*
     Kernel equivalent to libc printf
     TODO: add formater gcc macro
     TODO: handle signed integers
@@ -62,7 +73,7 @@ int kprintf(const char *restrict, ...);
 /* Equivalent to kprintf except it allows passthrough of varargs */
 int kvprintf(const char *restrict, va_list);
 
-/* Logs formated message to serial output */
+/* Logs formatted message to serial output */
 int log(const char *restrict format, ...);
 
 /* Read line from keyboard into string of a give size, allowing basic kernel shell input */

@@ -10,11 +10,7 @@
 // Enables logging of the timer
 #define LOG_TIMER 0
 
-#if LOG_TIMER
-#define LOG(...) log("[TIMER]: " __VA_ARGS__)
-#else
-#define LOG(...)
-#endif
+#define LOG(fmt, ...) __LOG(LOG_TIMER, "[TIMER]", fmt, ##__VA_ARGS__)
 
 #if DEBUG_TIMER_HEAP
 #define VERIFY_HEAP() verify_minheap_property(0, __FILE__, __FUNCTION__, __LINE__)

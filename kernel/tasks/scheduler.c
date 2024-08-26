@@ -12,11 +12,7 @@
 
 #define LOG_SCHEDULER 1
 
-#if LOG_SCHEDULER
-#define LOG(...) log("[SCHEDULER]: " __VA_ARGS__)
-#else
-#define LOG(...)
-#endif
+#define LOG(fmt, ...) __LOG(LOG_SCHEDULER, "[SCHEDULER]", fmt, ##__VA_ARGS__)
 
 /*
     Scheduler state
