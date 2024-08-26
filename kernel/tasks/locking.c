@@ -8,11 +8,7 @@
 
 #define LOG_LOCKING 1
 
-#if LOG_LOCKING
-#define LOG(...) log("[LOCKING]: " __VA_ARGS__)
-#else
-#define LOG(...)
-#endif
+#define LOG(fmt, ...) __LOG(LOG_LOCKING, "[LOCKING]", fmt, ##__VA_ARGS__)
 
 /* Allocate and initialise a semaphore */
 semaphore_t *semaphore_create(int max_count)

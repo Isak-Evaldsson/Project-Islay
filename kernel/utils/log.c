@@ -10,9 +10,8 @@ static int serial_putchar(int ic)
     return ic;
 }
 
-/* Logs formated message to serial output */
+/* Logs formatted message to serial output */
 int log(const char *restrict format, ...)
-
 {
     int                ret;
     va_list            args;
