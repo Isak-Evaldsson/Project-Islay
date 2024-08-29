@@ -52,7 +52,7 @@ struct fs_ops {
     int (*mount)(void* data);
 
     // Gets attributes for a particular file, returns -errno or 0 on success
-    int (*getattr)(const char* path, struct stat* stat);
+    int (*getattr)(const struct open_file* file, struct stat* stat);
 
     // Reads size bytes from the file at the specified path at the given offset. Returns -errno on
     // failure, or number of read byte on success
