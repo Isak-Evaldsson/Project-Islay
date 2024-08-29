@@ -7,6 +7,8 @@
     see https://pubs.opengroup.org/onlinepubs/009604499/basedefs/sys/types.h.html
 */
 
+typedef unsigned int blkcnt_t;   // Used for file block counts;
+typedef unsigned int blksize_t;  // Used for block sizes;
 typedef long         off_t;
 typedef unsigned int dev_t;
 typedef unsigned int ino_t;
