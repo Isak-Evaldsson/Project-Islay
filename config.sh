@@ -14,7 +14,9 @@ export BOOTDIR=/boot
 export LIBDIR=$EXEC_PREFIX/lib
 export INCLUDEDIR=$PREFIX/include
 
-export CFLAGS='-Wextra -Wall -O2 -g -fstack-protector-all'
+# TODO: Stack smashing protector complains about the task switch code, so we disable it for know.
+#       The long term solution is to make sure that only c code is compiled with stack-smash protection
+export CFLAGS='-Wextra -Wall -Og -g' #-fstack-protector-all'
 export CPPFLAGS=''
 
 # Configure the cross-compiler to use the desired system root.
