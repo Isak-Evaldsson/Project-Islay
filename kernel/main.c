@@ -2,6 +2,8 @@
 #include <arch/interrupt.h>
 #include <arch/serial.h>
 #include <arch/tty.h>
+#include <fs.h>
+#include <memory/page_frame_manager.h>
 #include <tasks/scheduler.h>
 #include <utils.h>
 
@@ -17,13 +19,12 @@ void kernel_main(struct boot_data* boot_data)
     init_interrupts();
     kprintf("Kernel successfully booted at vaddr 0xE0100000 (3.5 GiB + 1 MiB)\n\n");
 
+    fs_init(boot_data);
     scheduler_init();
 
     // Comment to test the scheduler
     scheduler_test();
     fs_tests();
-
-    mount_sysfs("/sys");
 
     // TODO: nice looking boot animation (requires timers)
     kshell();

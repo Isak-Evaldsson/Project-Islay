@@ -11,7 +11,7 @@ static int test_fs_mount(void *data)
 {
     struct data *msg = data;
     if (msg->fail) {
-        return -1;
+        return -EIO;
     }
 
     kprintf("mounted testfs: %s\n", msg->str);

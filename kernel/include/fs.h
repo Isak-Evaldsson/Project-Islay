@@ -1,5 +1,6 @@
 #ifndef FS_H
 #define FS_H
+#include <arch/boot.h>
 #include <libc.h>
 #include <stdbool.h>
 #include <uapi/dirent.h>
@@ -91,6 +92,8 @@ struct task_fs_data {
         .file_table = {}  \
     }
 
+/** Initialise the file system based on the boot data parameters */
+int fs_init(struct boot_data* boot_data);
 
 /**
  * Registers a file system for future mounting. The name of each registered file system is
