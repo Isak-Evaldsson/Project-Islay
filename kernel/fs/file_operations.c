@@ -35,9 +35,8 @@ int open(struct task_fs_data* task_data, const char* path, int oflag)
     kassert(node->type == VFS_NODE_TYPE_MNT);
 
     // Call open within the mounted file system
-    inode = node->fs->ops->open(node, internal_path);
-    if (inode == NULL) {
-        ret = -ENOENT;
+    ret = node->fs->ops->open(node, *internal_path ? internal_path : "/", &inode);
+    if (ret < 0) {
         goto end;
     }
 

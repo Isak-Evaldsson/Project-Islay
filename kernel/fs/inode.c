@@ -21,9 +21,9 @@ int verify_inode(const struct inode *inode)
 
 /*
     Gets the inode with id for a certain vfs_node. Ensures that the inode is properly read and
-    initalized. Returns the inode object on success, NULL if cache is empty.
+    initalized. If successful it returns 0 and fills node_ptr, or -ERRNO on failure.
 */
-struct inode *get_inode(struct vfs_node *vfs_node, ino_t id)
+int get_inode(const struct vfs_node *vfs_node, ino_t id, struct inode **inode_ptr)
 {
     struct inode *inode, *free = NULL;
 
@@ -32,7 +32,8 @@ struct inode *get_inode(struct vfs_node *vfs_node, ino_t id)
         if (inode->count > 0) {
             if (inode->vfs_node == vfs_node && inode->id == id) {
                 inode->count++;
-                return inode;
+                *inode_ptr = inode;
+                return 0;
             }
         } else {
             free = inode;
@@ -41,7 +42,8 @@ struct inode *get_inode(struct vfs_node *vfs_node, ino_t id)
 
     // If there's no space left in the cache, return an empty node
     if (free == NULL) {
-        return NULL;
+        *inode_ptr = NULL;
+        return -ENOENT;
     }
 
     // TODO: Handle reading of inode data from the actual fs
@@ -50,7 +52,8 @@ struct inode *get_inode(struct vfs_node *vfs_node, ino_t id)
     free->count       = 1;
     free->inode_dirty = false;
     free->mode        = 0;
-    return free;
+    *inode_ptr        = free;
+    return 0;
 }
 
 /* Hands a no longer used inode back to cache. */

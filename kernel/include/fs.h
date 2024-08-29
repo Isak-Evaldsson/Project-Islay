@@ -59,7 +59,7 @@ struct fs_ops {
     int (*read)(char* buf, size_t size, off_t offset, struct open_file* file);
 
     // Returns a pointer to the inode at the specified path, or NULL If the inode can't be found
-    struct inode* (*open)(const struct vfs_node* node, const char* path);
+    int (*open)(const struct vfs_node* node, const char* path, struct inode** inode_ptr);
 
     // Called when reading from a directory, the fs is responsible for filling the supplied dirent
     // entry at the specified offset. On failure return -ERRNO, on success return the next offset or
