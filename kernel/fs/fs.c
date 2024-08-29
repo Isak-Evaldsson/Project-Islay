@@ -1,7 +1,9 @@
+#include <arch/paging.h>
 #include <libc.h>
 #include <utils.h>
 
 #include "fs-internals.h"
+#include "romfs/romfs.h"
 
 /*
     VFS main data structures
@@ -264,8 +266,7 @@ int mount(const char* path, const char* name, void* data)
 
     res = fs->ops->mount(data);
     if (res) {
-        LOG("mount error: Failed to call mount on fs %x with data %x (%i)\n", fs, data, res);
-        res = -EIO;
+        LOG("mount error: Failed to call mount on fs %x with data %x (%i)", fs, data, res);
         goto end;
     }
 
@@ -282,4 +283,39 @@ end:
 
     kfree(ppath);
     return res;
+}
+
+int fs_init(struct boot_data* boot_data)
+{
+    /*
+        1. Register available file-systems
+        2. Mount initrd at /boot
+    */
+    int ret;
+
+    ret = mount_sysfs("/sys");
+    if (ret < 0) {
+        LOG("Failed to mount sysfs %i", ret);
+        return ret;
+    }
+
+    ret = register_fs(&romfs);
+    if (ret < 0) {
+        LOG("Failed to register romfs %i", ret);
+        return ret;
+    }
+
+    // Mount initrd
+    struct romfs_mount_data intird_mnt_data = {
+        .data = (char*)P2L(boot_data->initrd_start),
+        .size = boot_data->initrd_size,
+    };
+
+    ret = mount("/boot", ROMFS_FS_NAME, &intird_mnt_data);
+    if (ret < 0) {
+        LOG("Failed to mount initrd: %i", ret);
+        return ret;
+    }
+
+    return 0;
 }
