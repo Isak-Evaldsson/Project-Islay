@@ -55,27 +55,29 @@ static int sysfs_read(char* buf, size_t size, off_t offset, struct open_file* fi
     return read_size;
 }
 
-struct inode* sysfs_open(const struct vfs_node* node, const char* path)
+int sysfs_open(const struct vfs_node* node, const char* path, struct inode** inode_ptr)
 {
     // Search files, and store point in inode
+    int           ret;
     struct inode* inode = NULL;
 
-    if (*path == '\0') {
-        inode       = get_inode(node, (ino_t)&root);
-        inode->mode = S_IFDIR;
-        goto end;
+    if (*path == '/') {
+        ret = get_inode(node, (ino_t)&root, inode_ptr);
+        if (!ret) {
+            (*inode_ptr)->mode = S_IFDIR;
+        }
+        return 0;
     }
 
     for (struct sysfs_file* f = files; f < END_OF_ARRAY(files); f++) {
         if (strcmp(path, f->name) == 0) {
-            inode       = get_inode(node, (ino_t)f);
-            inode->mode = S_IFREG;
-            break;
+            get_inode(node, (ino_t)f, inode_ptr);
+            (*inode_ptr)->mode = S_IFREG;
+            return 0;
         }
     }
 
-end:
-    return inode;
+    return -ENOENT;
 }
 
 static int sysfs_readdir(const struct open_file* file, struct dirent* dirent, off_t offset)
@@ -145,13 +147,13 @@ int mount_sysfs(const char* path)
 
     ret = register_fs(&sysfs);
     if (ret && ret != -EEXIST) {
-        kprintf("Failed to register sysfs (%i)\n", ret);
+        LOG("Failed to register sysfs (%i)\n", ret);
         return ret;
     }
 
     ret = mount(path, "sysfs", NULL);
     if (ret) {
-        log("Failed to mount sysfs at /sys (%i)\n", ret);
+        LOG("Failed to mount sysfs at /sys (%i)\n", ret);
         return ret;
     }
 }
