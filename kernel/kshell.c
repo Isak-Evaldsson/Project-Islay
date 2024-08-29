@@ -59,7 +59,7 @@ static void mem_stats()
 static void list_cmd()
 {
     int ret = 0;
-    int fd  = open(&scheduler_get_current_task()->fs_data, "/sys/files", O_DIRECTORY);
+    int fd  = open(&scheduler_get_current_task()->fs_data, "/sys", O_DIRECTORY);
     if (fd < 0) {
         kprintf("failed to open %s, errno -%u\n", "/sys", -fd);
         return;
@@ -93,19 +93,19 @@ static void read_cmd(char *arg)
     snprintf(path, sizeof(path), "/sys/%s", arg);
     int fd = open(&scheduler_get_current_task()->fs_data, path, 0);
     if (fd < 0) {
-        kprintf("failed to open %s, errno -%u\n", path, -fd);
+        kprintf("failed to open %s, errno %i\n", path, fd);
         return;
     }
 
     ssize_t nbytes = read(&scheduler_get_current_task()->fs_data, fd, buf, PAGE_SIZE - 1);
     if (nbytes < 0) {
-        kprintf("Failed to read fd, errno -%u\n", fd, -nbytes);
+        kprintf("Failed to read fd %u, errno %i\n", fd, nbytes);
         goto end;
     }
 
     // Ensure that we print a null-terminated string
     buf[nbytes] = '\0';
-    kprintf("%s", buf);
+    kprintf("%s\n", buf);
 
 end:
     int res = close(&scheduler_get_current_task()->fs_data, fd);
@@ -114,7 +114,7 @@ end:
     }
 }
 
-static void parse_command(const char *cmd)
+static void parse_command(char *cmd)
 {
     char *save_ptr;
     char *name = strtok(cmd, " ", &save_ptr);
@@ -139,7 +139,7 @@ void kshell()
 
     print_kernel_header();
 
-    buf = vmem_request_free_page(0);
+    buf = (char *)vmem_request_free_page(0);
     if (!buf) {
         kprintf("Failed to allocate kshell buffer\n");
         return;
