@@ -8,6 +8,8 @@ extern void tlb_invalid_page(void *addr);
 // Kernel boot page directory
 extern uint32_t boot_page_directory[];
 
+// TODO: Add some kind of intention/permission flags (OVERWRITE, CHANGE_FLAGS, NEW_MAPPING) to avoid
+// bugs.
 void map_page(physaddr_t physaddr, virtaddr_t virtaddr, uint16_t flags)
 {
     uint32_t dir_index   = virtaddr >> 22;  // The 10 greatest bits yields our directory index.
@@ -22,7 +24,10 @@ void map_page(physaddr_t physaddr, virtaddr_t virtaddr, uint16_t flags)
     // Clears the lowest 12 bits befor converting to virtual address
     // Assumes the page table address to be linearly mapped
     uint32_t *page_table = (uint32_t *)((page_dir_entry & ~0xfff) + HIGHER_HALF_ADDR);
-    if (page_table[table_index] != 0) {
+    if ((page_table[table_index] & ~0xfff) == physaddr) {
+        // Changing flags is fine
+    } else if (page_table[table_index] != 0) {
+        // Change from panic to intention check when new api is implemented
         kpanic("Handle page table overwrite");
     }
 
