@@ -466,7 +466,7 @@ static void new_task_wrapper(void *ip)
 task_t *scheduler_create_task(void *ip)
 {
     uint32_t flags;
-    task_t  *task = kmalloc(sizeof(task_t));
+    task_t  *task = kcalloc(sizeof(task_t), 1);
     if (task == NULL) {
         return NULL;
     }
@@ -476,6 +476,7 @@ task_t *scheduler_create_task(void *ip)
     task->time_used = 0;
     task->state     = READY_TO_RUN;
     task->status    = 0;
+    task->fs_data   = FS_DATA_INIT();
 
     // Allocate stack
     task->kstack_bottom = vmem_request_free_page(0);
@@ -533,7 +534,7 @@ static void cleanup_thread()
 
 void scheduler_init()
 {
-    current_task = kmalloc(sizeof(task_t));
+    current_task = kcalloc(sizeof(task_t), 1);
     if (current_task == NULL) {
         kpanic("Failed to allocate memory for initial task");
     }
@@ -546,6 +547,7 @@ void scheduler_init()
     current_task->next      = NULL;
     current_task->state     = RUNNING;
     current_task->status    = 0;
+    current_task->fs_data   = FS_DATA_INIT();
     last_count              = timer_get_time_since_boot();
     preemption_timestamp_ns = timer_get_time_since_boot() + TIME_SLICE_NS;
 
