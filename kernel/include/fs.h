@@ -85,6 +85,13 @@ struct task_fs_data {
     struct open_file* file_table[MAX_OPEN_PER_PROC];
 };
 
+#define FS_DATA_INIT()    \
+    (struct task_fs_data) \
+    {                     \
+        .file_table = {}  \
+    }
+
+
 /**
  * Registers a file system for future mounting. The name of each registered file system is
  * required to be unique and at least 3 characters.
