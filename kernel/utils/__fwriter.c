@@ -41,6 +41,22 @@ static size_t itoa(unsigned int n, char *buffer, size_t len, char radix)
     return i;
 }
 
+/* Converts signed int to string, returns number of chars */
+static size_t signed_itoa(int num, char *buff, size_t len)
+{
+    size_t sign = 0;
+
+    if (num < 0) {
+        *buff = '-';
+        num   = -num;
+        sign++;
+        buff++;
+        len--;
+    }
+
+    return itoa((unsigned int)num, buff, len, 'u') + sign;
+}
+
 static bool print_cdev(int (*putchar)(int), const char *data, size_t length)
 {
     const unsigned char *bytes = (const unsigned char *)data;
@@ -130,11 +146,11 @@ int __fwriter(struct fwriter_ops *ops, const char *restrict format, va_list args
             if (!print(ops, written, str, len))
                 return -1;
             written += len;
-        } else if ((radix = *format) == 'u' || radix == 'o' || radix == 'x') {
+        } else if ((radix = *format) == 'u' || radix == 'o' || radix == 'x' || radix == 'i') {
             format++;
-            unsigned int num = va_arg(args, unsigned int);
-            size_t       len = itoa(num, numstr, sizeof(numstr), radix);
-
+            size_t len = radix == 'i'
+                             ? signed_itoa(va_arg(args, int), numstr, sizeof(numstr))
+                             : itoa(va_arg(args, unsigned int), numstr, sizeof(numstr), radix);
             if (!print(ops, written, numstr, len))
                 return -1;
             written += len;
