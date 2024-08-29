@@ -114,7 +114,7 @@ install-headers:
 	mkdir -p $(DESTDIR)$(INCLUDEDIR)
 	cp -rp include/. $(DESTDIR)$(INCLUDEDIR)/.
 
-install-kernel: $(KERNEL_ELF)
+install-kernel: $(KERNEL_ELF) kernel_text_section 
 	mkdir -p $(DESTDIR)$(BOOTDIR)
 	cp $(KERNEL_ELF) $(DESTDIR)$(BOOTDIR)
 
