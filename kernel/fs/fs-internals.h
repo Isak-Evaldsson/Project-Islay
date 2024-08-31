@@ -34,9 +34,9 @@ int verify_inode(const struct inode* inode);
 
 /*
     Gets the inode with id for a certain vfs_node. Ensures that the inode is properly read and
-    initalized. If successful it returns 0 and fills node_ptr, or -ERRNO on failure.
+    initalized. Returns the inode object on success, NULL if cache is empty.
 */
-int get_inode(const struct vfs_node* vfs_node, ino_t id, struct inode** inode_ptr);
+struct inode* get_inode(struct vfs_node* vfs_node, ino_t id);
 
 /* Hands a no longer used inode back to cache. */
 void put_node(struct inode* node);
