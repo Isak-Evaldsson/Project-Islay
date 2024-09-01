@@ -476,7 +476,7 @@ task_t *scheduler_create_task(void *ip)
     task->time_used = 0;
     task->state     = READY_TO_RUN;
     task->status    = 0;
-    task->fs_data   = FS_DATA_INIT();
+    task_data_init(&task->fs_data);
 
     // Allocate stack
     task->kstack_bottom = vmem_request_free_page(0);
@@ -544,10 +544,10 @@ void scheduler_init()
         kpanic("Failed to allocate memory for initial task thread registers");
     }
 
-    current_task->next      = NULL;
-    current_task->state     = RUNNING;
-    current_task->status    = 0;
-    current_task->fs_data   = FS_DATA_INIT();
+    current_task->next   = NULL;
+    current_task->state  = RUNNING;
+    current_task->status = 0;
+    task_data_init(&current_task->fs_data);
     last_count              = timer_get_time_since_boot();
     preemption_timestamp_ns = timer_get_time_since_boot() + TIME_SLICE_NS;
 

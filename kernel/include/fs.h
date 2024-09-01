@@ -108,11 +108,8 @@ struct task_fs_data {
     struct open_file* file_table[MAX_OPEN_PER_PROC];
 };
 
-#define FS_DATA_INIT()    \
-    (struct task_fs_data) \
-    {                     \
-        .file_table = {}  \
-    }
+/* To ensure that the per task fs data struct is properly initialised */
+void task_data_init(struct task_fs_data* task_data);
 
 /** Initialise the file system based on the boot data parameters */
 int fs_init(struct boot_data* boot_data);
