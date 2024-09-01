@@ -19,7 +19,10 @@ void kernel_main(struct boot_data* boot_data)
     init_interrupts();
     kprintf("Kernel successfully booted at vaddr 0xE0100000 (3.5 GiB + 1 MiB)\n\n");
 
-    fs_init(boot_data);
+    int ret = fs_init(boot_data);
+    if (ret < 0) {
+        kpanic("boot failure, failed to initialise vfs %i", ret);
+    }
     scheduler_init();
 
     // Comment to test the scheduler
