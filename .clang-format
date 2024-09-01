@@ -23,6 +23,7 @@ PointerAlignment: Right
 AllowShortEnumsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
 
 # Includes
 SortIncludes: true
