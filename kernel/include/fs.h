@@ -17,15 +17,26 @@ static_assert(MAX_OPEN_GLOBAL >= MAX_OPEN_PER_PROC, "MAX_OPEN_GLOBAL less than M
 
 /*  The primary data structure for all file-system objects */
 struct inode {
-    ino_t            id;        // Unique inode_id for all open files with mounted fs
-    mode_t           mode;      // File modes as defined in posix/stat.h
-    unsigned int     count;     // How many processes references this inode
-    struct vfs_node* vfs_node;  // Which mounted file system does this inode belong to
+    ino_t        id;     // Unique inode_id for all open files with mounted fs
+    mode_t       mode;   // File modes as defined in posix/stat.h
+    unsigned int count;  // How many processes references this inode
 
-    // TODO: Mode bits
+    struct superblock* super;       // The superblock for the mounted fs the inodes belongs to
+    bool               mountpoint;  // Is a file system mounted upon this inode
+
     bool  inode_dirty;  // Has the inode data changed compared to the one on disk,
     bool  file_dirty;   // Has the file change compared to the one on disk.
     void* data;         // For the specific file system to store relevant data
+};
+
+/* All mounted file systems requires a superblock that store data specific for each mountpoint */
+struct superblock {
+    struct inode* root_inode;     // The root inode of the file system
+    struct inode* mounted_inode;  // On which inode is this fs mounted
+    struct fs*    fs;             // Which fs does this mountpoint implement
+    void*         data;           // For file system specific mountpoint data
+
+    struct superblock* next;  // Used by the per fs mounts list
 };
 
 /*
