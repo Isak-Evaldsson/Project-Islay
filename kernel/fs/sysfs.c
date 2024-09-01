@@ -62,25 +62,17 @@ int sysfs_open(const struct vfs_node* node, const char* path, struct inode** ino
     struct inode* inode = NULL;
 
     if (*path == '/') {
-        inode = get_inode(node, (ino_t)&root);
-        if (!inode) {
-            return -ENOMEM;
+        ret = get_inode(node, (ino_t)&root, inode_ptr);
+        if (!ret) {
+            (*inode_ptr)->mode = S_IFDIR;
         }
-
-        inode->mode = S_IFDIR;
-        *inode_ptr  = inode;
         return 0;
     }
 
     for (struct sysfs_file* f = files; f < END_OF_ARRAY(files); f++) {
         if (strcmp(path, f->name) == 0) {
-            inode = get_inode(node, (ino_t)f);
-            if (!inode) {
-                return -ENOMEM;
-            }
-
-            inode->mode = S_IFREG;
-            *inode_ptr  = inode;
+            get_inode(node, (ino_t)f, inode_ptr);
+            (*inode_ptr)->mode = S_IFREG;
             return 0;
         }
     }

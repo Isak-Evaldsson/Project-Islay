@@ -276,21 +276,19 @@ int romfs_open(const struct vfs_node* node, const char* path, struct inode** ino
 {
     int                 ret;
     struct romfs_header header;
-    struct inode*       inode;
 
     ret = resolve_path(path, &header);
     if (ret < 0) {
         return ret;
     }
 
-    inode = get_inode(node, ret);
-    if (!inode) {
+    ret = get_inode(node, ret, inode_ptr);
+    if (ret < 0) {
         LOG("get_inode failed %i", ret);
-        return -ENOMEM;
+        return ret;
     }
 
-    inode->mode = header_mode_bits(&header);
-    *inode_ptr  = inode;
+    (*inode_ptr)->mode = header_mode_bits(&header);
     return 0;
 }
 
