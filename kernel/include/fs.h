@@ -59,9 +59,10 @@ typedef int (*fill_dir_t)(void* buf, const char* name, const struct stat* stat, 
 
 /* The different operations a file system can implement. */
 struct fs_ops {
-    // Returns -errno or 0 on success, the data pointer allows the function to be supplied with
-    // file system specific data
-    int (*mount)(struct superblock* super, void* data);
+    // Returns -ERRNO or 0 on success, as well as filling in the root_ptr with the id of the root
+    // inode (septate variable and not return value due to to signedness). The the data pointer
+    // allows the function to be supplied with file system specific data.
+    int (*mount)(struct superblock* super, void* data, ino_t* root_ptr);
 
     // Gets attributes for a particular file, returns -errno or 0 on success
     int (*getattr)(const struct open_file* file, struct stat* stat);

@@ -87,7 +87,7 @@ static int sysfs_fetch_inode(const struct superblock* super, ino_t id, struct in
     return -EINVAL;
 }
 
-static int sysfs_mount(struct superblock* super, void* data)
+static int sysfs_mount(struct superblock* super, void* data, ino_t* root_ptr)
 {
     int ret;
     (void)data;
@@ -99,11 +99,7 @@ static int sysfs_mount(struct superblock* super, void* data)
         return -ENOMEM;
     }
 
-    super->root_inode = get_inode(super, (ino_t)&root, &ret);
-    if (!super->root_inode) {
-        return ret;
-    }
-
+    *root_ptr = (ino_t)&root;
     return 0;
 }
 

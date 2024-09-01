@@ -119,17 +119,22 @@ static struct superblock* alloc_superblock(const char* fs_name, int* errno)
  * the inodes together. Returns 0 on success or -ERRNO on failure */
 static int mount_helper(void* data, struct superblock* superblk, struct inode* mnt_inode)
 {
-    int ret;
+    int   ret;
+    ino_t root;
 
-    // TODO: Maybe it should return the root inode number, and the the let mount call get
-    ret = superblk->fs->ops->mount(superblk, data);
+    ret = superblk->fs->ops->mount(superblk, data, &root);
     if (ret < 0) {
         return ret;
     }
 
+    superblk->root_inode = get_inode(superblk, root, &ret);
+    if (!superblk->root_inode) {
+        return ret;
+    }
+
     // Ensure that the superblock contains a valid root inode
-    if (!superblk->root_inode || !superblk->root_inode->id ||
-        !S_ISDIR(superblk->root_inode->mode) || superblk->root_inode->count != 1) {
+    if (!S_ISDIR(superblk->root_inode->mode) || superblk->root_inode->count != 1) {
+        put_node(superblk->root_inode);
         return -EINVAL;
     }
 
