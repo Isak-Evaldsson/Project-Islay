@@ -28,64 +28,6 @@ struct superblock* find_superblock(const struct inode* mounted)
     return NULL;
 }
 
-int mount_rootfs(char* name, void* data)
-{
-    int                ret;
-    struct fs*         fs;
-    struct superblock* superblk = NULL;
-
-    if (vfs_root != NULL) {
-        // vfs root can't be re-mounted
-        return -EEXIST;
-    }
-
-    for (fs = fs_list; fs != NULL; fs = fs->next) {
-        if (strncmp(fs->name, name, FS_NAME_MAXLEN) == 0)
-            break;
-    }
-    if (!fs)
-        return -ENOENT;  // No fs with name
-
-    // Find superblock
-    for (size_t i = 0; i < N_SUPERBLOCK; i++) {
-        if (superblocks[i].fs == NULL) {
-            superblk = superblocks + i;
-            break;
-        }
-    }
-
-    if (!superblk) {
-        LOG("Out of superblocks");
-        return -ENOMEM;
-    }
-
-    // Needs to be assigned here so that the fs implementation can call get_inode within mount()
-    superblk->fs = fs;
-
-    ret = fs->ops->mount(superblk, data);
-    if (ret < 0) {
-        superblk->fs = NULL;  // Mark superblock as free
-        return ret;
-    }
-
-    // Ensure that the superblock contains a valid root inode
-    if (!superblk->root_inode || !superblk->root_inode->id ||
-        !S_ISDIR(superblk->root_inode->mode) || superblk->root_inode->count != 1) {
-        superblk->fs = NULL;  // Mark superblk as free
-        return -EINVAL;
-    }
-
-    // Special case for root inode
-    superblk->mounted_inode = NULL;
-
-    // Add superblk to list the per fs mountlist
-    superblk->next = fs->mounts;
-    fs->mounts     = superblk;
-
-    vfs_root = superblk->root_inode;
-    return 0;
-}
-
 void sysfs_dump_vfs()
 {
     sysfs_writer("VFS Dump\n");
@@ -143,74 +85,120 @@ int register_fs(struct fs* fs)
     return 0;
 };
 
-int mount(const char* path, const char* name, void* data)
+/* Helper function for the mounting procedure that allocates a superblock for the fs specfied in by
+ * fs_name. Returns a superblock on success, on failure returns NULL and sets errno. */
+static struct superblock* alloc_superblock(const char* fs_name, int* errno)
 {
-    int                ret;
-    struct fs*         fs;
-    struct inode*      inode;
+    struct fs*         fs = NULL;
     struct superblock* superblk;
 
-    if (*path != '/')
-        return -EINVAL;
-
     for (fs = fs_list; fs != NULL; fs = fs->next) {
-        if (strncmp(fs->name, name, FS_NAME_MAXLEN) == 0)
+        if (strncmp(fs->name, fs_name, FS_NAME_MAXLEN) == 0)
             break;
     }
-    if (!fs)
-        return -ENOENT;  // No fs with name
+
+    if (!fs) {
+        *errno = -ENOENT;
+        return NULL;
+    }
 
     // Find superblock
-    for (size_t i = 0; i < N_SUPERBLOCK; i++) {
-        if (superblocks[i].fs == NULL) {
-            superblk = superblocks + i;
-            break;
+    for (superblk = superblocks; superblk < END_OF_ARRAY(superblocks); superblk++) {
+        if (superblk->fs == NULL) {
+            superblk->fs = fs;  // Mark superblock as allocated
+            return superblk;
         }
     }
 
-    if (!superblk) {
-        LOG("Out of superblocks");
-        return -ENOMEM;
-    }
+    *errno = -ENOMEM;
+    LOG("Out of superblocks");
+    return NULL;
+}
 
-    // Find inode to mount upon, since we never call put on success, the mountpoint will in memory
-    ret = pathwalk(vfs_root, path, &inode);
+/* Helper functions that performs the actual mounting by calling the fs implementation and "gluing"
+ * the inodes together. Returns 0 on success or -ERRNO on failure */
+static int mount_helper(void* data, struct superblock* superblk, struct inode* mnt_inode)
+{
+    int ret;
+
+    // TODO: Maybe it should return the root inode number, and the the let mount call get
+    ret = superblk->fs->ops->mount(superblk, data);
     if (ret < 0) {
-        return ret;
-    }
-
-    // TODO: Check if already mounted (and busy?)
-    if (!S_ISDIR(inode->mode)) {
-        put_node(inode);
-        return -ENOTDIR;
-    }
-
-    // Needs to be assigned here so that the fs implementation can call get_inode within
-    // mount()
-    superblk->fs = fs;
-
-    ret = fs->ops->mount(superblk, data);
-    if (ret < 0) {
-        superblk->fs = NULL;  // Mark superblock as free
-        put_node(inode);
         return ret;
     }
 
     // Ensure that the superblock contains a valid root inode
     if (!superblk->root_inode || !superblk->root_inode->id ||
         !S_ISDIR(superblk->root_inode->mode) || superblk->root_inode->count != 1) {
-        superblk->fs = NULL;  // Mark superblk as free
-        put_node(inode);
         return -EINVAL;
     }
 
     // 'Glue' the mounted filesystems together
-    inode->mountpoint       = true;
-    superblk->mounted_inode = inode;
+    if (mnt_inode) {
+        mnt_inode->mountpoint   = true;
+        superblk->mounted_inode = mnt_inode;
+    }
 
     // Add superblk to list the per fs mountlist
-    superblk->next = fs->mounts;
-    fs->mounts     = superblk;
+    superblk->next       = superblk->fs->mounts;
+    superblk->fs->mounts = superblk;
+    return 0;
+}
+
+int mount_rootfs(char* name, void* data)
+{
+    int                ret;
+    struct superblock* superblk;
+
+    superblk = alloc_superblock(name, &ret);
+    if (!superblk) {
+        return ret;
+    }
+
+    ret = mount_helper(data, superblk, NULL);
+    if (ret < 0) {
+        superblk->fs = NULL;  // Mark superblock as free
+        return ret;
+    }
+
+    vfs_root = superblk->root_inode;
+    return 0;
+}
+
+int mount(const char* path, const char* name, void* data)
+{
+    int                ret;
+    struct inode*      inode;
+    struct superblock* superblk;
+
+    if (*path != '/')
+        return -EINVAL;
+
+    superblk = alloc_superblock(name, &ret);
+    if (!superblk) {
+        return ret;
+    }
+
+    // Find inode to mount upon, since we never call put on success, the mountpoint will in memory
+    ret = pathwalk(vfs_root, path, &inode);
+    if (ret < 0) {
+        superblk->fs = NULL;  // Mark superblock as free
+        return ret;
+    }
+
+    // TODO: Check if already mounted (and busy?)
+    if (!S_ISDIR(inode->mode)) {
+        superblk->fs = NULL;  // Mark superblock as free
+        put_node(inode);
+        return -ENOTDIR;
+    }
+
+    ret = mount_helper(data, superblk, inode);
+    if (ret < 0) {
+        superblk->fs = NULL;  // Mark superblock as free
+        put_node(inode);
+        return ret;
+    }
     return 0;
 }
 
