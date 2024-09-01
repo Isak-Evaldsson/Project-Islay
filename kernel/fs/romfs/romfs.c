@@ -277,7 +277,7 @@ static int romfs_readdir(const struct open_file* file, struct dirent* dirent, of
     return GET_NEXT(header.next);
 }
 
-static int romfs_mount(struct superblock* super, void* data)
+static int romfs_mount(struct superblock* super, void* data, ino_t* root_ptr)
 {
     int                      ret;
     char                     buff[512];
@@ -320,14 +320,9 @@ static int romfs_mount(struct superblock* super, void* data)
     }
 
     LOG("Mounting romfs image of size %u containing romfs-volume: '%s'", size, blk->volume_name);
-    mount_data.start = sizeof(struct romfs_superblk) + name_length;
-    mount_data.data  = mdata->data;
-    mount_data.size  = size;
-
-    super->root_inode = get_inode(super, mount_data.start, &ret);
-    if (!super->root_inode) {
-        return ret;
-    }
+    mount_data.data = mdata->data;
+    mount_data.size = size;
+    *root_ptr       = sizeof(struct romfs_superblk) + name_length;
 
     return 0;
 }
