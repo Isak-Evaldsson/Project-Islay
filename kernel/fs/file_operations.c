@@ -92,14 +92,14 @@ static ssize_t read_helper(struct task_fs_data* task_data, int fd, void* buf, si
     }
 
     if (S_ISDIR(file->inode->mode)) {
-        return -EINVAL;
+        return -EISDIR;
     }
 
     read_offset = use_file_offset ? file->offset : offset;
 
     // TODO: Should we count the offset/bytes to ensure that we don't over-read or should we hand
     // over the responsibilty to the fs implementation?
-    read_bytes = file->file_ops->read(buf, nbyte, file->offset, file);
+    read_bytes = file->file_ops->read(buf, nbyte, read_offset, file);
     if (read_bytes < 0) {
         return read_bytes;
     }
