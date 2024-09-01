@@ -37,7 +37,8 @@ static command_t commands[] = {
 static void print_kernel_header()
 {
     kprintf("Project Islay, version 0.0.1 (pre-alpha)\n");
-    for (int i = 0; i < TERM_WIDTH; i++) kprintf("=");
+    for (int i = 0; i < TERM_WIDTH; i++)
+        kprintf("=");
 }
 
 static void print_help()
@@ -56,12 +57,15 @@ static void mem_stats()
     kprintf("%u of %u available page frames\n", mem.n_available_frames, mem.n_frames);
 }
 
-static void list_cmd()
+static void list_cmd(char *arg)
 {
-    int ret = 0;
-    int fd  = open(&scheduler_get_current_task()->fs_data, "/sys", O_DIRECTORY);
+    int  ret = 0;
+    char path[100];
+
+    snprintf(path, sizeof(path), "/%s", arg);
+    int fd = open(&scheduler_get_current_task()->fs_data, path, O_DIRECTORY);
     if (fd < 0) {
-        kprintf("failed to open %s, errno -%u\n", "/sys", -fd);
+        kprintf("failed to open %s, errno -%u\n", path, -fd);
         return;
     }
 
