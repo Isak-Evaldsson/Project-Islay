@@ -55,31 +55,6 @@ static int sysfs_read(char* buf, size_t size, off_t offset, struct open_file* fi
     return read_size;
 }
 
-int sysfs_open(const struct vfs_node* node, const char* path, struct inode** inode_ptr)
-{
-    // Search files, and store point in inode
-    int           ret;
-    struct inode* inode = NULL;
-
-    if (*path == '/') {
-        ret = get_inode(node, (ino_t)&root, inode_ptr);
-        if (!ret) {
-            (*inode_ptr)->mode = S_IFDIR;
-        }
-        return 0;
-    }
-
-    for (struct sysfs_file* f = files; f < END_OF_ARRAY(files); f++) {
-        if (strcmp(path, f->name) == 0) {
-            get_inode(node, (ino_t)f, inode_ptr);
-            (*inode_ptr)->mode = S_IFREG;
-            return 0;
-        }
-    }
-
-    return -ENOENT;
-}
-
 static int sysfs_readdir(const struct open_file* file, struct dirent* dirent, off_t offset)
 {
     struct sysfs_file* f = files + offset;
@@ -96,8 +71,25 @@ static int sysfs_readdir(const struct open_file* file, struct dirent* dirent, of
     return 0;
 }
 
-static int sysfs_mount(void* data)
+static int sysfs_fetch_inode(const struct superblock* super, ino_t id, struct inode* inode)
 {
+    if (id == (ino_t)&root) {
+        inode->mode = S_IFDIR;
+        return 0;
+    }
+
+    // Check if it's a valid id
+    if (id >= (ino_t)files && id < (ino_t)END_OF_ARRAY(files) &&
+        !(id % sizeof(struct sysfs_file))) {
+        inode->mode = S_IFREG;
+        return 0;
+    }
+    return -EINVAL;
+}
+
+static int sysfs_mount(struct superblock* super, void* data)
+{
+    int ret;
     (void)data;
 
     read_buffer      = (char*)vmem_request_free_page(0);
@@ -107,14 +99,19 @@ static int sysfs_mount(void* data)
         return -ENOMEM;
     }
 
+    super->root_inode = get_inode(super, (ino_t)&root, &ret);
+    if (!super->root_inode) {
+        return ret;
+    }
+
     return 0;
 }
 
 static struct fs_ops sysfs_ops = {
-    .mount   = sysfs_mount,
-    .open    = sysfs_open,
-    .read    = sysfs_read,
-    .readdir = sysfs_readdir,
+    .mount       = sysfs_mount,
+    .read        = sysfs_read,
+    .readdir     = sysfs_readdir,
+    .fetch_inode = sysfs_fetch_inode,
 };
 
 static DEFINE_FS(sysfs, "sysfs", &sysfs_ops);
@@ -147,13 +144,14 @@ int mount_sysfs(const char* path)
 
     ret = register_fs(&sysfs);
     if (ret && ret != -EEXIST) {
-        LOG("Failed to register sysfs (%i)\n", ret);
+        LOG("Failed to register sysfs (%i)", ret);
         return ret;
     }
 
     ret = mount(path, "sysfs", NULL);
     if (ret) {
-        LOG("Failed to mount sysfs at /sys (%i)\n", ret);
+        LOG("Failed to mount sysfs at %s (%i)", path, ret);
         return ret;
     }
+    return 0;
 }

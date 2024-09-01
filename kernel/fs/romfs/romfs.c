@@ -138,70 +138,6 @@ static off_t load_file(off_t offset, struct romfs_header* header, char* name, si
     return node;
 }
 
-static int search_dir(struct romfs_header* header, char* name)
-{
-    int    ret;
-    char   node_name[ROMFS_MAXLEN];
-    size_t node = GET_NEXT(header->info);
-
-    do {
-        ret = load_file(node, header, node_name, NULL);
-        if (ret < 0) {
-            return -EIO;
-        }
-
-        if (!strncmp(name, node_name, ROMFS_MAXLEN)) {
-            return ret;
-        }
-
-        node = GET_NEXT(header->next);
-    } while (node > 0);
-
-    return -ENOENT;
-}
-
-static int resolve_path(const char* path, struct romfs_header* header)
-{
-    int    ret;
-    char * token, *saveptr, *path_copy;
-    size_t next = mount_data.start;
-
-    path_copy = strdup(path);
-    token     = strtok(path_copy, "/", &saveptr);
-
-    if (!*token) {
-        ret = load_file(mount_data.start, header, NULL, NULL);
-        goto end;
-    }
-
-    do {
-        // Load the next entry in the path
-        ret = load_file(next, header, NULL, NULL);
-        if (ret < 0) {
-            goto end;
-        }
-
-        // If there are tokens left to parse, but the matching entry is not dir, the path cannot be
-        // found. Will always be true on first iter since root node always is a dir.
-        if (GET_TYPE(header->next) != ROMFS_TYPE_DIR) {
-            ret = -ENOENT;
-            goto end;
-        }
-
-        ret = search_dir(header, token);
-        if (ret < 0) {
-            goto end;
-        }
-
-        next  = ret;
-        token = strtok(NULL, "/", &saveptr);
-    } while (*token);
-
-end:
-    kfree(path_copy);
-    return ret;
-}
-
 static mode_t header_mode_bits(struct romfs_header* header)
 {
     mode_t mode = 0444;  // read only for all users
@@ -272,26 +208,6 @@ static int romfs_getattr(const struct open_file* file, struct stat* stat)
     return 0;
 }
 
-int romfs_open(const struct vfs_node* node, const char* path, struct inode** inode_ptr)
-{
-    int                 ret;
-    struct romfs_header header;
-
-    ret = resolve_path(path, &header);
-    if (ret < 0) {
-        return ret;
-    }
-
-    ret = get_inode(node, ret, inode_ptr);
-    if (ret < 0) {
-        LOG("get_inode failed %i", ret);
-        return ret;
-    }
-
-    (*inode_ptr)->mode = header_mode_bits(&header);
-    return 0;
-}
-
 static int romfs_read(char* buf, size_t size, off_t offset, struct open_file* file)
 {
     int                 ret;
@@ -315,6 +231,20 @@ static int romfs_read(char* buf, size_t size, off_t offset, struct open_file* fi
     };
 
     return read_size;
+}
+
+int romfs_fetch_inode(const struct superblock* super, ino_t id, struct inode* inode)
+{
+    int                 ret;
+    struct romfs_header header;
+
+    ret = load_file(id, &header, NULL, NULL);
+    if (ret < 0) {
+        return ret;
+    }
+
+    inode->mode = header_mode_bits(&header);
+    return 0;
 }
 
 static int romfs_readdir(const struct open_file* file, struct dirent* dirent, off_t offset)
@@ -347,8 +277,9 @@ static int romfs_readdir(const struct open_file* file, struct dirent* dirent, of
     return GET_NEXT(header.next);
 }
 
-static int romfs_mount(void* data)
+static int romfs_mount(struct superblock* super, void* data)
 {
+    int                      ret;
     char                     buff[512];
     struct romfs_superblk*   blk   = (struct romfs_superblk*)&buff;
     struct romfs_mount_data* mdata = data;
@@ -393,15 +324,20 @@ static int romfs_mount(void* data)
     mount_data.data  = mdata->data;
     mount_data.size  = size;
 
+    super->root_inode = get_inode(super, mount_data.start, &ret);
+    if (!super->root_inode) {
+        return ret;
+    }
+
     return 0;
 }
 
 static struct fs_ops romfs_ops = {
-    .mount   = romfs_mount,
-    .getattr = romfs_getattr,
-    .read    = romfs_read,
-    .open    = romfs_open,
-    .readdir = romfs_readdir,
+    .mount       = romfs_mount,
+    .getattr     = romfs_getattr,
+    .read        = romfs_read,
+    .readdir     = romfs_readdir,
+    .fetch_inode = romfs_fetch_inode,
 };
 
 DEFINE_FS(romfs, ROMFS_FS_NAME, &romfs_ops);
