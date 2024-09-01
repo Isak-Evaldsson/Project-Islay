@@ -247,3 +247,10 @@ int fs_init(struct boot_data* boot_data)
     return 0;
 }
 
+/* To ensure that the per task fs data struct is properly initialised */
+void task_data_init(struct task_fs_data* task_data)
+{
+    memset(task_data->file_table, 0, sizeof(task_data->file_table));
+    task_data->rootdir = vfs_root;
+    task_data->workdir = vfs_root;  // Or begin in home folder?
+}
