@@ -10,161 +10,99 @@
 */
 static struct fs* fs_list = NULL;
 
-static struct vfs_node root = {
-    .type    = VFS_NODE_TYPE_DIR,
-    .name    = "/",
-    .fs      = NULL,
-    .parent  = NULL,
-    .child   = NULL,
-    .sibling = NULL,
-};
+struct inode* vfs_root;
 
-/* TODO: Hashtable or similar to make it fast to access open files. Each process maps
- * file-descriptors to indices within the table. */
+#define N_SUPERBLOCK 10
+static struct superblock superblocks[N_SUPERBLOCK];
 
-static void sysfs_dump_fs_list()
+/* Find the superblock which is mounted upon the supplied inode, returns NULL on failure. */
+struct superblock* find_superblock(const struct inode* mounted)
 {
-    for (struct fs* fs = fs_list; fs != NULL; fs = fs->next) {
-        sysfs_writer("  (%x) name: %s, ops: %x\n", fs, fs->name, fs->ops);
+    struct superblock* super;
+
+    for (super = superblocks; super < END_OF_ARRAY(superblocks); super++) {
+        if (super->fs != NULL && super->mounted_inode == mounted) {
+            return super;
+        }
     }
+    return NULL;
 }
 
-static void sysfs_dump_vfs_node(struct vfs_node* node, int indent)
+int mount_rootfs(char* name, void* data)
 {
-    for (int i = 0; i < indent; i++) sysfs_writer("  ");
+    int                ret;
+    struct fs*         fs;
+    struct superblock* superblk = NULL;
 
-    sysfs_writer("%s type: %u fs: %x (%x)\n", node->name, node->type, node->fs, node);
-    for (node = node->child; node != NULL; node = node->sibling) {
-        sysfs_dump_vfs_node(node, indent + 1);
+    if (vfs_root != NULL) {
+        // vfs root can't be re-mounted
+        return -EEXIST;
     }
+
+    for (fs = fs_list; fs != NULL; fs = fs->next) {
+        if (strncmp(fs->name, name, FS_NAME_MAXLEN) == 0)
+            break;
+    }
+    if (!fs)
+        return -ENOENT;  // No fs with name
+
+    // Find superblock
+    for (size_t i = 0; i < N_SUPERBLOCK; i++) {
+        if (superblocks[i].fs == NULL) {
+            superblk = superblocks + i;
+            break;
+        }
+    }
+
+    if (!superblk) {
+        LOG("Out of superblocks");
+        return -ENOMEM;
+    }
+
+    // Needs to be assigned here so that the fs implementation can call get_inode within mount()
+    superblk->fs = fs;
+
+    ret = fs->ops->mount(superblk, data);
+    if (ret < 0) {
+        superblk->fs = NULL;  // Mark superblock as free
+        return ret;
+    }
+
+    // Ensure that the superblock contains a valid root inode
+    if (!superblk->root_inode || !superblk->root_inode->id ||
+        !S_ISDIR(superblk->root_inode->mode) || superblk->root_inode->count != 1) {
+        superblk->fs = NULL;  // Mark superblk as free
+        return -EINVAL;
+    }
+
+    // Special case for root inode
+    superblk->mounted_inode = NULL;
+
+    // Add superblk to list the per fs mountlist
+    superblk->next = fs->mounts;
+    fs->mounts     = superblk;
+
+    vfs_root = superblk->root_inode;
+    return 0;
 }
 
 void sysfs_dump_vfs()
 {
     sysfs_writer("VFS Dump\n");
     sysfs_writer("Registered file systems:\n");
-    sysfs_dump_fs_list();
-    sysfs_writer("\n");
 
-    sysfs_writer("VFS tree:\n");
-    sysfs_dump_vfs_node(&root, 0);
-}
-
-static int create_vfs_node(struct vfs_node* parent, char* name, struct vfs_node** new_node)
-{
-    struct vfs_node* node;
-    size_t           len = strlen(name);
-
-    if (!new_node)
-        return -EINVAL;
-
-    if (!len || len > FS_NAME_MAXLEN) {
-        return -ENAMETOOLONG;
-    }
-
-    node = kmalloc(sizeof(struct vfs_node));
-    if (!node)
-        return -ENOMEM;
-
-    node->parent = parent;
-    node->child  = NULL;
-    node->type   = VFS_NODE_TYPE_DIR;
-
-    // Append node to child list
-    node->sibling = parent->child;
-    parent->child = node;
-
-    memset(node->name, 0, sizeof(node->name));
-    memcpy(node->name, name, len);
-
-    *new_node = node;
-    return 0;
-}
-
-static struct vfs_node* search_dir_node(struct vfs_node* parent, const char* name)
-{
-    struct vfs_node* node = parent->child;
-    while (node != NULL) {
-        if (strcmp(node->name, name) == 0) {
-            break;
+    for (struct fs* fs = fs_list; fs != NULL; fs = fs->next) {
+        sysfs_writer("  (%x) name: %s, ops: %x, mountpoints:\n", fs, fs->name, fs->ops);
+        for (struct superblock* super = fs->mounts; super != NULL; super = super->next) {
+            sysfs_writer("    ->(%x) mounted inode: %x, root inode: %x\n", super,
+                         super->mounted_inode, super->root_inode);
         }
-        node = node->sibling;
     }
-    return node;
-}
-
-static void remove_empty_dir_nodes(struct vfs_node* root)
-{
-    struct vfs_node *prev, *dead, *node = root->child;
-
-    while (node != NULL) {
-        if (node->type == VFS_NODE_TYPE_DIR) {
-            if (node->child == NULL) {
-                // Empty dir node, remove
-                dead = node;
-                if (dead == root->child) {
-                    root->child = dead->sibling;
-                    if (!root->child && root->parent) {
-                        // Since we emptied the folder, we might have made the parent folder empty
-                        // as well, walk up the tree to clear newly created empty dir
-                        remove_empty_dir_nodes(root->parent);
-                    }
-
-                } else {
-                    prev->sibling = dead->sibling;
-                }
-
-                // update node but not prev since we deleted the node that would be the new prev
-                node = dead->sibling;
-                kfree(dead);
-                continue;
-
-            } else {
-                // might be an empty node further down the tree, continue...
-                remove_empty_dir_nodes(node);
-            }
-        }
-
-        prev = node;
-        node = node->sibling;
-    }
-}
-
-/*
-    Helper function for iterating over the vfs tree. Find the node at path and sets the pointer
-    passed in node_path to the part of the path that is within the node.
- */
-struct vfs_node* search_vfs(char* path, char** node_path)
-{
-    struct vfs_node* node;
-    char*            token;
-
-    token = strtok(path, "/", node_path);
-    if (!*token) {
-        return &root;
-    }
-
-    node = &root;
-    while (*token) {
-        LOG("Token: %s node: %s %s", token, node->name, *node_path);
-        node = search_dir_node(node, token);
-
-        // If the node can't be found, or we have reached a mountpoint, exit
-        if (!node || node->type == VFS_NODE_TYPE_MNT) {
-            LOG("Here: 0x%x", node);
-            goto end;
-        }
-
-        token = strtok(NULL, "/", node_path);
-    }
-
-end:
-    return node;
 }
 
 static int check_required_fs_ops(const struct fs_ops* ops)
 {
-    if (!ops->mount)
+    if (!ops->mount || !ops->read || !ops->fetch_inode || !ops->readdir)
         return -1;
 
     return 0;
@@ -207,19 +145,10 @@ int register_fs(struct fs* fs)
 
 int mount(const char* path, const char* name, void* data)
 {
-    //  How to handle mounting a file system at root and then having the test as subfolders, eg.
-    //  / (ramfs)
-    //  |_ /dev (devfs)
-    //  |_ /sys (sysf
-    //  Then when doing a call to for example open /other/file, then when the function going through
-    //  the vfs searches the root dir and not finding the other node, instead of saying, "oh no node
-    //  found", we simply fallback to the root file system and call ramfs->open("other/file")
-    //
-    //  Can that be generalised to the whole tree or just the rootfs?
-    int              res;
-    char *           token, *token_ptr, *ppath;
-    struct fs*       fs;
-    struct vfs_node *node, *parent;
+    int                ret;
+    struct fs*         fs;
+    struct inode*      inode;
+    struct superblock* superblk;
 
     if (*path != '/')
         return -EINVAL;
@@ -231,73 +160,65 @@ int mount(const char* path, const char* name, void* data)
     if (!fs)
         return -ENOENT;  // No fs with name
 
-    ppath = strdup(path);
-    token = strtok(ppath, "/", &token_ptr);
-    if (!*token) {
-        // TODO: Handle mount a fs at root
-        LOG("Mounting root file systems not yet implemented\n");
-        res = -ENOTSUP;
-        goto end;
-    }
-
-    parent = &root;
-    while (*token) {
-        node = search_dir_node(parent, token);
-        if (!node) {
-            res = create_vfs_node(parent, token, &node);
-            if (res) {
-                LOG("mount error: Failed to allocate node %i\n", res);
-                goto end;
-            }
+    // Find superblock
+    for (size_t i = 0; i < N_SUPERBLOCK; i++) {
+        if (superblocks[i].fs == NULL) {
+            superblk = superblocks + i;
+            break;
         }
-
-        if (node->type == VFS_NODE_TYPE_MNT) {
-            LOG("mount error: Trying to mount at already mounted mountpoint %s\n", path);
-            res = -EEXIST;
-            goto end;
-        }
-
-        kassert(node->type == VFS_NODE_TYPE_DIR);
-        parent = node;
-        token  = strtok(NULL, "/", &token_ptr);
-        if (node->child && !*token)
-            LOG("Warning, mounting a non-empty dir %x\n", node);
     }
 
-    res = fs->ops->mount(data);
-    if (res) {
-        LOG("mount error: Failed to call mount on fs %x with data %x (%i)", fs, data, res);
-        goto end;
+    if (!superblk) {
+        LOG("Out of superblocks");
+        return -ENOMEM;
     }
 
-    // Only change node state when we know we're successful
-    node->type = VFS_NODE_TYPE_MNT;
-    node->fs   = fs;
-    res        = 0;
+    // Find inode to mount upon, since we never call put on success, the mountpoint will in memory
+    ret = pathwalk(vfs_root, path, &inode);
+    if (ret < 0) {
+        return ret;
+    }
 
-end:
-    // If the mounting failed, we might have created empty dirs that needs to be cleaned up. We
-    // don't want a failed mount to result in an changed vfs tree
-    if (res)
-        remove_empty_dir_nodes(&root);
+    // TODO: Check if already mounted (and busy?)
+    if (!S_ISDIR(inode->mode)) {
+        put_node(inode);
+        return -ENOTDIR;
+    }
 
-    kfree(ppath);
-    return res;
+    // Needs to be assigned here so that the fs implementation can call get_inode within
+    // mount()
+    superblk->fs = fs;
+
+    ret = fs->ops->mount(superblk, data);
+    if (ret < 0) {
+        superblk->fs = NULL;  // Mark superblock as free
+        put_node(inode);
+        return ret;
+    }
+
+    // Ensure that the superblock contains a valid root inode
+    if (!superblk->root_inode || !superblk->root_inode->id ||
+        !S_ISDIR(superblk->root_inode->mode) || superblk->root_inode->count != 1) {
+        superblk->fs = NULL;  // Mark superblk as free
+        put_node(inode);
+        return -EINVAL;
+    }
+
+    // 'Glue' the mounted filesystems together
+    inode->mountpoint       = true;
+    superblk->mounted_inode = inode;
+
+    // Add superblk to list the per fs mountlist
+    superblk->next = fs->mounts;
+    fs->mounts     = superblk;
+    return 0;
 }
 
 int fs_init(struct boot_data* boot_data)
 {
-    /*
-        1. Register available file-systems
-        2. Mount initrd at /boot
-    */
     int ret;
 
-    ret = mount_sysfs("/sys");
-    if (ret < 0) {
-        LOG("Failed to mount sysfs %i", ret);
-        return ret;
-    }
+    // TODO: Add a list of all file systems to be registered at boot
 
     ret = register_fs(&romfs);
     if (ret < 0) {
@@ -311,11 +232,18 @@ int fs_init(struct boot_data* boot_data)
         .size = boot_data->initrd_size,
     };
 
-    ret = mount("/boot", ROMFS_FS_NAME, &intird_mnt_data);
+    ret = mount_rootfs(ROMFS_FS_NAME, &intird_mnt_data);
     if (ret < 0) {
-        LOG("Failed to mount initrd: %i", ret);
+        LOG("Failed to mount initrd as rootfs: %i", ret);
+        return ret;
+    }
+
+    ret = mount_sysfs("/sys");
+    if (ret < 0) {
+        LOG("Failed to mount sysfs %i", ret);
         return ret;
     }
 
     return 0;
 }
+
