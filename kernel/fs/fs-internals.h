@@ -8,38 +8,25 @@
 
 #define LOG(fmt, ...) __LOG(DEBUG_FS, "[FS]", fmt, ##__VA_ARGS__)
 
-typedef enum {
-    VFS_NODE_TYPE_DIR,
-    VFS_NODE_TYPE_MNT,
-} vfs_node_type_t;
-
-struct vfs_node {
-    char             name[FS_NAME_MAXLEN + 1];
-    vfs_node_type_t  type;
-    struct fs*       fs;
-    struct vfs_node* parent;
-    struct vfs_node* child;
-    struct vfs_node* sibling;
-    // TODO: Once multithreaded, give each node a spinlock
-};
+/* The root vfs root inode, i.e. the root_inode of the rootfs superblock */
+extern struct inode* vfs_root;
 
 /*
-    Helper function for iterating over the vfs tree. Find the node at path and sets the pointer
-    passed in node_path to the part of the path that is within the node.
- */
-struct vfs_node* search_vfs(char* path, char** node_path);
-
-/* Checks that the inode is correctly filed in. Returns -ERRN0 or 0 on success */
-int verify_inode(const struct inode* inode);
-
-/*
-    Gets the inode with id for a certain vfs_node. Ensures that the inode is properly read and
-    initalized. If successful it returns 0 and fills node_ptr, or -ERRNO on failure.
+    Gets the inode with id for a certain superblock. Ensures that the inode is properly read and
+    initalized. If successful it returns the inode, on failure it returns NULL and fills the errno
+    variable with -ERRNO.
 */
-int get_inode(const struct vfs_node* vfs_node, ino_t id, struct inode** inode_ptr);
+struct inode* get_inode(const struct superblock* super, ino_t id, int* errno);
 
 /* Hands a no longer used inode back to cache. */
 void put_node(struct inode* node);
+
+/*
+    Get a copy of a inode that already exits in memory.
+
+    Allow one the later call put on it without messing upp the refcount;
+ */
+struct inode* clone_inode(struct inode* inode);
 
 /* Finds a free fd with the task and allocates an open file object from the global table.
    Returns the found fd and sets the file object pointer.
@@ -48,6 +35,15 @@ int alloc_fd(struct task_fs_data* task_data, struct open_file** file);
 
 /* Frees the open file associated with the fd. Returns 0 on success, else errno. */
 int free_fd(struct task_fs_data* task_data, int fd);
+
+/* Find the superblock which is mounted upon the supplied inode, returns NULL on failure. */
+struct superblock* find_superblock(const struct inode* mounted);
+
+/*
+    Iterates over the path until the correct inode is found. On success it returns 0 and sets
+    the inode_ptr correctly, otherwise it returns -ERRNO.
+*/
+int pathwalk(struct inode* root, const char* path, struct inode** inode_ptr);
 
 /*
     sysfs debug functions

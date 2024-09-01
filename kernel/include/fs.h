@@ -61,7 +61,7 @@ typedef int (*fill_dir_t)(void* buf, const char* name, const struct stat* stat, 
 struct fs_ops {
     // Returns -errno or 0 on success, the data pointer allows the function to be supplied with
     // file system specific data
-    int (*mount)(void* data);
+    int (*mount)(struct superblock* super, void* data);
 
     // Gets attributes for a particular file, returns -errno or 0 on success
     int (*getattr)(const struct open_file* file, struct stat* stat);
@@ -70,12 +70,17 @@ struct fs_ops {
     // failure, or number of read byte on success
     int (*read)(char* buf, size_t size, off_t offset, struct open_file* file);
 
-    // Returns a pointer to the inode at the specified path, or NULL If the inode can't be found
-    int (*open)(const struct vfs_node* node, const char* path, struct inode** inode_ptr);
+    // If defined, open() will be called during file opening after its inode is fetched. This allows
+    // the fs implementation to provide additional initialisation before file reads/writes. Returns
+    // 0 on success and, -errno on failure
+    int (*open)(struct open_file* file);
 
-    // Called when reading from a directory, the fs is responsible for filling the supplied dirent
-    // entry at the specified offset. On failure return -ERRNO, on success return the next offset or
-    // 0 if the full dir is read.
+    // Fetch inode from disk and fill the supplied inode pointer
+    int (*fetch_inode)(const struct superblock* super, ino_t id, struct inode* inode);
+
+    // Called when reading from a directory, the fs is responsible for filling the supplied
+    // dirent entry at the specified offset. On failure return -ERRNO, on success return the
+    // next offset or 0 if the full dir is read.
     int (*readdir)(const struct open_file* file, struct dirent* dirent, off_t offset);
 
     // Called upon when a open file is closed
@@ -87,13 +92,19 @@ struct fs_ops {
 
 /*  Static filesystem data */
 struct fs {
-    const char     name[FS_NAME_MAXLEN + 1];
-    struct fs_ops* ops;
-    struct fs*     next;
+    const char         name[FS_NAME_MAXLEN + 1];
+    struct fs_ops*     ops;
+    struct fs*         next;
+    struct superblock* mounts;  // List's all superblock mounted to this fs
 };
 
 /* Struct containing all per task fs related data */
 struct task_fs_data {
+    // Note, the inode pointers needs to be clone on usage, otherwise calls to put_inode() may lead
+    // to the being free which may break the vfs it they point to a root inode
+    struct inode* rootdir;  // Root directory, stored per process to enable chroot syscall
+    struct inode* workdir;  // Start inode for relative paths
+
     struct open_file* file_table[MAX_OPEN_PER_PROC];
 };
 

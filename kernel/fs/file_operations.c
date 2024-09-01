@@ -3,63 +3,38 @@
 int open(struct task_fs_data* task_data, const char* path, int oflag)
 {
     int               fd, ret;
-    unsigned int      id;
-    char*             ppath = strdup(path);
-    char*             internal_path;
-    struct vfs_node*  node;
     struct open_file* file;
     struct inode*     inode;
 
     fd = alloc_fd(task_data, &file);
     if (fd < 0) {
-        ret = fd;
-        goto end;
+        return fd;
     }
 
-    // Search vfs for the mountpoint containing the supplied path
-    node = search_vfs(ppath, &internal_path);
-    if (!node) {
-        ret = -ENOENT;
-        goto end;
-    }
-
-    // We have 3 scenarios to handle:
-    //    1. MNTPOINT - defer to fs implementation
-    //    2. DIR - fallback to root fs?, Or do we want a "vfs-fs"? we're read/writes are not
-    //       allowed, but READDIR is?
-    if (!*internal_path) {
-        // TODO: Handle opening a vfs dir!!!
-    }
-
-    // TODO: Will this be a problem? Assert for now so it's caught at least.
-    kassert(node->type == VFS_NODE_TYPE_MNT);
-
-    // Call open within the mounted file system
-    ret = node->fs->ops->open(node, *internal_path ? internal_path : "/", &inode);
+    ret = pathwalk(*path == '/' ? task_data->rootdir : task_data->workdir, path, &inode);
     if (ret < 0) {
-        goto end;
-    }
-
-    // Check that the fs implementation has filled in the inode correctly
-    ret = verify_inode(inode);
-    if (ret < 0) {
-        goto end;
+        return ret;
     }
 
     if ((oflag & O_DIRECTORY) && !S_ISDIR(inode->mode)) {
-        ret = -ENOTDIR;
-        goto end;
+        put_node(inode);
+        return -ENOTDIR;
     }
 
-    file->file_ops            = node->fs->ops;
-    file->inode               = inode;
+    file->file_ops = inode->super->fs->ops;
+    file->inode    = inode;
+
+    if (file->file_ops->open) {
+        ret = file->file_ops->open(file);
+        if (ret < 0) {
+            put_node(inode);
+            return ret;
+        }
+    }
+
     file->ref_count           = 1;  // Marks the file object as allocated
     task_data->file_table[fd] = file;
-
-    ret = fd;
-end:
-    kfree(ppath);
-    return ret;
+    return 0;
 }
 
 int close(struct task_fs_data* task_data, int fd)
