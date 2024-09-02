@@ -2,6 +2,8 @@
 #include <uapi/errno.h>
 #include <utils.h>
 
+#include "../fs/fs-internals.h"
+
 struct data {
     int         fail;
     const char *str;
