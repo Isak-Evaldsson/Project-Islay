@@ -41,6 +41,10 @@ int free_fd(struct task_fs_data* task_data, int fd);
 /* Find the superblock which is mounted upon the supplied inode, returns NULL on failure. */
 struct superblock* find_superblock(const struct inode* mounted);
 
+/* Specially mount function handling mounting of the root fs, retruns 0 on success and -ERRNO on
+ * failure*/
+int mount_rootfs(char* name, void* data);
+
 /*
     Iterates over the path until the correct inode is found. On success it returns 0 and sets
     the inode_ptr correctly, otherwise it returns -ERRNO.
