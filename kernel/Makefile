@@ -36,11 +36,11 @@ boot/init.o \
 devices/input_manager.o \
 devices/timer.o \
 devices/ps2_keyboard.o \
-fs/fs.o \
 fs/file_operations.o \
 fs/file_table.o \
 fs/init.o \
 fs/inode.o \
+fs/mounting.o \
 fs/pathwalker.o \
 fs/romfs/romfs.o\
 fs/sysfs/sysfs.o \
