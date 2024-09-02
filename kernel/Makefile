@@ -39,6 +39,7 @@ devices/ps2_keyboard.o \
 fs/fs.o \
 fs/file_operations.o \
 fs/file_table.o \
+fs/init.o \
 fs/inode.o \
 fs/pathwalker.o \
 fs/romfs/romfs.o\
