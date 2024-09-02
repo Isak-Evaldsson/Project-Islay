@@ -4,6 +4,8 @@
 #include <uapi/errno.h>
 #include <utils.h>
 
+#include "sysfs/sysfs.h"
+
 #define DEBUG_FS 1
 
 #define LOG(fmt, ...) __LOG(DEBUG_FS, "[FS]", fmt, ##__VA_ARGS__)

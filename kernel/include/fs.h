@@ -150,13 +150,6 @@ ssize_t pread(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte, o
 */
 int readdirents(struct task_fs_data* task_data, int fd, struct dirent* buf, int buf_count);
 
-/*
-    Sysfs API
-*/
-
-/* Writes formatted strings to the global sysfs read buffer */
-void sysfs_writer(const char* restrict format, ...);
-
 /* Mounts sysfs at the specified path */
 int mount_sysfs(const char* path);
 

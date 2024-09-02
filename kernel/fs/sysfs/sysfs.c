@@ -1,14 +1,8 @@
-/*
-    sysfs - a filesystem exposing kernel info the userspace.
-
-    Conceptually similar to sys/procfs in Linux.
-*/
-
 #include <arch/paging.h>
 #include <libc.h>
 #include <memory/vmem_manager.h>
 
-#include "fs-internals.h"
+#include "sysfs.h"
 
 /* Global buffer used when reading from the virtual files within sysfs */
 static char*  read_buffer;
@@ -110,7 +104,7 @@ static struct fs_ops sysfs_ops = {
     .fetch_inode = sysfs_fetch_inode,
 };
 
-static DEFINE_FS(sysfs, "sysfs", &sysfs_ops);
+DEFINE_FS(sysfs, SYSFS_FS_NAME, &sysfs_ops);
 
 /*
     Sysfs API
@@ -132,22 +126,3 @@ void sysfs_writer(const char* restrict format, ...)
         read_buffer_offset += nbytes;
     }
 };
-
-/* Mounts sysfs at the specified path */
-int mount_sysfs(const char* path)
-{
-    int ret;
-
-    ret = register_fs(&sysfs);
-    if (ret && ret != -EEXIST) {
-        LOG("Failed to register sysfs (%i)", ret);
-        return ret;
-    }
-
-    ret = mount(path, "sysfs", NULL);
-    if (ret) {
-        LOG("Failed to mount sysfs at %s (%i)", path, ret);
-        return ret;
-    }
-    return 0;
-}
