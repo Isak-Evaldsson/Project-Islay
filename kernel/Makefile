@@ -42,7 +42,7 @@ fs/file_table.o \
 fs/inode.o \
 fs/pathwalker.o \
 fs/romfs/romfs.o\
-fs/sysfs.o \
+fs/sysfs/sysfs.o \
 memory/heap_allocator.o \
 memory/page_frame_allocator.o \
 memory/vmem_manager.o \
