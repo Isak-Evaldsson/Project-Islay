@@ -54,9 +54,6 @@ struct open_file {
     struct fs_ops* file_ops;   // Copy of inode->vfs_node->fs->fs_ops to speed up file accesses
 };
 
-/* Helper function for the file system to create directory entries */
-typedef int (*fill_dir_t)(void* buf, const char* name, const struct stat* stat, off_t off);
-
 /* The different operations a file system can implement. */
 struct fs_ops {
     // Returns -ERRNO or 0 on success, as well as filling in the root_ptr with the id of the root
