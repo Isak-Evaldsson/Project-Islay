@@ -1,11 +1,18 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
+
 /*
     Stack Smashing Protector, SSP
 
     Currently a minimal possible implementation, currently more used for debugging than security
 */
 
-#include <utils.h>
 #include <stdint.h>
+#include <utils.h>
 
 #if UINT32_MAX == UINTPTR_MAX
 #define STACK_CHK_GUARD 0xe2dee396

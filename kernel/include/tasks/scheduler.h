@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
 #ifndef TASK_SCHEDULER_H
 #define TASK_SCHEDULER_H
 #include <arch/thread.h>

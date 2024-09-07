@@ -1,8 +1,14 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
 #include <arch/boot.h>
 #include <arch/paging.h>
-#include <utils.h>
 #include <memory/page_frame_manager.h>
 #include <memory/vmem_manager.h>
+#include <utils.h>
 
 // Allocates a single page and returns its virtual address
 virtaddr_t vmem_request_free_page(unsigned int fpo)

@@ -1,30 +1,36 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
 #include <devices/input_manager.h>
 #include <devices/ps2_keyboard.h>
-#include <utils.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <utils.h>
 
 #define KBD_CMD_BUFF_SIZE 16
 
 #define BREAK_CODE 0x80
 
-// TODO: Allow multiple keyboard support
+/* TODO: Allow multiple keyboard support */
 static struct {
     char*                   name;
     keyboard_receive_data_t callback;
 } device;
 
-// Keyboard state, driving the internal state machine
+/* Keyboard state, driving the internal state machine */
 static enum kbd_state {
     KBD_INITIAL_STATE,
     KBD_KEY_PRESSED_STATE,
     KBD_EXTENDED_KEY_STATE,
 } state = KBD_INITIAL_STATE;
 
-// Checks if CAPS lock is pressed
+/* Checks if CAPS lock is pressed */
 static bool caps_pressed = false;
 
-// maps set 1 scan codes to input event key codes
+/* maps set 1 scan codes to input event key codes */
 static uint16_t set1_to_keycode[] = {
     // TODO: Add all keys
     INVALID_KEY,   KEY_ESCAPE, KEY_1,     KEY_2,      KEY_3,        KEY_4,          KEY_5,
@@ -62,8 +68,8 @@ void ps2_keyboard_register(char* device_name, keyboard_receive_data_t fn)
     kprintf("PS/2 keyboard driver: successfully registered %s\n", device_name);
 }
 
-// Helper function, that sends key event to the input manger based on the supplied keycode, handles
-// scancode independet internal state such as caps_lock etc.
+/* Helper function, that sends key event to the input manger based on the supplied keycode, handles
+   scancode independet internal state such as caps_lock etc. */
 void send_event(uint16_t keycode, bool released)
 {
     unsigned char status = (released) ? INPUT_RELEASE : INPUT_PRESSED;

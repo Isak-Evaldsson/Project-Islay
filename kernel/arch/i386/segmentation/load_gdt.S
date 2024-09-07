@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
+
 #
 # Short assenbly rutine to load GDT for 32-bit flat model configuration
 #

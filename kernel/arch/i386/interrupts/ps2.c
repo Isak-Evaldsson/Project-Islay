@@ -1,11 +1,17 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
 /*
     Simple "8042" PS/2 Controller driver,
     see: https://wiki.osdev.org/%228042%22_PS/2_Controller
 */
-#include <utils.h>
 #include <devices/ps2_keyboard.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <utils.h>
 
 #include "../io.h"
 #include "pic.h"

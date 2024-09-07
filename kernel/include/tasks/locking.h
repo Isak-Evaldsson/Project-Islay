@@ -1,17 +1,18 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
 #ifndef TASK_LOCKING_H
 #define TASK_LOCKING_H
 #include <tasks/task_queue.h>
 
 /* Defines an empty semaphore struct */
-#define SEMAPHORE_INIT(count)                                                   \
-    {                                                                           \
-        .current_count = 0, .max_count = (count), .waiting_tasks = QUEUE_INIT() \
-    }
+#define SEMAPHORE_INIT(count) \
+    {.current_count = 0, .max_count = (count), .waiting_tasks = QUEUE_INIT()}
 
-#define MUTEX_INIT()             \
-    {                            \
-        .sem = SEMAPHORE_INIT(1) \
-    }
+#define MUTEX_INIT() {.sem = SEMAPHORE_INIT(1)}
 
 /* Initialise a staticly allocated semaphore */
 #define SEMAPHORE_DEFINE(name, count) semaphore_t name = SEMAPHORE_INIT(count)

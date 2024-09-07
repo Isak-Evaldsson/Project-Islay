@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
 #include <arch/tty.h>
 #include <stdint.h>
 
@@ -71,12 +77,14 @@ void term_put(char c)
 
 void term_writestring(const char *str)
 {
-    for (size_t i = 0; str[i] != '\0'; i++) term_put(str[i]);
+    for (size_t i = 0; str[i] != '\0'; i++)
+        term_put(str[i]);
 }
 
 void term_write(const char *data, size_t size)
 {
-    for (size_t i = 0; i < size; i++) term_put(data[i]);
+    for (size_t i = 0; i < size; i++)
+        term_put(data[i]);
 }
 
 void term_clear()
