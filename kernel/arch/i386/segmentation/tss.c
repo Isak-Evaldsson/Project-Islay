@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
+
 #include <utils.h>
 
 #include "tss.h"
@@ -13,7 +20,7 @@ void init_kernel_tss()
     // clear structure
     memset(kernel_tss, 0, sizeof(tss_t));
 
-    /*  Setup tss for software multitasking */
+    //  Setup tss for software multitasking
     kernel_tss->ssp  = 0x010;  // Kernel data segment gdt offset
     kernel_tss->esp0 = 0;      // Set it to 0 for now, needs to be modifed when entering user-space
     kernel_tss->iopb = sizeof(tss_t);

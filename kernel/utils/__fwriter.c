@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
 #include <limits.h>
 #include <utils.h>
 
@@ -110,7 +116,8 @@ int __fwriter(struct fwriter_ops *ops, const char *restrict format, va_list args
             if (format[0] == '%')
                 format++;
             size_t amount = 1;
-            while (format[amount] && format[amount] != '%') amount++;
+            while (format[amount] && format[amount] != '%')
+                amount++;
             if (maxrem < amount) {
                 // TODO: Set errno to EOVERFLOW.
                 return -1;

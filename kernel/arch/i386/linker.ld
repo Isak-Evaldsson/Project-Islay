@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
+
 /* The bootloader will start execution at the symbol designated as the entry point. In this case, that's '_start' (defined in start.s) */
 ENTRY(_start)
  

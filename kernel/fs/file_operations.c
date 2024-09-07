@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
 #include "fs-internals.h"
 
 int open(struct task_fs_data* task_data, const char* path, int oflag)

@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
 #include <arch/interrupt.h>
 #include <devices/input_manager.h>
 #include <ring_buffer.h>
@@ -52,7 +58,8 @@ bool input_manager_get_event(input_event_t* event)
     input_event_t e;
 
     // Check if there's an event in the queue
-    if (ring_buff_empty(event_queue)) return false;
+    if (ring_buff_empty(event_queue))
+        return false;
 
     ring_buffer_pop(event_queue, e);
     *event = e;
@@ -64,7 +71,8 @@ void input_manager_wait_for_event(input_event_t* event)
     VERIFY_QUEUE_INIT();
 
     // Can an event be fetched form the queue
-    if (input_manager_get_event(event)) return;
+    if (input_manager_get_event(event))
+        return;
 
     // else wait
     do {

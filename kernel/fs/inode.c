@@ -1,3 +1,11 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Inode cache based on Minix 2, Copyright (C) 1987,1997, Prentice Hall
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
 #include "fs-internals.h"
 
 /* In memory inode cache. */

@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
 #include <arch/boot.h>
 #include <arch/paging.h>
 #include <arch/serial.h>
@@ -50,17 +56,17 @@ void kernel_init(multiboot_info_t *mbd, uint32_t magic)
         kpanic("No serial\n");
     }
 
-    /* Make sure the magic number matches for memory mapping */
+    // Make sure the magic number matches for memory mapping
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
         kpanic("invalid magic number!");
     }
 
-    /* Check bit 6 to see if we have a valid memory map */
+    // Check bit 6 to see if we have a valid memory map
     if (!(mbd->flags >> 6 & 0x1)) {
         kpanic("invalid memory map given by GRUB bootloader");
     }
 
-    /* Reading memory map */
+    // Reading memory map
     size_t mmap_size = mbd->mmap_length / sizeof(multiboot_memory_map_t);
     if (mmap_size > MEMMAP_SEGMENT_MAX) {
         kpanic("Too many memory segments, %u", mbd->mmap_length);
@@ -94,10 +100,10 @@ void kernel_init(multiboot_info_t *mbd, uint32_t magic)
     boot_data.initrd_size  = initrd_size;
     boot_data.initrd_start = initrd_start;
 
-    /* Remove identity mapping, doing anything with the mbd pointer at this point will lead to
-     * unrecoverable page faults */
+    // Remove identity mapping, doing anything with the mbd pointer at this point will lead to
+    // unrecoverable page faults
     unmap_identity_mapping();
 
-    /* Enter kernel main */
+    // Enter kernel main
     kernel_main(&boot_data);
 }

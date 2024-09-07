@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
 /*
     Implements the libc methods required for a gcc freestanding environment
 */
@@ -24,7 +30,8 @@ void *memcpy(void *__restrict dest, const void *__restrict src, size_t count)
     const unsigned char *usrc  = (const unsigned char *)src;
     unsigned char       *udest = (unsigned char *)dest;
 
-    for (size_t i = 0; i < count; i++) udest[i] = usrc[i];
+    for (size_t i = 0; i < count; i++)
+        udest[i] = usrc[i];
 
     return dest;
 }
@@ -35,7 +42,8 @@ void *memmove(void *dest, const void *src, size_t count)
     unsigned char       *udest = (unsigned char *)dest;
 
     if (udest < usrc) {
-        for (size_t i = 0; i < count; i++) udest[i] = usrc[i];
+        for (size_t i = 0; i < count; i++)
+            udest[i] = usrc[i];
     } else {
         for (size_t i = count; i != 0; i--) {
             udest[i - 1] = usrc[i - 1];
@@ -47,7 +55,8 @@ void *memmove(void *dest, const void *src, size_t count)
 void *memset(void *dest, int ch, size_t count)
 {
     unsigned char *udest = (unsigned char *)dest;
-    for (size_t i = 0; i < count; i++) udest[i] = (unsigned char)ch;
+    for (size_t i = 0; i < count; i++)
+        udest[i] = (unsigned char)ch;
 
     return dest;
 }
@@ -56,7 +65,8 @@ size_t strlen(const char *str)
 {
     size_t len = 0;
 
-    while (str[len] != '\0') len++;
+    while (str[len] != '\0')
+        len++;
 
     return len;
 }
@@ -132,7 +142,8 @@ char *strtok(char *str, const char *delim, char **saveptr)
     }
     s = start;
     // Find start of delimiter, i.e. end of token
-    while (*s && *s != *delim) s++;
+    while (*s && *s != *delim)
+        s++;
 
     // If end of string no need to check the delimiter
     if (!s[0]) {

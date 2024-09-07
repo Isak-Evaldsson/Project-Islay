@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
+
 # outb - Writes a byte of data to the specified port
 # args: 8(%esp) - the byte of data
 #       4(%esp) - the port address

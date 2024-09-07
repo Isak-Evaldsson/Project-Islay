@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
 #include "../io.h"
 #include "pic.h"
 
@@ -11,7 +17,8 @@ void pic_acknowledge(unsigned int irq_num)
         return;
     }
 
-    if (irq_num >= 8) outb(PIC2_COMMAND, PIC_ACK);
+    if (irq_num >= 8)
+        outb(PIC2_COMMAND, PIC_ACK);
 
     // Primary must always be ack:ed
     outb(PIC1_COMMAND, PIC_ACK);
@@ -49,7 +56,8 @@ void pic_irq_disable_all()
 void pic_irq_enable(uint8_t irq_num)
 {
     // Invalid irq numbers
-    if (irq_num >= 16) return;
+    if (irq_num >= 16)
+        return;
 
     uint16_t port  = (irq_num < 8) ? PIC1_DATA : PIC2_DATA;
     uint8_t  value = inb(port) & ~(1 << irq_num);
@@ -59,7 +67,8 @@ void pic_irq_enable(uint8_t irq_num)
 void pic_irq_disable(uint8_t irq_num)
 {
     // Invalid irq numbers
-    if (irq_num >= 16) return;
+    if (irq_num >= 16)
+        return;
 
     uint16_t port  = (irq_num < 8) ? PIC1_DATA : PIC2_DATA;
     uint8_t  value = inb(port) | (1 << irq_num);

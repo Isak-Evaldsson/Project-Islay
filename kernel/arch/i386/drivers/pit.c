@@ -1,10 +1,17 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
+
 /*
     Intel 8253/8254 Programmable Interval Timer (PIT) driver
 */
-#include <utils.h>
+#include <devices/timer.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <devices/timer.h>
+#include <utils.h>
 
 #include "../io.h"
 

@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
 #ifndef FS_H
 #define FS_H
 #include <arch/boot.h>
@@ -19,7 +25,7 @@ struct open_file;
 
 /* Struct containing all per task fs related data */
 struct task_fs_data {
-    // Note, the inode pointers needs to be clone on usage, otherwise calls to put_inode() may lead
+    // Note, the inode pointers needs to be cloned on usage, otherwise calls to put_inode() may lead
     // to the being free which may break the vfs it they point to a root inode
     struct inode* rootdir;  // Root directory, stored per process to enable chroot syscall
     struct inode* workdir;  // Start inode for relative paths

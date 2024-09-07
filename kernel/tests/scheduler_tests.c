@@ -1,6 +1,12 @@
-#include <utils.h>
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
 #include <tasks/locking.h>
 #include <tasks/scheduler.h>
+#include <utils.h>
 
 static mutex_t *m;
 

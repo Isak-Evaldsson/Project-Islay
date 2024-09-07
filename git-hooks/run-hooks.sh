@@ -1,3 +1,9 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# See README.md and LICENSE.txt for license details.
+#
+# Copyright (C) 2024 Isak Evaldsson
+#
 #!/bin/bash
 #
 # Git hook runner, when used git hook it will run all shell scripts within

@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2023 Sebastian Raase (original FUSE implementation)
+   Copyright (C) 2024 Isak Evaldsson
+*/
 #include "romfs.h"
 
 #define ROMFS_MAXLEN 128

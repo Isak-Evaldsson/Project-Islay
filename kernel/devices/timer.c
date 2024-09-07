@@ -1,3 +1,9 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+
+   See README.md and LICENSE.txt for license details.
+
+   Copyright (C) 2024 Isak Evaldsson
+*/
 #include <devices/timer.h>
 #include <utils.h>
 
@@ -18,7 +24,7 @@
 #define VERIFY_HEAP()
 #endif
 
-#define GET_PARENT(n)      (((n)-1) / 2)
+#define GET_PARENT(n)      (((n) - 1) / 2)
 #define GET_LEFT_CHILD(n)  ((n) * 2 + 1)
 #define GET_RIGHT_CHILD(n) ((n) * 2 + 2)
 
@@ -76,10 +82,12 @@ void print_heap_element(size_t index, size_t indent)
     timed_event_t* event = event_queue.array + index;
 
     // Ensure termination
-    if (index >= event_queue.size) return;
+    if (index >= event_queue.size)
+        return;
 
     // Insert proper indent
-    for (size_t i = 0; i < indent; i++) kprintf("  ");
+    for (size_t i = 0; i < indent; i++)
+        kprintf("  ");
 
     kprintf("%u: timestamp %u, callback %u\n", index, event->timestamp_ns, event->callback);
     print_heap_element(GET_LEFT_CHILD(index), indent + 1);
