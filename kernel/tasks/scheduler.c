@@ -472,7 +472,7 @@ static void new_task_wrapper(void *ip)
 task_t *scheduler_create_task(void *ip)
 {
     uint32_t flags;
-    task_t  *task = kcalloc(sizeof(task_t), 1);
+    task_t  *task = kalloc(sizeof(task_t));
     if (task == NULL) {
         return NULL;
     }
@@ -540,7 +540,7 @@ static void cleanup_thread()
 
 void scheduler_init()
 {
-    current_task = kcalloc(sizeof(task_t), 1);
+    current_task = kalloc(sizeof(task_t));
     if (current_task == NULL) {
         kpanic("Failed to allocate memory for initial task");
     }

@@ -20,7 +20,7 @@ struct thread_regs {
  * instruction pointer unless it set to NULL */
 thread_regs_t* create_thread_regs_with_stack(void* stack_top, void (*ip)(void*), void* arg)
 {
-    thread_regs_t* regs = kmalloc(sizeof(thread_regs_t));
+    thread_regs_t* regs = kalloc(sizeof(thread_regs_t));
     if (regs == NULL) {
         return NULL;
     }
@@ -48,7 +48,7 @@ thread_regs_t* create_thread_regs_with_stack(void* stack_top, void (*ip)(void*),
 /* Create the thread registers for the initial thread */
 thread_regs_t* create_initial_thread_regs()
 {
-    thread_regs_t* regs = kmalloc(sizeof(thread_regs_t));
+    thread_regs_t* regs = kalloc(sizeof(thread_regs_t));
     if (regs == NULL) {
         return NULL;
     }

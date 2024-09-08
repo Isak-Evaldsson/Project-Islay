@@ -105,7 +105,7 @@ int strncmp(const char *lhs, const char *rhs, size_t count)
 char *strdup(const char *str1)
 {
     size_t len = strlen(str1) + 1;  // Include null termination
-    char  *str = kmalloc(len);
+    char  *str = kalloc(len);
     if (str)
         memcpy(str, str1, len);
 
