@@ -1,24 +1,11 @@
-DEFAULT_HOST:=$(shell ../default-host.sh)
-HOST?=$(DEFAULT_HOST)
-HOSTARCH:=$(shell ../target-triplet-to-arch.sh $(HOST))
-
-CFLAGS?= -g
-CPPFLAGS?=
-LDFLAGS?=
-LIBS?=
-
-DESTDIR?=
-PREFIX?=/usr/local
-EXEC_PREFIX?=$(PREFIX)
-BOOTDIR?=$(EXEC_PREFIX)/boot
-INCLUDEDIR?=$(PREFIX)/include
-
+# Initial flags defined in make.sh
 CFLAGS:=$(CFLAGS) -ffreestanding -Wall -Wextra
 CPPFLAGS:=$(CPPFLAGS) -D__is_kernel -I./include
 LDFLAGS:=$(LDFLAGS)
 LIBS:=$(LIBS) -nostdlib -lgcc
 
-ARCHDIR=arch/$(HOSTARCH)
+# Inherited from make.sh
+ARCHDIR=arch/$(ARCH)
 
 include $(ARCHDIR)/make.config
 
@@ -109,29 +96,20 @@ kernel_text_section: $(KERNEL_ELF)
 clean:
 	rm -rf $(BUILD)
 	rm -f $(OBJS) *.o */*.o */*/*.o
-	rm -f $(OBJS:.o=.d) *.d */*.d */*/*.d
+	rm -f $(OBJS:.o=.d) *.d */*.d */*/*.d 
 
+# Note, the install targets depends on DESTDIR, INCLUDEDIR and BOOTDIR which are
+# inherited from make.sh
 install: install-headers install-kernel
 
+# Do only install the userspaces headers from uapi
 install-headers:
 	mkdir -p $(DESTDIR)$(INCLUDEDIR)
-	cp -rp include/. $(DESTDIR)$(INCLUDEDIR)/.
+	cp -rp include/uapi/. $(DESTDIR)$(INCLUDEDIR)/.
 
 install-kernel: $(KERNEL_ELF) kernel_text_section 
 	mkdir -p $(DESTDIR)$(BOOTDIR)
 	cp $(KERNEL_ELF) $(DESTDIR)$(BOOTDIR)
-
-qemu: $(KERNEL_ELF) kernel_text_section
-	qemu-system-$(HOSTARCH) $(QEMU_ARGS)
-
-gdb: $(KERNEL_ELF) kernel_text_section 
-	qemu-system-$(HOSTARCH) $(QEMU_ARGS)  -S -s &
-	gdb $(KERNEL_ELF) \
-        -ex 'target remote localhost:1234' \
-        -ex 'layout src' \
-        -ex 'layout regs' \
-        -ex 'break *_start' \
-        -ex 'continue'
 
 cloc:
 	cloc --exclude-dir=$(BUILD) --exclude-ext=d,md, .

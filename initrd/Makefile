@@ -15,4 +15,4 @@ install: $(INIT_IMG)
 	cp $< $(DESTDIR)$(BOOTDIR)
 
 clean:
-	rm $(INIT_IMG)
+	rm -f $(INIT_IMG)
