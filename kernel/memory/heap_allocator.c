@@ -350,11 +350,8 @@ static heap_segment_t* alloc_heap_segment(size_t size)
     return heap_seg;
 }
 
-void* kmalloc(size_t size)
+static void* internal_alloc(size_t size)
 {
-    LOG("kmalloc(%u)", size);
-    dump_heap();
-
     if (size == 0) {
         return NULL;
     }
@@ -364,7 +361,6 @@ void* kmalloc(size_t size)
     // The total size need to have space for tags and be able to fit a freelist entry between them.
     // It also need to be mutiple of alignment so the object after it starts at an aligned address.
     size_t total = ALIGN_BY_MULTIPLE(MAX(size, sizeof(free_list_t)) + TAGS_SIZE, ALIGNMENT);
-    LOG("total %u", total);
 
     // Init heap
     if (segments == NULL) {
@@ -439,6 +435,7 @@ search_free_list:
             start->magic = MAGIC;
 #endif
             mutex_unlock(&global_heap_lock);
+            LOG("Successfully allocated %u (requested %u) at %x", total, size, entry);
             return entry;
         }
     }
@@ -447,6 +444,7 @@ search_free_list:
     heap_segment_t* new_seg = alloc_heap_segment(total);
     if (new_seg == NULL) {
         mutex_unlock(&global_heap_lock);
+        LOG("Failed to allocate %u (requested %u): failed to alloc heap segment", size, total);
         return NULL;  // failed to request more memory
     }
 
@@ -467,13 +465,14 @@ search_free_list:
     goto search_free_list;
 
     // should not be reached
+    LOG("Failed to allocate %u (requested %u): no free blocks after segment alloc", size, total);
     kassert(false);
     return NULL;
 }
 
 void kfree(void* ptr)
 {
-    LOG("kfree(%x)", ptr);
+    LOG("freeing %x", ptr);
 
     if (ptr == NULL) {
         return;
@@ -580,16 +579,13 @@ void kfree(void* ptr)
     mutex_unlock(&global_heap_lock);
 }
 
-void* kcalloc(size_t num, size_t size)
+void* kalloc(size_t size)
 {
-    LOG("kcalloc(%u, %u)", num, size);
     void* ret;
 
-    ret = kmalloc(num * size);
-
-    // Only clear on success
+    ret = internal_alloc(size);
     if (ret != NULL) {
-        memset(ret, 0, num * size);
+        memset(ret, 0, size);
     }
     return ret;
 }
@@ -599,7 +595,7 @@ void* krealloc(void* ptr, size_t new_size)
     LOG("krealloc(%x, %u)", ptr, new_size);
 
     if (ptr == NULL) {
-        return kmalloc(new_size);
+        return internal_alloc(new_size);
     }
 
     if (new_size == 0) {
@@ -630,7 +626,7 @@ void* krealloc(void* ptr, size_t new_size)
         // TODO: check if the next block is free and of sufficient size before allocating a new
         // pointer
 
-        ret_ptr = kmalloc(new_size);
+        ret_ptr = internal_alloc(new_size);
         if (ret_ptr != NULL) {
             memcpy(ret_ptr, ptr, size);
         }

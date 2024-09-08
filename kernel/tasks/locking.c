@@ -19,7 +19,7 @@
 /* Allocate and initialise a semaphore */
 semaphore_t *semaphore_create(int max_count)
 {
-    semaphore_t *semaphore = kmalloc(sizeof(semaphore_t));
+    semaphore_t *semaphore = kalloc(sizeof(semaphore_t));
     if (semaphore != NULL) {
         *semaphore = (semaphore_t)SEMAPHORE_INIT(max_count);
     }
@@ -92,7 +92,7 @@ void semaphore_release(semaphore_t *semaphore)
 /* Allocate and initialise a mutex */
 mutex_t *mutex_create()
 {
-    mutex_t *mutex = kmalloc(sizeof(mutex_t));
+    mutex_t *mutex = kalloc(sizeof(mutex_t));
     if (mutex != NULL) {
         *mutex = (mutex_t)MUTEX_INIT();
     }

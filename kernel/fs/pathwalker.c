@@ -73,7 +73,7 @@ int pathwalk(struct inode* root, const char* path, struct inode** inode_ptr)
     struct inode* inode;
 
     // Or static alloc?
-    struct path* path_obj = kmalloc(sizeof(struct path));
+    struct path* path_obj = kalloc(sizeof(struct path));
     if (!path_obj) {
         return -ENOMEM;
     }
@@ -157,6 +157,7 @@ int pathwalk(struct inode* root, const char* path, struct inode** inode_ptr)
     // If we passed through the loop without errors, then we found the inode.
     // NOTE; On success, the caller is responsible for freeing the inode.
     *inode_ptr = inode;
+    kfree(path_obj);
     return 0;
 
 error:
@@ -165,5 +166,6 @@ error:
 
     // Ensure no inode leakage
     *inode_ptr = NULL;
+    kfree(path_obj);
     return ret;
 }

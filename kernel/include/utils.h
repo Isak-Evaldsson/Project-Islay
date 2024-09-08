@@ -86,9 +86,10 @@ int log(const char *restrict format, ...);
 void kreadline(size_t size, char *str);
 
 /* kernel heap functions */
-void *kmalloc(size_t size);
+
+/* Does always clear the memory before returning the pointer */
+void *kalloc(size_t size);
 void  kfree(void *ptr);
-void *kcalloc(size_t num, size_t size);
 void *krealloc(void *ptr, size_t new_size);
 
 /* sleep functions */
