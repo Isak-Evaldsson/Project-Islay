@@ -50,6 +50,14 @@ _start:
 	# Disable interrupts at boot
 	cli
 
+	# Clear the bss word for word
+	movl $(_bss_start - HIGHER_HALF_ADDR), %ecx # bss start addr
+bss_loop:
+	movl $0, (%ecx) # clear current address
+	addl $4, %ecx 	# increment one word
+	cmpl $(_wdata_end - HIGHER_HALF_ADDR), %ecx # compare with bss end addr
+	jl bss_loop # if less than end, jump back to loop
+
     # Physical address of boot_page_table1.
 	# TODO: I recall seeing some assembly that used a macro to do the
 	#       conversions to and from physical. Maybe this should be done in this
