@@ -6,22 +6,27 @@
 */
 #ifndef ARCH_THREAD_H
 #define ARCH_THREAD_H
+#include <arch/platfrom.h>
+#include <stdint.h>
 
-/* Struct storing architecture dependent thread data used for context switching */
-typedef struct thread_regs thread_regs_t;
+/* Import architecture independent defintion of struct thread_regs. Struct storing the register data
+ * necessary for context switching */
+#if ARCH(i386)
+#include "i386/thread.h"
+#else
+#error "Unkown architecture"
+#endif
 
 /* asm routine that switches between kernel threads, by saving old_threads state and loading
  * new_threads state  */
-void kernel_thread_switch(thread_regs_t* new_thread, thread_regs_t* old_thread);
+void kernel_thread_switch(struct thread_regs* new_thread, struct thread_regs* old_thread);
 
-/* Creates a set of thread register for a kernel thread. And initiates the stack with the supplied
- * instruction pointer and argument such that ip(arg) is called once the task is started */
-thread_regs_t* create_thread_regs_with_stack(void* stack_top, void (*ip)(void*), void* arg);
+/* Initialises a set of thread registers for a kernel thread, and sets up the stack with the
+ * supplied instruction pointer and argument such that ip(arg) is called once the task is started */
+void init_thread_regs_with_stack(struct thread_regs* regs, void* stack_top, void (*ip)(void*),
+                                 void* arg);
 
-/* Create the thread registers for the initial thread */
-thread_regs_t* create_initial_thread_regs();
-
-/* Frees the thread_regs_t struct */
-void free_thread_regs(thread_regs_t* regs);
+/* Initialise the thread registers for the initial thread */
+void init_initial_thread_regs(struct thread_regs* regs);
 
 #endif /* ARCH_THREAD_H */
