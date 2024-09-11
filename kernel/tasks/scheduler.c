@@ -113,7 +113,7 @@ static void switch_task(task_t *new_task)
 
     LOG("Swich task from %x to %x, preemption timestamp %u", old_task, new_task,
         preemption_timestamp_ns);
-    kernel_thread_switch(new_task->regs, old_task->regs);
+    kernel_thread_switch(&new_task->regs, &old_task->regs);
 }
 
 /* Lock scheduler, blocks the task switching process from becoming disturbed by interrupts */
@@ -490,14 +490,7 @@ task_t *scheduler_create_task(void *ip)
     uintptr_t stack_top = task->kstack_bottom + task->kstack_size;
 
     // Setup thread registers
-    task->regs = create_thread_regs_with_stack((void *)stack_top, new_task_wrapper, ip);
-
-    // If thread registers could not be allocated, cleanup and abort task creation
-    if (task->regs == NULL) {
-        vmem_free_page(task->kstack_bottom);
-        kfree(task);
-        return NULL;
-    }
+    init_thread_regs_with_stack(&task->regs, (void *)stack_top, new_task_wrapper, ip);
 
     LOG("Create task: %x", task);
 
@@ -513,7 +506,6 @@ task_t *scheduler_create_task(void *ip)
 void free_task(task_t *task)
 {
     vmem_free_page(task->kstack_bottom);
-    free_thread_regs(task->regs);
     kfree(task);
 }
 
@@ -545,11 +537,7 @@ void scheduler_init()
         kpanic("Failed to allocate memory for initial task");
     }
 
-    current_task->regs = create_initial_thread_regs();
-    if (current_task->regs == NULL) {
-        kpanic("Failed to allocate memory for initial task thread registers");
-    }
-
+    init_initial_thread_regs(&current_task->regs);
     current_task->next   = NULL;
     current_task->state  = RUNNING;
     current_task->status = 0;

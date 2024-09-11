@@ -10,6 +10,7 @@
 #include <fs.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <utils.h>
 
 /* How long is the thread allowed to run before pre-emption */
 #define TIME_SLICE_NS 50000000 /* 50 ms */
@@ -38,8 +39,9 @@ typedef enum {
 typedef struct task task_t;
 
 struct task {
-    thread_regs_t *regs;  // Architecture depended register used for task switching
-    task_t        *next;  // Nest pointer allows the scheduler to have task lists
+    struct thread_regs regs;  // Architecture depended register used for task switching, at offset 0
+                              // in order to allow arch specific asm to re-use task struct pointers.
+    task_t *next;             // Nest pointer allows the scheduler to have task lists
 
     // kernel stack allocation information
     uintptr_t kstack_bottom;
@@ -53,6 +55,9 @@ struct task {
     // File system related data
     struct task_fs_data fs_data;
 };
+
+/* Asset offset to ensure asm compatiblity */
+assert_offset(struct task, regs, 0);
 
 /*
     Scheduler API

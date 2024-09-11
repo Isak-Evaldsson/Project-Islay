@@ -48,6 +48,10 @@
 
 #define EOF (-1) /* End of file */
 
+/* Statically assert the offset for struct/union member, useful to ensure compatibly when struct
+ * fields are used by both generic c code and architecture specific asm. */
+#define assert_offset(type, field, offset) static_assert(offsetof(type, field) == offset)
+
 /* Kernel equivalent of libc macro, can be disabled using NDEBUG */
 #ifdef NDEBUG
 #define kassert() ()
