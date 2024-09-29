@@ -47,6 +47,9 @@ int register_interrupt_handler(uint32_t interrupt_number, top_half_handler_t top
  */
 void generic_interrupt_handler();
 
+/*
+   TODO: Split header into two, one or arch based functions and one for common defs?
+*/
 void init_interrupts();
 
 void wait_for_interrupt();

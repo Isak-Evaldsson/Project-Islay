@@ -4,7 +4,7 @@
 
    Copyright (C) 2024 Isak Evaldsson
 */
-#include <arch/interrupt.h>
+#include <arch/interrupts.h>
 #include <stdint.h>
 #include <tasks/scheduler.h>
 #include <utils.h>

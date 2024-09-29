@@ -4,7 +4,7 @@
 
    Copyright (C) 2024 Isak Evaldsson
 */
-#include <arch/interrupt.h>
+#include <arch/interrupts.h>
 #include <devices/input_manager.h>
 #include <ring_buffer.h>
 #include <utils.h>
