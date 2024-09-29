@@ -37,13 +37,13 @@ kernel_thread_switch:
     movl 24(%esp), %edi              # edi = old_thread
     
     # Save old current state in old_threads register
-    movl %esp, PCB_ESP_OFFSET(%edi)  # Save ESP for previous task's kernel stack
+    movl %esp, THREAD_REGS_ESP_OFFSET(%edi)  # Save ESP for previous task's kernel stack
 
     # Load the new state from new_threads registers
     # Done in c code: movl %esi, current_task                    # replace current_task to the new task
-    movl PCB_ESP_OFFSET(%esi),  %esp           # Load ESP for next task's kernel stack from  its PCB
-    movl PCB_CR3_OFFSET(%esi),  %eax           # eax = address of page directory for next task
-    movl PCB_ESP0_OFFSET(%esi), %ebx           # ebx = address for the top of the next task's kernel stack
+    movl THREAD_REGS_ESP_OFFSET(%esi),  %esp           # Load ESP for next task's kernel stack from  its PCB
+    movl THREAD_REGS_CR3_OFFSET(%esi),  %eax           # eax = address of page directory for next task
+    movl THREAD_REGS_ESP0_OFFSET(%esi), %ebx           # ebx = address for the top of the next task's kernel stack
     movl %ebx, (kernel_tss + TSS_ESPO_OFFSET)  # adjust the ESP0 field in the TSS (used by CPU for for CPL=3 -> CPL=0 privilege level changes)
 
     # Compare and change page tables if necesary
