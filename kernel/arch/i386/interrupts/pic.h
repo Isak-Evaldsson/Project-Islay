@@ -6,7 +6,7 @@
 */
 #ifndef ARCH_i386_PIC_H
 #define ARCH_i386_PIC_H
-#include <arch/interrupt.h>
+#include <arch/interrupts.h>
 #include <stdint.h>
 
 /* PIC IO ports */
