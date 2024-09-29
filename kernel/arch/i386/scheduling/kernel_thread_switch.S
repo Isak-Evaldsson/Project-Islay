@@ -5,10 +5,9 @@
    Copyright (C) 2024 Isak Evaldsson
 */
 
-# Strcut offests used within the task switch function
-#define PCB_ESP_OFFSET  0
-#define PCB_CR3_OFFSET  4
-#define PCB_ESP0_OFFSET 8
+#define ASM_FILE
+#include <arch/i386/thread.h>
+
 #define TSS_ESPO_OFFSET 4
 
 # External pointers

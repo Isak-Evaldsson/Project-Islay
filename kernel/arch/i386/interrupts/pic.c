@@ -4,8 +4,16 @@
 
    Copyright (C) 2024 Isak Evaldsson
 */
+#include <uapi/errno.h>
+#include <utils.h>
+
 #include "../io.h"
 #include "pic.h"
+
+#define N_PIC_INTERRUPTS 16
+
+/* Stores the ISR associated with the different pic interrupt numbers */
+static top_half_handler_t handlers[N_PIC_INTERRUPTS];
 
 /*
     Acknowledge the interrupts sent by the PIC
@@ -56,7 +64,7 @@ void pic_irq_disable_all()
 void pic_irq_enable(uint8_t irq_num)
 {
     // Invalid irq numbers
-    if (irq_num >= 16)
+    if (irq_num >= N_PIC_INTERRUPTS)
         return;
 
     uint16_t port  = (irq_num < 8) ? PIC1_DATA : PIC2_DATA;
@@ -67,7 +75,7 @@ void pic_irq_enable(uint8_t irq_num)
 void pic_irq_disable(uint8_t irq_num)
 {
     // Invalid irq numbers
-    if (irq_num >= 16)
+    if (irq_num >= N_PIC_INTERRUPTS)
         return;
 
     uint16_t port  = (irq_num < 8) ? PIC1_DATA : PIC2_DATA;
@@ -87,4 +95,56 @@ static uint16_t pic_get_irq_reg(int ocw3)
 uint16_t pic_get_isr()
 {
     return pic_get_irq_reg(PIC_READ_ISR);
+}
+
+/* Generic pic top half ensuring proper handling of the pic hardware */
+static void pic_top_half_isr(struct interrupt_stack_state *state, uint32_t interrupt_number)
+{
+    (void)state;
+
+    kassert(interrupt_number >= PIC1_START_INTERRUPT && interrupt_number <= PIC2_END_INTERRUPT);
+
+    unsigned int irq = interrupt_number - PIC1_START_INTERRUPT;
+    uint16_t     isr = pic_get_isr();
+
+    // Spurious interrupt sent form the PIC 1, ignore it
+    if (irq == 7 && (isr & (1 << 7))) {
+        return;
+    }
+
+    // Spurious interrupt sent form the PIC 2, ignore it
+    if (irq == 15 && (isr & (1 << 15))) {
+        pic_acknowledge(0);  // Acknowledge PIC1 only
+    }
+
+    top_half_handler_t handler = handlers[irq];
+    if (handler) {
+        handler(state, interrupt_number);
+    }
+
+    pic_acknowledge(irq);
+}
+
+/*
+    Register interrupts for the pic irq number, wraps the regular interrupt registration api with
+    some additional logic to make sure that the PIC is correctly configured
+*/
+int pic_register_interrupt(uint32_t irq_num, top_half_handler_t top_half,
+                           bottom_half_handler_t bottom_half, bool concurrent)
+{
+    if (irq_num > N_PIC_INTERRUPTS) {
+        return -EINVAL;
+    }
+
+    if (handlers[irq_num]) {
+        return -EALREADY;
+    }
+
+    // To make sure proper handling of spurious interrupts and acknowledgement, the top half is
+    // indirect call through the generic pic top half isr
+    handlers[irq_num] = top_half;
+    pic_irq_enable(irq_num);
+
+    return register_interrupt_handler(PIC1_START_INTERRUPT + irq_num, pic_top_half_isr, bottom_half,
+                                      concurrent);
 }

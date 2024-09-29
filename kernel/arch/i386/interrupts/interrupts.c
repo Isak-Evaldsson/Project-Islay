@@ -16,30 +16,6 @@
 #include "ps2.h"
 
 /*
-    The registers pushed on the stack in the order specified by instruction 'pushad',
-    see https://c9x.me/x86/html/file_module_x86_id_270.html
-*/
-typedef struct cpu_state_t {
-    uint32_t eax;
-    uint32_t ebx;
-    uint32_t ecx;
-    uint32_t edx;
-    uint32_t ebp;
-    uint32_t esi;
-    uint32_t edi;
-} __attribute__((packed)) cpu_state_t;
-
-/*
-    Top of stack once the interrupt is called
-*/
-typedef struct stack_state_t {
-    uint32_t error_code;
-    uint32_t eip;
-    uint32_t cs;
-    uint32_t eflags;
-} __attribute__((packed)) stack_state_t;
-
-/*
     Interrupt descriptor
 */
 typedef struct interrupt_descriptor_t {
@@ -55,14 +31,9 @@ typedef struct interrupt_descriptor_t {
 */
 static interrupt_descriptor_t idt[256];
 
-/*
-    Stores the interrupt handler associated with each interrupt number
-*/
-static interrupt_handler_t handlers[256];
-
-void set_interrupt_descriptor(uint8_t index, uint32_t isr_addr)
+static void set_interrupt_descriptor(uint8_t index, uint32_t isr_addr)
 {
-    interrupt_descriptor_t* entry = idt + index;
+    interrupt_descriptor_t *entry = idt + index;
 
     entry->offset_low      = isr_addr & 0xffff;
     entry->selector        = 0x08;  // kernel code segment on index 1
@@ -73,9 +44,29 @@ void set_interrupt_descriptor(uint8_t index, uint32_t isr_addr)
     entry->offset_high = (isr_addr >> 16) & 0xffff;
 }
 
+#define N_EXCEPTIONS 31
+
+void exception_handler(struct interrupt_stack_state *state, uint32_t interrupt_number)
+{
+    switch (interrupt_number) {
+        case 0:
+            kpanic("Division by zero in kernel at 0x%x\n", state->eip);
+            break;
+
+        case 14:
+            kpanic("Page fault at (0x%x) when accessing address 0x%x error code %x\n", state->eip,
+                   get_cr2(), state->error_code);
+            break;
+
+        default:
+            kprintf("Received exception %u\n", interrupt_number);
+            break;
+    }
+}
+
 void init_interrupts()
 {
-    memset(handlers, 0, sizeof(handlers));
+    int ret;
 
     // Find smarter method to generate handlers
     set_interrupt_descriptor(0, (uint32_t)interrupt_handler_0);
@@ -138,91 +129,27 @@ void init_interrupts()
     pic_remap(PIC1_START_INTERRUPT, PIC2_START_INTERRUPT);
 
     ps2_init();
-    register_interrupt(PS2_KEYBOARD_INTERRUPT, ps2_interrupt_handler);
+    ret = pic_register_interrupt(PS2_KEYBOARD_INTERRUPT, ps2_interrupt_handler, NULL, false);
+    if (ret < 0) {
+        kpanic("x86: Failed to register ps2 controller, error: %i", ret);
+    }
 
     pit_init();
-    register_interrupt(PIT_INTERRUPT_NUM, pit_interrupt_handler);
+    ret = pic_register_interrupt(PIT_INTERRUPT_NUM, pit_interrupt_handler, NULL, false);
+    if (ret < 0) {
+        kpanic("x86: Failed to register pit, error: %i", ret);
+    }
+
+    // Register exception handlers
+    for (size_t i = 0; i < N_EXCEPTIONS; i++) {
+        register_interrupt_handler(i, exception_handler, NULL, true);
+        if (ret < 0) {
+            kpanic("x86: Failed to register exception handler number: %u, error: %i", i, ret);
+        }
+    }
 
     enable_interrupts();
     kprintf("Interrupts initalized\n");
-}
-
-int register_interrupt(unsigned char num, interrupt_handler_t handler)
-{
-    // TODO: proper error handling
-
-    if (handlers[num] != NULL) {
-        // Throw error????
-        kprintf("Overriding existing interrupt handler at num %u\n", num);
-    }
-    handlers[num] = handler;
-
-    // register hardware interrupt managed by the pic controller
-    if (num >= PIC1_START_INTERRUPT && num <= PIC2_END_INTERRUPT) {
-        pic_irq_enable(num - PIC1_START_INTERRUPT);
-    }
-
-    return 1;
-}
-
-/*
-    Generic interrupt handler, called from the 'common_interrupt_handler' in 'interrupt_handler.S'
-*/
-void interrupt_handler(cpu_state_t registers, uint32_t interrupt_number, stack_state_t stack)
-{
-    // avoid unused warnings
-    (void)registers;
-    (void)stack;
-
-    scheduler_start_of_interrupt();
-
-    // hardware interrupts managed by the pic controller
-    if (interrupt_number >= PIC1_START_INTERRUPT && interrupt_number <= PIC2_END_INTERRUPT) {
-        uint8_t irq = interrupt_number - PIC1_START_INTERRUPT;
-
-        // Spurious interrupt sent form the PIC 1, ignore it
-        if (irq == 7 && (pic_get_isr() & (1 << 7))) {
-            goto handler_end;
-        }
-
-        // Spurious interrupt sent form the PIC 2, ignore it
-        if (irq == 15 && (pic_get_isr() & (1 << 15))) {
-            pic_acknowledge(0);  // Acknowledge PIC1 only
-        }
-
-        interrupt_handler_t handler = handlers[interrupt_number];
-        if (handler != NULL) {
-            handler();
-        } else {
-            kprintf("Received interrupt %u without registered handler\n", interrupt_number);
-        }
-
-        pic_acknowledge(irq);
-
-    } else if (interrupt_number < 31) {
-        // TODO: Exception handling
-
-        switch (interrupt_number) {
-            case 0:
-                kpanic("Division by zero in kernel at 0x%x\n", stack.eip);
-                break;
-
-            case 14:
-                kpanic("Page fault at (0x%x) when accessing address 0x%x error code %x\n",
-                       stack.eip, get_cr2(), stack.error_code);
-                break;
-
-            default:
-                kprintf("Received interrupt %u\n", interrupt_number);
-                break;
-        }
-    } else {
-        // TODO: Software interrupt
-    }
-
-handler_end:
-    // Performs preemption caused by interrupt handlers
-    scheduler_end_of_interrupt();
 }
 
 void wait_for_interrupt()

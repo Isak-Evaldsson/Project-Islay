@@ -25,7 +25,8 @@ interrupt_handler_\num:
 
 .section .text
 common_interrupt_handler:               # the common parts of the generic interrupt handler
-	# save the registers
+	# save the registers, pushed on the stack in the order specified by instruction 'pushad',
+    # see https://c9x.me/x86/html/file_module_x86_id_270.html
 	push %eax
 	push %ebx
 	push %ecx
@@ -35,7 +36,7 @@ common_interrupt_handler:               # the common parts of the generic interr
 	push %edi
 
     # call the C function
-    call    interrupt_handler
+    call generic_interrupt_handler
 
     # restore the registers
 	pop	%edi

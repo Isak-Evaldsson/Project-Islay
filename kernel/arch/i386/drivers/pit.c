@@ -75,7 +75,10 @@ void pit_init()
     pit_set_default_frequency();
 }
 
-void pit_interrupt_handler()
+void pit_interrupt_handler(struct interrupt_stack_state *state, uint32_t interrupt_number)
 {
+    (void)state;
+    (void)interrupt_number;
+
     timer_report_clock_pulse(period_ms * 1000000);
 }
