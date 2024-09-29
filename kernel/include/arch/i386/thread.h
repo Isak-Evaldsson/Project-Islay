@@ -14,7 +14,7 @@
 #ifndef ASM_FILE
 #include <utils.h>
 
-// The registers that needs to be stored
+/* The registers that needs to be stored */
 struct thread_regs {
     uint32_t esp;   // the contents of esp
     uint32_t cr3;   // the content of cr3

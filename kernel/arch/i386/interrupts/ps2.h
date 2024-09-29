@@ -7,9 +7,7 @@
 #ifndef ARCH_i386_PS2_H
 #define ARCH_i386_PS2_H
 
-#include "pic.h"
-
-#define PS2_KEYBOARD_INTERRUPT (PIC1_START_INTERRUPT + 1)
+#define PS2_KEYBOARD_INTERRUPT 1  // relative to pic
 
 /*
     Initialises the PS/2 Controller

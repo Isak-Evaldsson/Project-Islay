@@ -6,13 +6,48 @@
 */
 #ifndef ARCH_INTERRUPT_H
 #define ARCH_INTERRUPT_H
+#include <arch/platfrom.h>
+#include <stdbool.h>
 #include <stdint.h>
 
-typedef void (*interrupt_handler_t)();
+#if ARCH(i386)
+#include "i386/interrupts.h"
+#endif
+
+/* Architecture dependent struct representing the stack state when generic_interrupt_handler is
+ * called */
+typedef struct interrupt_stack_state interrupt_stack_state_t;
+
+/* First part of the interrupt, runs in an atomic state (i.e. interrupts are disabled) and must
+ * therefore be fast. It's therefore NOT allowed to block or sleep under any circumstances */
+typedef void (*top_half_handler_t)(struct interrupt_stack_state *state, uint32_t interrupt_number);
+
+/* Second part of the interrupt, runs in an reentrant state (i.e. can be preempted) so it's allowed
+ * to block or sleep */
+typedef void (*bottom_half_handler_t)(uint32_t interrupt_number);
+
+/*
+    Registers an interrupt at the specified interrupt number. The caller needs to provide at least a
+    top or a bottom half handler.
+
+    The concurrent decides if there can be multiple bottom halfs handlers belong to the same
+    interrupt number in-flight at the same time. If true, every interrupt will lead to a bottom half
+    call even if another is already running. If false, an interrupt firing during a bottom half call
+   will skip its call the the bottom half.
+*/
+int register_interrupt_handler(uint32_t interrupt_number, top_half_handler_t top_half,
+                               bottom_half_handler_t bottom_half, bool concurrent);
+
+/*
+    Provides an architecture independet interrupt mechanism proving a atomic top half and a
+    reentrant bottom half. Is supposed to be called by the arch specific low level interrupt code.
+
+    How this is called is up to the arch specific low level interrupt code, however it assumes it
+    runs in an atomic context (i.e. INTERRUPTS MUST BE DISABLED).
+ */
+void generic_interrupt_handler();
 
 void init_interrupts();
-
-int register_interrupt(unsigned char num, interrupt_handler_t handler);
 
 void wait_for_interrupt();
 

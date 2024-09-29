@@ -11,7 +11,7 @@
 
 #include "../interrupts/pic.h"
 
-#define PIT_INTERRUPT_NUM PIC1_START_INTERRUPT
+#define PIT_INTERRUPT_NUM 0  // relative to pic
 
 bool pit_set_frequency(uint32_t freq);
 void pit_set_default_frequency();

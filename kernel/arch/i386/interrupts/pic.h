@@ -6,6 +6,7 @@
 */
 #ifndef ARCH_i386_PIC_H
 #define ARCH_i386_PIC_H
+#include <arch/interrupt.h>
 #include <stdint.h>
 
 /* PIC IO ports */
@@ -69,5 +70,12 @@ void pic_irq_disable(uint8_t irq_num);
     low byte for PIC1 and upper for PIC2
 */
 uint16_t pic_get_isr();
+
+/*
+    Register interrupts for the pic irq number, wraps the regular interrupt registration api with
+    some additional logic to make sure that the PIC is correctly configured
+*/
+int pic_register_interrupt(uint32_t irq_num, top_half_handler_t top_half,
+                           bottom_half_handler_t bottom_half, bool concurrent);
 
 #endif /* ARCH_i386_PIC_H */

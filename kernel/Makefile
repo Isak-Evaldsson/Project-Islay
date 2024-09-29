@@ -34,6 +34,7 @@ fs/sysfs/sysfs.o \
 memory/heap_allocator.o \
 memory/page_frame_allocator.o \
 memory/vmem_manager.o \
+tasks/interrupts.o \
 tasks/scheduler.o \
 tasks/task_queue.o \
 tasks/locking.o \

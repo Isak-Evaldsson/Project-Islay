@@ -162,8 +162,11 @@ static void ps2_receive_data(unsigned char data)
 /*
     Interrupt handler to be run when the PS/2 device sends an interrupt through the PIC
 */
-void ps2_interrupt_handler()
+void ps2_interrupt_handler(struct interrupt_stack_state *state, uint32_t interrupt_number)
 {
+    (void)state;
+    (void)interrupt_number;
+
     unsigned char scancode = inb(PS2_DATA_PORT);
 
     if (scancode == 0xaa && !initialised) {
