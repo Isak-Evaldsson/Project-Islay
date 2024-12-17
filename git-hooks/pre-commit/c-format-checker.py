@@ -67,6 +67,8 @@ def process_file(file_name):
     in_block_comment = False;
     correct = True
 
+    block_comment_line_count = 0;
+
     file = open(file_name, 'r')
     lines = [line.rstrip() for line in file]
 
@@ -85,24 +87,28 @@ def process_file(file_name):
 
             elif CHECK_COMMENTS and prev == '*' and c == '/':
                 in_block_comment = False
+
+                # /*...*/-comments within function/struct are only allowed when multi-line
+                if curly_bracket_counter > 0 and block_comment_line_count < 1:
+                    correct = False
+                    print("%s: Invalid /*...*/ style comment at line %d" % (file_name, index + 1))
+
             elif CHECK_COMMENTS and prev == '/':
         
                 if c == '*':
                     in_block_comment = True
-                    # /*...*/-comments within function/struct
-                    if curly_bracket_counter > 0:
-                        correct = False
-                        print("%s: Invalid /*...*/ style comment at line %d" % (file_name, index + 1))
-
 
                 # //-comments outside function/struct
                 if not in_block_comment and curly_bracket_counter == 0 and c == '/':
                     correct = False
                     print("%s: Invalid // style comment at line %d" % (file_name, index + 1))
 
-
-
             prev = c
+
+        if in_block_comment:
+            block_comment_line_count += 1
+        else:
+            block_comment_line_count = 0
 
     file.close()
     return correct
