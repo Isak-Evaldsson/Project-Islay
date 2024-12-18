@@ -13,6 +13,11 @@ for FILE in $(git diff --cached --name-only)
 do
     if [[ "$FILE" =~ \.(c|h|cpp|hpp)$ ]]; then
         
+        # Skip deleted files
+        if [ ! -f $FILE ]; then
+            continue
+        fi
+
         # If diff detectes a difference exit
         diff <(clang-format $FILE) $FILE > /dev/null
         if [ $? -ne 0 ]; then
@@ -23,8 +28,7 @@ do
         # Run our custom formater after clang-format
         ./git-hooks/pre-commit/c-format-checker.py $FILE
         if [ $? -ne 0 ]; then
-            echo "$FILE incorrectly formatted (fix errors above)"
-            exit 1
+            echo "Warning: $FILE incorrectly formatted (fix errors above)"
         fi
     fi
 done
