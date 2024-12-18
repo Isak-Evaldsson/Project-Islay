@@ -29,14 +29,9 @@ typedef void (*bottom_half_handler_t)(uint32_t interrupt_number);
 /*
     Registers an interrupt at the specified interrupt number. The caller needs to provide at least a
     top or a bottom half handler.
-
-    The concurrent decides if there can be multiple bottom halfs handlers belong to the same
-    interrupt number in-flight at the same time. If true, every interrupt will lead to a bottom half
-    call even if another is already running. If false, an interrupt firing during a bottom half call
-   will skip its call the the bottom half.
 */
 int register_interrupt_handler(uint32_t interrupt_number, top_half_handler_t top_half,
-                               bottom_half_handler_t bottom_half, bool concurrent);
+                               bottom_half_handler_t bottom_half);
 
 /*
     Provides an architecture independet interrupt mechanism proving a atomic top half and a
@@ -61,5 +56,7 @@ void disable_interrupts();
 uint32_t get_register_and_disable_interrupts();
 
 void restore_interrupt_register(uint32_t);
+
+int verify_valid_interrupt(unsigned int index);
 
 #endif /* ARCH_INTERRUPT_H */

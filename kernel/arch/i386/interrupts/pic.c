@@ -130,7 +130,7 @@ static void pic_top_half_isr(struct interrupt_stack_state *state, uint32_t inter
     some additional logic to make sure that the PIC is correctly configured
 */
 int pic_register_interrupt(uint32_t irq_num, top_half_handler_t top_half,
-                           bottom_half_handler_t bottom_half, bool concurrent)
+                           bottom_half_handler_t bottom_half)
 {
     if (irq_num > N_PIC_INTERRUPTS) {
         return -EINVAL;
@@ -145,6 +145,6 @@ int pic_register_interrupt(uint32_t irq_num, top_half_handler_t top_half,
     handlers[irq_num] = top_half;
     pic_irq_enable(irq_num);
 
-    return register_interrupt_handler(PIC1_START_INTERRUPT + irq_num, pic_top_half_isr, bottom_half,
-                                      concurrent);
+    return register_interrupt_handler(PIC1_START_INTERRUPT + irq_num, pic_top_half_isr,
+                                      bottom_half);
 }
