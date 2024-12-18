@@ -39,6 +39,7 @@ tasks/scheduler.o \
 tasks/task_queue.o \
 tasks/locking.o \
 tests/fs_tests.o \
+tests/interrupt_tests.o \
 tests/scheduler_tests.o \
 utils/endianness.o \
 utils/kpanic.o \
