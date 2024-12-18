@@ -31,8 +31,9 @@ void kernel_main(struct boot_data* boot_data)
     }
     scheduler_init();
 
-    // TODO: Make tests configurable
+#ifdef RUN_TESTS
     run_post_boot_tests();
+#endif
 
     // TODO: nice looking boot animation (requires timers)
     kshell();

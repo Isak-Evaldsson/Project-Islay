@@ -22,6 +22,7 @@ SYSTEM_HEADER_PROJECTS="kernel"
 USE_GDB=false
 ARCH=i386
 COMPILER_PREFIX=i686-elf # Depends on arch
+RUN_TESTS=false
 
 # Display script help text
 function help() {
@@ -36,8 +37,9 @@ function help() {
     echo "  qemu --arch <arch> --gdb: Build and run kernel i qemu."
     echo ""
     echo "Args:"
-    echo "  --arch <arch>: Target architecutre, uses $ARCH as default"
-    echo "  --gdb|-g:      attch qemu to gdb"
+    echo "  --arch <arch>:  Target architecutre, uses $ARCH as default"
+    echo "  --gdb|-g:       Attch qemu to gdb"
+    echo "  --run_tests|-t: Run unit tests at the end of boot"
 }
 
 # clean(): clean everything to force a full re-build
@@ -62,6 +64,12 @@ function config() {
     # The long term solution is to make sure that only c code is compiled with stack-smash protection
     export CFLAGS='-Wextra -Wall -Og -g -Wconversion' #-fstack-protector-all'
     export CPPFLAGS=''
+
+    # TODO: Not a perfect solution, we need a way to make our makefile now when defines have changed
+    # and trigger a rebuild.
+    if [ $RUN_TESTS = true ]; then
+        export CPPFLAGS+=" -DRUN_TESTS"
+    fi
 
     # Define tool-chain
     export AR=${COMPILER_PREFIX}-ar
@@ -185,6 +193,11 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
 
+        -t|--run_tests)
+            RUN_TESTS=true
+            shift
+            ;;    
+
         *)
             echo "error: unkown option '$1'"
             echo ""
@@ -194,7 +207,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Exectue commads
-config # Always needed since some makefiles depends on varibles defined here 
+config # Always needed since some makefiles depends on varibles defined here
 case $cmd in
     clean)
         clean 
