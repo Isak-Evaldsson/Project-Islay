@@ -60,7 +60,7 @@ function config() {
 
     # TODO: Stack smashing protector complains about the task switch code, so we disable it for know.
     # The long term solution is to make sure that only c code is compiled with stack-smash protection
-    export CFLAGS='-Wextra -Wall -Og -g' #-fstack-protector-all'
+    export CFLAGS='-Wextra -Wall -Og -g -Wconversion' #-fstack-protector-all'
     export CPPFLAGS=''
 
     # Define tool-chain
