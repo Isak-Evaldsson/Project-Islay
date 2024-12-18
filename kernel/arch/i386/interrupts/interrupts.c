@@ -90,6 +90,10 @@ void interrupt_handler_44();
 void interrupt_handler_45();
 void interrupt_handler_46();
 void interrupt_handler_47();
+void interrupt_handler_252();
+void interrupt_handler_253();
+void interrupt_handler_254();
+void interrupt_handler_255();
 
 static void set_interrupt_descriptor(uint8_t index, uint32_t isr_addr)
 {
@@ -187,6 +191,12 @@ void init_interrupts()
     set_interrupt_descriptor(45, (uint32_t)interrupt_handler_45);
     set_interrupt_descriptor(46, (uint32_t)interrupt_handler_46);
     set_interrupt_descriptor(47, (uint32_t)interrupt_handler_47);
+
+    // For testing purposes
+    set_interrupt_descriptor(252, (uint32_t)interrupt_handler_252);
+    set_interrupt_descriptor(253, (uint32_t)interrupt_handler_253);
+    set_interrupt_descriptor(254, (uint32_t)interrupt_handler_254);
+    set_interrupt_descriptor(255, (uint32_t)interrupt_handler_255);
 
     // Load interrupt table
     gdt_ptr_t ptr;
