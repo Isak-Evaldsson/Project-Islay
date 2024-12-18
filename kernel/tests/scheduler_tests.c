@@ -8,49 +8,65 @@
 #include <tasks/scheduler.h>
 #include <utils.h>
 
+#include "test.h"
+
 static mutex_t *m;
 
-void sleeper()
+static void sleeper()
 {
     int i = 0;
 
     for (;;) {
-        log("Sleeper %u", ++i);
+        TEST_LOG("Sleeper %u", ++i);
         sleep(1);
     }
 }
 
-void f1()
+static void f1()
 {
     mutex_lock(m);
-    kprintf("f1 acquired lock\n");
+    TEST_LOG("f1 acquired lock\n");
     mutex_unlock(m);
 }
 
-void f2()
+static void f2()
 {
     mutex_lock(m);
-    kprintf("f2 acquired lock\n");
+    TEST_LOG("f2 acquired lock\n");
     mutex_unlock(m);
 }
 
-void scheduler_test()
+static int scheduler_test()
 {
     //
     // Sleep tests
     //
-    kprintf("Spawn new task\n");
+    TEST_LOG("Spawn new task\n");
     m = mutex_create();
     scheduler_create_task(&sleeper);
     scheduler_create_task(&f1);
     scheduler_create_task(&f2);
     mutex_lock(m);
 
-    kprintf("Back to main.");
+    TEST_LOG("Back to main.");
     for (int i = 0; i < 5; i++) {
         sleep(1);
-        kprintf(".");
+        TEST_LOG(".");
     }
-    kprintf("\n");
+    TEST_LOG("\n");
     mutex_unlock(m);
+    return 0;  // TODO: Find a way to determine test failure, for example setting up some kind of
+               // time event?
 }
+
+int (*scheduling_tests[])() = {
+    scheduler_test,
+};
+
+struct test_suite scheduler_test_suite = {
+    .name     = "sched_tests",
+    .setup    = NULL,
+    .teardown = NULL,
+    .tests    = scheduling_tests,
+    .n_tests  = COUNT_ARRAY_ELEMS(scheduling_tests),
+};

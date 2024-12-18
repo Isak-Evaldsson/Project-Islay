@@ -9,6 +9,7 @@
 #include <utils.h>
 
 #include "../fs/fs-internals.h"
+#include "test.h"
 
 struct data {
     int         fail;
@@ -22,34 +23,53 @@ static int test_fs_mount(void *data)
         return -EIO;
     }
 
-    kprintf("mounted testfs: %s\n", msg->str);
+    TEST_LOG("mounted testfs: %s\n", msg->str);
     return 0;
 }
 
-static struct fs_ops test_fs_ops = {.mount = test_fs_mount};
+static int test_fs_read(char *buf, size_t size, off_t offset, struct open_file *file)
+{
+    return -EINVAL;
+}
+
+static int test_fs_fetch_inode(const struct superblock *super, ino_t id, struct inode *inode)
+{
+    return -EINVAL;
+}
+
+static int test_fs_readdir(const struct open_file *file, struct dirent *dirent, off_t offset)
+{
+    return -EINVAL;
+}
+
+static struct fs_ops test_fs_ops = {.mount       = test_fs_mount,
+                                    .read        = test_fs_read,
+                                    .fetch_inode = test_fs_fetch_inode,
+                                    .readdir     = test_fs_readdir};
 static DEFINE_FS(test_fs, "test_fs", &test_fs_ops);
 static DEFINE_FS(test_fs2, "test_fs2", &test_fs_ops);
 
 static int register_fs_test()
 {
+    /* TODO: Break into sub-tests*/
     int ret;
 
     ret = register_fs(&test_fs);
     if (ret) {
-        kprintf("Failed to register test_fs (%i)\n", ret);
-        return -1;
+        TEST_LOG("Failed to register test_fs (%i)", ret);
+        return ret;
     }
 
     ret = register_fs(&test_fs);
     if (ret != -EEXIST) {
-        kprintf("Registering the same filesystem twice should yield an error (%i)\n", ret);
-        return -1;
+        TEST_LOG("Registering the same filesystem twice should yield an error (%i)", ret);
+        return ret;
     }
 
     ret = register_fs(&test_fs2);
     if (ret) {
-        kprintf("Failed to register test_fs2 (%i)\n", ret);
-        return -1;
+        TEST_LOG("Failed to register test_fs2 (%i)", ret);
+        return ret;
     }
     return 0;
 }
@@ -62,80 +82,77 @@ static int test_mounting()
 
     ret = mount("/testdir", "test_fs", &success);
     if (ret) {
-        kprintf("Failed to mount testdir1 (%x)\n", ret);
+        TEST_LOG("Failed to mount testdir1 (%x)\n", ret);
         return -1;
     }
 
     ret = mount("/testdir2", "test_fs", &success);
     if (ret) {
-        kprintf("Failed to mount testdir2 (%x)\n", ret);
+        TEST_LOG("Failed to mount testdir2 (%x)\n", ret);
         return -1;
     }
 
     ret = mount("/failure", "test_fs2", &fail);
     if (ret != -EIO) {
-        kprintf("A failed call to fs->mount should yield and error (%i)\n", ret);
+        TEST_LOG("A failed call to fs->mount should yield and error (%i)\n", ret);
         return -1;
     }
 
     ret = mount("/testdir", "test_fs", &success);
     if (ret != -EEXIST) {
-        kprintf("Mounting at the same path twice should yield an error (%i)\n", ret);
+        TEST_LOG("Mounting at the same path twice should yield an error (%i)\n", ret);
         return -1;
     }
 
     ret = mount("/failure2", "does_not_exits", &success);
     if (ret != -ENOENT) {
-        kprintf("Trying to mount an not registered file system (%i)\n", ret);
+        TEST_LOG("Trying to mount an not registered file system (%i)\n", ret);
         return -1;
     }
 
     ret = mount("/dir1/dir2/test1", "test_fs", &success);
     if (ret) {
-        kprintf("Failed to mount '/dir1/dir2/test1' (%x)\n", ret);
+        TEST_LOG("Failed to mount '/dir1/dir2/test1' (%x)\n", ret);
         return -1;
     }
 
     ret = mount("/dir1/dir2/test2", "test_fs", &success);
     if (ret) {
-        kprintf("Failed to mount '/dir1/dir2/test2' (%x)\n", ret);
+        TEST_LOG("Failed to mount '/dir1/dir2/test2' (%x)\n", ret);
         return -1;
     }
 
     ret = mount("/dir1/dir2/test2", "test_fs", &success);
     if (ret != -EEXIST) {
-        kprintf("Mounting at the same path twice should yield an error (%i)\n", ret);
+        TEST_LOG("Mounting at the same path twice should yield an error (%i)\n", ret);
         return -1;
     }
 
     // Do we clean-up correctly (no trailing dirs?)
     ret = mount("/dir1/dir2/di3/dir4/dir5/dir6", "test_fs", &fail);
     if (ret != -EIO) {
-        kprintf("A failed call to fs->mount should yield and error (%i)\n", ret);
+        TEST_LOG("A failed call to fs->mount should yield and error (%i)\n", ret);
         return -1;
     }
 
     ret = mount("/", "test_fs", &success);
     if (ret != -ENOTSUP) {
-        kprintf("Mounting at root should fail (%i)\n", ret);
+        TEST_LOG("Mounting at root should fail (%i)\n", ret);
         return -1;
     }
 
     return 0;
 }
 
-void fs_tests()
-{
-    if (register_fs_test()) {
-        kprintf("register_fs_test failed\n");
-        return;
-    }
+int (*fs_tests[])() = {
+    register_fs_test,
+    /* TODO: Fix mounting tests... */
+};
 
-    // TODO: Fix for the new fs implementation
-    // if (test_mounting()) {
-    //     kprintf("test_mounting failed\n");
-    //     return;
-    // }
-
-    kprintf("fs tests successful\n");
-}
+struct test_suite fs_test_suite = {
+    .name     = "file system tests",
+    .setup    = NULL,
+    .teardown = NULL,
+    .tests    = fs_tests,
+    .n_tests  = COUNT_ARRAY_ELEMS(fs_tests),
+};
