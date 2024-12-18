@@ -85,14 +85,6 @@ void scheduler_nano_sleep_until(uint64_t when);
  */
 void scheduler_timer_interrupt(uint64_t time_since_boot_ns, uint64_t period_ns);
 
-/* Called by the interrupt handler allowing notifying the scheduler that an interrupt has been
- * called */
-void scheduler_start_of_interrupt();
-
-/* Called by the interrupt handler allowing notifying the scheduler that the interrupt handler is
- * done executing allowing the scheduler to perform save preemption */
-void scheduler_end_of_interrupt();
-
 /* Allows the currently running task to voluntarily stop execution */
 void scheduler_yield();
 
