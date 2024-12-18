@@ -76,6 +76,6 @@ uint16_t pic_get_isr();
     some additional logic to make sure that the PIC is correctly configured
 */
 int pic_register_interrupt(uint32_t irq_num, top_half_handler_t top_half,
-                           bottom_half_handler_t bottom_half, bool concurrent);
+                           bottom_half_handler_t bottom_half);
 
 #endif /* ARCH_i386_PIC_H */

@@ -7,6 +7,7 @@
 #include <arch/interrupts.h>
 #include <stdint.h>
 #include <tasks/scheduler.h>
+#include <uapi/errno.h>
 #include <utils.h>
 
 #include "../drivers/pit.h"
@@ -123,6 +124,16 @@ void exception_handler(struct interrupt_stack_state *state, uint32_t interrupt_n
     }
 }
 
+int verify_valid_interrupt(unsigned int index)
+{
+    interrupt_descriptor_t *entry = idt + index;
+
+    if (!MASK_BIT(entry->type_attributes, 7)) {
+        return -EINVAL;
+    }
+    return 0;
+}
+
 void init_interrupts()
 {
     int ret;
@@ -188,20 +199,20 @@ void init_interrupts()
     pic_remap(PIC1_START_INTERRUPT, PIC2_START_INTERRUPT);
 
     ps2_init();
-    ret = pic_register_interrupt(PS2_KEYBOARD_INTERRUPT, ps2_interrupt_handler, NULL, false);
+    ret = pic_register_interrupt(PS2_KEYBOARD_INTERRUPT, ps2_interrupt_handler, NULL);
     if (ret < 0) {
         kpanic("x86: Failed to register ps2 controller, error: %i", ret);
     }
 
     pit_init();
-    ret = pic_register_interrupt(PIT_INTERRUPT_NUM, pit_interrupt_handler, NULL, false);
+    ret = pic_register_interrupt(PIT_INTERRUPT_NUM, pit_interrupt_handler, NULL);
     if (ret < 0) {
         kpanic("x86: Failed to register pit, error: %i", ret);
     }
 
     // Register exception handlers
     for (size_t i = 0; i < N_EXCEPTIONS; i++) {
-        register_interrupt_handler(i, exception_handler, NULL, true);
+        register_interrupt_handler(i, exception_handler, NULL);
         if (ret < 0) {
             kpanic("x86: Failed to register exception handler number: %u, error: %i", i, ret);
         }
