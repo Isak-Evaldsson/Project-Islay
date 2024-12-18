@@ -27,4 +27,12 @@ void critical_section_end(uint32_t interrupt_flags);
 // The caller is responsible for appropriately locking/unlocking the scheduler when calling it
 void schedule();
 
+/* Called by the interrupt handler allowing notifying the scheduler that an interrupt has been
+ * called */
+void scheduler_start_of_interrupt();
+
+/* Called by the interrupt handler allowing notifying the scheduler that the interrupt handler is
+ * done executing allowing the scheduler to perform save preemption */
+void scheduler_end_of_interrupt();
+
 #endif /*TASKS_INTERNAL_H */
