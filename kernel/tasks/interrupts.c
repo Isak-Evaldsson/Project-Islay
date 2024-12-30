@@ -150,7 +150,7 @@ void generic_interrupt_handler()
     }
 
     if (entry->bottom_half) {
-        enable_interrupts();  // TODO: Should this have barriers?
+        enable_interrupts();
         entry->bottom_half(interrupt_number);
     }
 

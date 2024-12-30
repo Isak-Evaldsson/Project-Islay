@@ -106,7 +106,7 @@ typedef struct {
 */
 #define mem_barrier_acquire() __atomic_thread_fence(__ATOMIC_ACQUIRE)
 #define mem_barrier_release() __atomic_thread_fence(__ATOMIC_RELEASE)
-#define mem_barrier_full()    ___atomic_thread_fence(__ATOMIC_SEQ_CST)
+#define mem_barrier_full()    __atomic_thread_fence(__ATOMIC_SEQ_CST)
 
 /*
     READ_/WRITE_ONCE macros ensures that the compiler actually performs a read or write

@@ -5,6 +5,7 @@
    Copyright (C) 2024 Isak Evaldsson
 */
 #include <arch/interrupts.h>
+#include <atomics.h>
 #include <stdint.h>
 #include <tasks/scheduler.h>
 #include <uapi/errno.h>
@@ -239,11 +240,15 @@ void wait_for_interrupt()
 
 void enable_interrupts()
 {
+    // Stop the compiler from possible re-ordering the call to sti
+    mem_barrier_full();
     asm volatile("sti");
 }
 
 void disable_interrupts()
 {
+    // Stop the compiler from possible re-ordering the call to cli
+    mem_barrier_full();
     asm volatile("cli");
 }
 
