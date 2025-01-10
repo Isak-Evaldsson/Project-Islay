@@ -8,6 +8,7 @@
 #include <utils.h>
 
 #include "fs-internals.h"
+#include "kinfo/kinfo.h"
 
 /*
     VFS main data structures
@@ -32,16 +33,16 @@ struct superblock* find_superblock(const struct inode* mounted)
     return NULL;
 }
 
-void sysfs_dump_vfs()
+void kinfo_dump_vfs(struct kinfo_buffer* buff)
 {
-    sysfs_writer("VFS Dump\n");
-    sysfs_writer("Registered file systems:\n");
+    kinfo_write(buff, "VFS Dump\n");
+    kinfo_write(buff, "Registered file systems:\n");
 
     for (struct fs* fs = fs_list; fs != NULL; fs = fs->next) {
-        sysfs_writer("  (%x) name: %s, ops: %x, mountpoints:\n", fs, fs->name, fs->ops);
+        kinfo_write(buff, "  (%x) name: %s, ops: %x, mountpoints:\n", fs, fs->name, fs->ops);
         for (struct superblock* super = fs->mounts; super != NULL; super = super->next) {
-            sysfs_writer("    ->(%x) mounted inode: %x, root inode: %x\n", super,
-                         super->mounted_inode, super->root_inode);
+            kinfo_write(buff, "    ->(%x) mounted inode: %x, root inode: %x\n", super,
+                        super->mounted_inode, super->root_inode);
         }
     }
 }

@@ -7,6 +7,7 @@
    Copyright (C) 2024 Isak Evaldsson
 */
 #include "fs-internals.h"
+#include "kinfo/kinfo.h"
 
 /* In memory inode cache. */
 static struct inode inode_table[MAX_OPEN_GLOBAL];
@@ -99,13 +100,13 @@ void put_node(struct inode *node)
     }
 }
 
-void sysfs_dump_inodes()
+void kinfo_dump_inodes(struct kinfo_buffer *buff)
 {
-    sysfs_writer("inode cache:\n");
+    kinfo_write(buff, "inode cache:\n");
     for (struct inode *inode = inode_table; inode < END_OF_ARRAY(inode_table); inode++) {
         if (inode->count > 0) {
-            sysfs_writer("  (%x) id: %u, count: %u, mode: %u, super: %x, mnt: %u\n", inode,
-                         inode->id, inode->count, inode->mode, inode->super, inode->mountpoint);
+            kinfo_write(buff, "  (%x) id: %u, count: %u, mode: %u, super: %x, mnt: %u\n", inode,
+                        inode->id, inode->count, inode->mode, inode->super, inode->mountpoint);
         }
     }
 }

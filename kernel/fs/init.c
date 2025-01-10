@@ -7,13 +7,24 @@
 #include <arch/paging.h>
 
 #include "fs-internals.h"
+#include "kinfo/kinfo.h"
 #include "romfs/romfs.h"
+
+void kinfo_dump_inodes(struct kinfo_buffer* buff);
+void kinfo_dump_open_files(struct kinfo_buffer* buff);
+void kinfo_dump_vfs(struct kinfo_buffer* buff);
 
 /* Filesystems to be registered at boot */
 static struct fs* boot_fs_list[] = {
     &romfs,
-    &sysfs,
+    &kinfo,
 };
+
+/* FS related kinfo data */
+static struct kinfo_file* kinfo_fs_dir;
+static struct kinfo_file* kinfo_inodes;
+static struct kinfo_file* kinfo_open_files;
+static struct kinfo_file* kinfo_vfs;
 
 int fs_init(struct boot_data* boot_data)
 {
@@ -39,7 +50,37 @@ int fs_init(struct boot_data* boot_data)
         return ret;
     }
 
-    ret = mount("/sys", SYSFS_FS_NAME, NULL);
+    ret = mount("/kinfo", KINFO_FS_NAME, NULL);
+    if (ret < 0) {
+        LOG("Failed to mount kinfo %i", ret);
+        return ret;
+    }
+
+    ret = kinfo_create_file(NULL, &kinfo_fs_dir, "fs", S_IFDIR, NULL);
+    if (ret < 0) {
+        LOG("Failed to create kinfo/fs directory %i", ret);
+        return ret;
+    }
+
+    ret = kinfo_create_file(kinfo_fs_dir, &kinfo_inodes, "inodes", S_IFREG, kinfo_dump_inodes);
+    if (ret < 0) {
+        LOG("Failed to create kinfo/fs/inodes file %i", ret);
+        return ret;
+    }
+
+    ret =
+        kinfo_create_file(kinfo_fs_dir, &kinfo_open_files, "files", S_IFREG, kinfo_dump_open_files);
+    if (ret < 0) {
+        LOG("Failed to create kinfo/fs/files file %i", ret);
+        return ret;
+    }
+
+    ret = kinfo_create_file(kinfo_fs_dir, &kinfo_vfs, "vfs", S_IFREG, kinfo_dump_vfs);
+    if (ret < 0) {
+        LOG("Failed to create kinfo/fs/files file %i", ret);
+        return ret;
+    }
+
     if (ret < 0) {
         LOG("Failed to mount sysfs %i", ret);
         return ret;

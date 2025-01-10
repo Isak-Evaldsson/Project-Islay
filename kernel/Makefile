@@ -30,6 +30,7 @@ fs/inode.o \
 fs/mounting.o \
 fs/pathwalker.o \
 fs/pseudo_file.o \
+fs/kinfo/kinfo.o \
 fs/romfs/romfs.o\
 fs/sysfs/sysfs.o \
 memory/heap_allocator.o \

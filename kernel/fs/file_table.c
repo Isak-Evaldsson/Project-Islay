@@ -7,6 +7,7 @@
    Copyright (C) 2024 Isak Evaldsson
 */
 #include "fs-internals.h"
+#include "kinfo/kinfo.h"
 
 /*
     Statically allocated table of all open files
@@ -78,13 +79,13 @@ int free_fd(struct task_fs_data *task_data, int fd)
     return 0;
 }
 
-void sysfs_dump_open_files(char *buff, size_t size)
+void kinfo_dump_open_files(struct kinfo_buffer *buff)
 {
-    sysfs_writer("open_files table:\n");
+    kinfo_write(buff, "open_files table:\n");
     for (struct open_file *f = open_files; f < END_OF_ARRAY(open_files); f++) {
         if (f->ref_count > 0) {
-            sysfs_writer("  (0x%x) ref_count: %u, offset %u, inode: 0x%x, file_ops: 0x%x\n", f,
-                         f->ref_count, f->offset, f->inode, f->file_ops);
+            kinfo_write(buff, "  (0x%x) ref_count: %u, offset %u, inode: 0x%x, file_ops: 0x%x\n", f,
+                        f->ref_count, f->offset, f->inode, f->file_ops);
         }
     }
 }

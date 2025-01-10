@@ -10,8 +10,6 @@
 #include <uapi/errno.h>
 #include <utils.h>
 
-#include "sysfs/sysfs.h"
-
 #define DEBUG_FS 1
 
 #define LOG(fmt, ...) __LOG(DEBUG_FS, "[FS]", fmt, ##__VA_ARGS__)
@@ -70,7 +68,7 @@ struct fs_ops {
     int (*getattr)(const struct open_file* file, struct stat* stat);
 
     // Reads size bytes from the file at the specified path at the given offset. Returns -errno on
-    // failure, or number of read byte on success
+    // failure, or number of read bytes on success
     int (*read)(char* buf, size_t size, off_t offset, struct open_file* file);
 
     // If defined, open() will be called during file opening after its inode is fetched. This allows
@@ -168,12 +166,5 @@ int pseudo_fetch_inode(const struct superblock* super, ino_t id, struct inode* i
         struct open_file* _ptr = (open_file_ptr); \
         (struct pseudo_file*)_ptr->inode->id;     \
     })
-
-/*
-    sysfs debug functions
-*/
-void sysfs_dump_vfs();
-void sysfs_dump_open_files();
-void sysfs_dump_inodes();
 
 #endif /* FS_INTERNALS_H */
