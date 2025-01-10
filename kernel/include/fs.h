@@ -23,6 +23,21 @@ struct inode;
 /*  Information about an open file */
 struct open_file;
 
+/*
+   Object representing a pseudo file, it can be used to build arbitrary file graphs, allowing for
+   the implementation of various pseudo filesystems.
+*/
+struct pseudo_file {
+    char   name[NAME_MAX];
+    ino_t  inode;
+    mode_t mode;
+    void*  data;
+
+    struct pseudo_file* parent;
+    struct pseudo_file* child;
+    struct pseudo_file* sibling;
+};
+
 /* Struct containing all per task fs related data */
 struct task_fs_data {
     // Note, the inode pointers needs to be cloned on usage, otherwise calls to put_inode() may lead

@@ -150,6 +150,25 @@ int mount_rootfs(char* name, void* data);
 */
 int pathwalk(struct inode* root, const char* path, struct inode** inode_ptr);
 
+/* Connects a file to its directory file.  Returns 0 on success, else -ERRNO */
+int add_pseudo_file(struct pseudo_file* dir, struct pseudo_file* file);
+
+/* Ensure all the fields in the pseudo file to be properly initalized */
+void init_pseudo_file(struct pseudo_file* file, mode_t mode, const char* name);
+
+/* Generic readdir function for pseudo filesystems */
+int pseudo_file_readdir(const struct open_file* file, struct dirent* dirent, off_t offset);
+
+/* Generic fetch_inode function for pseudo filesystems */
+int pseudo_fetch_inode(const struct superblock* super, ino_t id, struct inode* inode);
+
+/* TODO: Document */
+#define GET_PSEUDO_FILE(open_file_ptr)            \
+    ({                                            \
+        struct open_file* _ptr = (open_file_ptr); \
+        (struct pseudo_file*)_ptr->inode->id;     \
+    })
+
 /*
     sysfs debug functions
 */
