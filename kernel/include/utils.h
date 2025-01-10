@@ -37,6 +37,18 @@
         _a < _b ? _a : _b;  \
     })
 
+/*
+    If one has a pointer to struct member m within struct s, the pointer to the struct can be
+    computed with the following macro:
+
+    struct_ptr = GET_STRUCT(s, m, field_ptr);
+ */
+#define GET_STRUCT(type, member, ptr)                       \
+    ({                                                      \
+        typeof(((type *)0)->member) *_ptr = (ptr);          \
+        (type *)((uintptr_t)_ptr - offsetof(type, member)); \
+    })
+
 /* Count the number of elements in a statically allocated array */
 #define COUNT_ARRAY_ELEMS(array) (sizeof(array) / sizeof(array[0]))
 
