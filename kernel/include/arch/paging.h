@@ -17,8 +17,8 @@
 #endif
 
 /* Macros to covert between phyiscal and logical address */
-#define P2L(paddr) ((paddr) + HIGHER_HALF_ADDR)
-#define L2P(laddr) ((laddr) - HIGHER_HALF_ADDR)
+#define P2L(paddr) ((uintptr_t)(paddr) + HIGHER_HALF_ADDR)
+#define L2P(laddr) ((uintptr_t)(laddr) - HIGHER_HALF_ADDR)
 
 /* Ensures the num is aligned by page size */
 #define ALIGN_BY_PAGE_SIZE(num) ALIGN_BY_MULTIPLE(num, PAGE_SIZE)
