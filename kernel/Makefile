@@ -22,8 +22,8 @@ ssp.o \
 boot/init.o \
 devices/input_manager.o \
 devices/keyboard/keyboard.o\
+devices/keyboard/ps2_keyboard.o\
 devices/timer.o \
-devices/ps2_keyboard.o \
 fs/file_operations.o \
 fs/file_table.o \
 fs/init.o \

@@ -9,7 +9,7 @@
 #include <arch/serial.h>
 #include <arch/tty.h>
 #include <boot/multiboot.h>
-#include <devices/ps2_keyboard.h>
+#include <devices/keyboard/ps2_keyboard.h>
 #include <memory/page_frame_manager.h>
 #include <stdint.h>
 #include <utils.h>

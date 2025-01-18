@@ -6,7 +6,7 @@
 */
 #include <arch/paging.h>
 #include <arch/tty.h>
-#include <devices/ps2_keyboard.h>
+#include <devices/keyboard/ps2_keyboard.h>
 #include <fs.h>
 #include <memory/page_frame_manager.h>
 #include <memory/vmem_manager.h>
