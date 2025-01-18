@@ -21,6 +21,7 @@ kshell.o \
 ssp.o \
 boot/init.o \
 devices/input_manager.o \
+devices/keyboard/keyboard.o\
 devices/timer.o \
 devices/ps2_keyboard.o \
 fs/file_operations.o \
