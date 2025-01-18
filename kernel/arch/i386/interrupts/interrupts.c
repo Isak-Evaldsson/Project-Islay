@@ -210,11 +210,12 @@ void init_interrupts()
     pic_remap(PIC1_START_INTERRUPT, PIC2_START_INTERRUPT);
 
     ps2_init();
-    ret = pic_register_interrupt(PS2_KEYBOARD_INTERRUPT, ps2_interrupt_handler, NULL);
+    ret = pic_register_interrupt(PS2_KEYBOARD_INTERRUPT, ps2_top_irq, ps2_bottom_irq);
     if (ret < 0) {
         kpanic("x86: Failed to register ps2 controller, error: %i", ret);
     }
 
+    // TODO: Proper interrupt halfs...
     pit_init();
     ret = pic_register_interrupt(PIT_INTERRUPT_NUM, pit_interrupt_handler, NULL);
     if (ret < 0) {

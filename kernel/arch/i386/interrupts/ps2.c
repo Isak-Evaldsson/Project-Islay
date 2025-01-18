@@ -8,13 +8,12 @@
     Simple "8042" PS/2 Controller driver,
     see: https://wiki.osdev.org/%228042%22_PS/2_Controller
 */
-#include <devices/ps2_keyboard.h>
+#include <devices/keyboard/ps2_keyboard.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <utils.h>
 
 #include "../io.h"
-#include "pic.h"
 #include "ps2.h"
 
 #define GET_BIT(num, bit) ((num & (1 << bit)) >> bit)
@@ -37,8 +36,22 @@
     while ((inb(PS2_CMD_PORT) & 0x02) != 0) \
         ;
 
-/* Marks successfull initiation */
+/* Marks successful initiation */
 static bool initialised = false;
+
+/*
+    Intermidiate buffer for scancode, in order to make the top half irq as small as possible, the
+    scancodes are simply stored in a buffer to be later processed within the bottom half
+
+    TODO: Definitely NOT threadsafe, it only works with a single producer and consumer (due to
+    loads/stores being atomic in x86), will need to be addressed once going smp, by for example
+    using spinlocks, lock-free algorithms or by limiting the interrupt to a single core the
+    interrupt to a single core.
+*/
+#define SCAN_CODE_BUFF_SIZE 100
+static unsigned int  read_idx;
+static unsigned int  write_idx;
+static unsigned char scancode_buffer[SCAN_CODE_BUFF_SIZE];
 
 /*
     Initialises the PS/2 Controller
@@ -154,15 +167,14 @@ void ps2_init()
     kprintf("i8042 PS/2 controller enabled\n");
 }
 
-static void ps2_receive_data(unsigned char data)
+static void ps2_send_kbd_data(unsigned char data)
 {
-    kprintf("Received data '%x' from ps2 driver \n", data);
+    log("Received data '%x' from ps2 driver", data);
+    WAIT_FOR_WRITE();
+    outb(PS2_DATA_PORT, data);
 }
 
-/*
-    Interrupt handler to be run when the PS/2 device sends an interrupt through the PIC
-*/
-void ps2_interrupt_handler(struct interrupt_stack_state *state, uint32_t interrupt_number)
+void ps2_top_irq(struct interrupt_stack_state *state, uint32_t interrupt_number)
 {
     (void)state;
     (void)interrupt_number;
@@ -171,9 +183,34 @@ void ps2_interrupt_handler(struct interrupt_stack_state *state, uint32_t interru
 
     if (scancode == 0xaa && !initialised) {
         initialised = true;
-        ps2_keyboard_register("i8042", ps2_receive_data);
+        ps2_keyboard_register("i8042", ps2_send_kbd_data);
         return;
     }
 
-    ps2_keyboard_send(scancode);
+    // We always keep a single slot free since, otherwise we can't distinguish from the empty
+    // buffer or full buffer case.
+    if ((write_idx + 1) % SCAN_CODE_BUFF_SIZE == read_idx) {
+        log("scancode buffer overflowing, unable to process any more scancodes");
+        return;
+    }
+
+    scancode_buffer[write_idx] = scancode;
+    mem_barrier_full();  // Ensure that the store happens before incrementing index, otherwise
+                         // the consumer may see an incorrect value
+    write_idx = (write_idx + 1) % SCAN_CODE_BUFF_SIZE;
+}
+
+void ps2_bottom_irq(uint32_t irq_no)
+{
+    (void)irq_no;
+    unsigned char scancode;
+
+    while (read_idx != write_idx) {
+        scancode = scancode_buffer[read_idx];
+        mem_barrier_full();  // Ensure that the load happens before incrementing the index,
+                             // otherwise the producer may overwrite the value before its read
+        read_idx = (read_idx + 1) % SCAN_CODE_BUFF_SIZE;
+
+        ps2_keyboard_send(scancode);
+    }
 }
