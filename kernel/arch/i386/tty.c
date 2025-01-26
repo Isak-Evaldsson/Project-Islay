@@ -16,9 +16,9 @@
 // macro converting row and col values to vga buffer index
 #define vga_index(row, col) (VGA_COLS * (row) + (col))
 
-// Pointer to x86 vga buffer, the physical address B8000 is re-mapped to page 1023 at higher
-// half address 0xE0000000 page directory. 0xE0000000 + 1023 * 4096
-volatile uint16_t *vga_buffer = (uint16_t *)0xE03FF000;
+// Pointer to x86 vga buffer, the physical address B8000 is re-mapped to page 1016 at higher
+// half address 0xE0000000 page directory. 0xE0000000 + 1016 * 4096
+volatile uint16_t *vga_buffer = (uint16_t *)0xE03F8000;
 
 const int TERM_WIDTH  = VGA_COLS;
 const int TERM_HEIGHT = VGA_ROWS;

@@ -99,8 +99,16 @@ skip:
 	jmp table_loop
    
 end:
-	# Map VGA video memory to 0xC03FF000 as "present, writable".
-	movl $(0x000B8000 | 0x003), boot_page_table1 - HIGHER_HALF_ADDR + 1023 * 4
+	# Map the 32 KIB VGA video memory to 0xC03F8000 as "present, writable".
+	movl $(0x000B8000 | 0x003), boot_page_table1 - HIGHER_HALF_ADDR + 1016 * 4
+	movl $(0x000B9000 | 0x003), boot_page_table1 - HIGHER_HALF_ADDR + 1017 * 4
+	movl $(0x000BA000 | 0x003), boot_page_table1 - HIGHER_HALF_ADDR + 1018 * 4
+	movl $(0x000BB000 | 0x003), boot_page_table1 - HIGHER_HALF_ADDR + 1019 * 4
+	movl $(0x000BC000 | 0x003), boot_page_table1 - HIGHER_HALF_ADDR + 1020 * 4
+	movl $(0x000BD000 | 0x003), boot_page_table1 - HIGHER_HALF_ADDR + 1021 * 4
+	movl $(0x000BE000 | 0x003), boot_page_table1 - HIGHER_HALF_ADDR + 1022 * 4
+	movl $(0x000BF000 | 0x003), boot_page_table1 - HIGHER_HALF_ADDR + 1023 * 4
+
 
 	# The page table is used at both page directory entry 0 (virtually from 0x0
 	# to 0x3FFFFF) (thus identity mapping the kernel) and page directory entry
