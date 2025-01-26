@@ -48,8 +48,8 @@ tests/scheduler_tests.o \
 utils/endianness.o \
 utils/kpanic.o \
 utils/kprintf.o \
-utils/kreadline.o \
 utils/libc.o \
+utils/list.o \
 utils/log.o \
 utils/sleep.o \
 utils/__fwriter.o \
