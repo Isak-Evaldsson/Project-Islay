@@ -4,10 +4,10 @@
 
    Copyright (C) 2024 Isak Evaldsson
 */
+#include <arch/i386/io.h>
 #include <uapi/errno.h>
 #include <utils.h>
 
-#include "../io.h"
 #include "pic.h"
 
 #define N_PIC_INTERRUPTS 16

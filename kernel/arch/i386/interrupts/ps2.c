@@ -8,12 +8,12 @@
     Simple "8042" PS/2 Controller driver,
     see: https://wiki.osdev.org/%228042%22_PS/2_Controller
 */
+#include <arch/i386/io.h>
 #include <devices/keyboard/ps2_keyboard.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <utils.h>
 
-#include "../io.h"
 #include "ps2.h"
 
 #define GET_BIT(num, bit) ((num & (1 << bit)) >> bit)

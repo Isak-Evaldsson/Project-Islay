@@ -4,10 +4,9 @@
 
    Copyright (C) 2024 Isak Evaldsson
 */
+#include <arch/i386/io.h>
 #include <arch/tty.h>
 #include <stdint.h>
-
-#include "io.h"
 
 // VGA buffer configuration
 #define VGA_COLS 80
@@ -39,6 +38,26 @@ void term_init()
     }
 }
 
+static void update_cursor(int row, int col)
+{
+    uint16_t pos = vga_index(row, col);
+
+    outb(0x3D4, 0x0F);
+    outb(0x3D5, (uint8_t)(pos & 0xFF));
+    outb(0x3D4, 0x0E);
+    outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
+}
+
+void term_del()
+{
+    vga_buffer[vga_index(term_row, term_col)] = (term_color << 8) | ' ';
+    update_cursor(term_row, term_col);  // Positing is a bit buggy..
+
+    if (term_col) {
+        term_col--;
+    }
+}
+
 void term_put(char c)
 {
     if (c == '\n') {
@@ -47,6 +66,7 @@ void term_put(char c)
     } else {
         vga_buffer[vga_index(term_row, term_col)] = ((uint16_t)term_color << 8) | c;
         term_col++;
+        update_cursor(term_row, term_col);
     }
 
     // Handles too long rows

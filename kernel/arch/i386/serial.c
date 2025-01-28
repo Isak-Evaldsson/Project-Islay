@@ -4,9 +4,8 @@
 
    Copyright (C) 2024 Isak Evaldsson
 */
+#include <arch/i386/io.h>
 #include <arch/serial.h>
-
-#include "io.h"
 
 #define PORT 0x3f8
 
