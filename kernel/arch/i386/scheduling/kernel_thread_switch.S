@@ -10,7 +10,7 @@
 
 #define TSS_ESPO_OFFSET 4
 
-# External pointers
+# External tss struct
 .extern kernel_tss
 
 #
@@ -43,8 +43,9 @@ kernel_thread_switch:
     movl THREAD_REGS_ESP_OFFSET(%esi),  %esp           # Load ESP for next task's kernel stack from  its PCB
     movl THREAD_REGS_CR3_OFFSET(%esi),  %eax           # eax = address of page directory for next task
     movl THREAD_REGS_ESP0_OFFSET(%esi), %ebx           # ebx = address for the top of the next task's kernel stack
-    movl %ebx, (kernel_tss + TSS_ESPO_OFFSET)  # adjust the ESP0 field in the TSS (used by CPU for for CPL=3 -> CPL=0 privilege level changes)
+    movl %ebx, kernel_tss + TSS_ESPO_OFFSET            # adjust the ESP0 field in the TSS (used by CPU for for CPL=3 -> CPL=0 privilege level changes)
 
+    # TODO: Could proably be defered to later, i.e. when the interrupt jumps from kernel to user-space
     # Compare and change page tables if necesary
     movl %cr3, %ecx             # ecx = previous task's virtual address space
     cmp  %ecx, %eax             # Are we change the virutal address space?

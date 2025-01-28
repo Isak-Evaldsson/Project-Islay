@@ -42,8 +42,8 @@ typedef struct tss {
     uint32_t ssp;
 } __attribute__((packed)) tss_t;
 
-/* Global variable holding a pointer to the kernel tss */
-extern tss_t* kernel_tss;
+/* Global variable holding the kernel tss */
+extern tss_t kernel_tss;
 
 /*
     Assembly routine for properly loading the TSS
