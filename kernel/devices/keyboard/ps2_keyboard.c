@@ -188,25 +188,25 @@ void send_event(uint16_t keycode, bool released)
         return;  // TODO: Log error...
     }
 
+    if ((kbd.modifiers & (1 << LSHIFT)) || (kbd.modifiers & (1 << RSHIFT))) {
+        SET_BIT(status, MOD_SHIFT);
+    }
+
+    if ((kbd.modifiers & (1 << LCTRL)) || (kbd.modifiers & (1 << RCTRL))) {
+        SET_BIT(status, MOD_CTRL);
+    }
+
+    if ((kbd.modifiers & (1 << LALT)) || (kbd.modifiers & (1 << RALT))) {
+        SET_BIT(status, MOD_ALT);
+    }
+
+    if ((kbd.modifiers & (1 << LSUPER)) || (kbd.modifiers & (1 << RSUPER))) {
+        SET_BIT(status, MOD_SUPER);
+    }
+
     // Covert scancode modifiers to os key status
     if (released) {
         SET_BIT(status, INPUT_RELEASED);
-
-        if ((kbd.modifiers & (1 << LSHIFT)) || (kbd.modifiers & (1 << RSHIFT))) {
-            SET_BIT(status, MOD_SHIFT);
-        }
-
-        if ((kbd.modifiers & (1 << LCTRL)) || (kbd.modifiers & (1 << RCTRL))) {
-            SET_BIT(status, MOD_CTRL);
-        }
-
-        if ((kbd.modifiers & (1 << LALT)) || (kbd.modifiers & (1 << RALT))) {
-            SET_BIT(status, MOD_ALT);
-        }
-
-        if ((kbd.modifiers & (1 << LSUPER)) || (kbd.modifiers & (1 << RSUPER))) {
-            SET_BIT(status, MOD_SUPER);
-        }
     }
 
     keyboard_process_event(&kbd.kbd, keycode, status);
