@@ -185,7 +185,8 @@ void send_event(uint16_t keycode, bool released)
     unsigned char status = 0;
 
     if (keycode == INVALID_KEY) {
-        return;  // TODO: Log error...
+        LOG("received invalid keycode");
+        return;
     }
 
     if ((kbd.modifiers & (1 << LSHIFT)) || (kbd.modifiers & (1 << RSHIFT))) {
