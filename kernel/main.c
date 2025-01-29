@@ -20,6 +20,7 @@ void kernel_main(struct boot_data* boot_data)
 {
     kprintf("Starting boot sequence...\n");
     page_frame_manager_init(boot_data);
+    drivers_init();
 
     init_gdt();
     init_interrupts();
