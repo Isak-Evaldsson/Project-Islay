@@ -18,15 +18,20 @@ enum keyboard_leds {
 
 /* Object to store common data and functions needed by all keyboard drivers  */
 struct keyboard {
+    struct device dev;  // Or should it simply be a list?
+
     // Callback to change the keyboard leds, the different bits within corresponds to leds defined
     // in enum keyboard_leds
     void (*set_leds)(unsigned char);
 };
 
 /* Process events received by the keyboard and pass then further up the input stack */
-void keyboard_process_event(struct keyboard *kdb, uint16_t key_code, unsigned char status);
+void keyboard_process_event(uint16_t key_code, unsigned char status);
 
 /* Initialise the keyboard object. Return 0 on success and -ERRNO on failure */
 int keyboard_init(struct keyboard *kbd);
+
+/* For driver registration */
+extern struct driver keyboard_driver;
 
 #endif /* DEVICES_KEYBOARD_KEYBOARD_H */

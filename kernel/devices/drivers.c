@@ -6,6 +6,7 @@
 */
 
 #include "internals.h"
+#include "keyboard/keyboard.h"
 
 #define LOG(fmt, ...) __LOG(1, "[DRIVER]", fmt, ##__VA_ARGS__)
 
@@ -13,6 +14,7 @@ extern struct driver console;
 
 static struct driver *driver_table[] = {
     NULL,  // Major num 0 reserved for errors
+    &keyboard_driver,
 };
 static_assert(COUNT_ARRAY_ELEMS(driver_table) < MAJOR_MAX);
 

@@ -210,7 +210,7 @@ void send_event(uint16_t keycode, bool released)
         SET_BIT(status, INPUT_RELEASED);
     }
 
-    keyboard_process_event(&kbd.kbd, keycode, status);
+    keyboard_process_event(keycode, status);
 }
 
 void ps2_keyboard_send(unsigned char scancode)

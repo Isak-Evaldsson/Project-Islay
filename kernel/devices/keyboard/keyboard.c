@@ -15,18 +15,30 @@
 // TODO: Currently, the keyboard_state is global, it might be better to have it per tty instance?
 static unsigned char keyboard_state = 0;
 
-static void keyboard_update_state(struct keyboard *kbd, unsigned char led)
+static void set_leds()
+{
+    struct keyboard   *kbd;
+    struct list_entry *entry;
+
+    LIST_ITER(&keyboard_driver.devices, entry)
+    {
+        kbd = GET_STRUCT(struct keyboard, dev, LIST_ENTRY_TO_DEV(entry));
+        kbd->set_leds(keyboard_state);
+    }
+}
+
+static void keyboard_update_state(unsigned char led)
 {
     if (keyboard_state & (1 << led)) {
         CLR_BIT(keyboard_state, led);
     } else {
         SET_BIT(keyboard_state, led);
     }
-    kbd->set_leds(keyboard_state);
+    set_leds();
 }
 
 // Do we want to have separate functions for press and release?
-void keyboard_process_event(struct keyboard *kbd, uint16_t key_code, unsigned char status)
+void keyboard_process_event(uint16_t key_code, unsigned char status)
 {
     if (KEY_LETTER(key_code)) {
         // TODO: Keymap translation of letter...
@@ -43,19 +55,19 @@ void keyboard_process_event(struct keyboard *kbd, uint16_t key_code, unsigned ch
     switch (key_code) {
         case KEY_CAPS:
             if (status & (1 << INPUT_RELEASED)) {
-                keyboard_update_state(kbd, LED_CAPS_LOCK);
+                keyboard_update_state(LED_CAPS_LOCK);
             }
             break;
 
         case KEY_NUMLOCK:
             if (status & (1 << INPUT_RELEASED)) {
-                keyboard_update_state(kbd, LED_NUM_LOCK);
+                keyboard_update_state(LED_NUM_LOCK);
             }
             break;
 
         case KEY_SCROLLOCK:
             if (status & (1 << INPUT_RELEASED)) {
-                keyboard_update_state(kbd, LED_CAPS_LOCK);
+                keyboard_update_state(LED_CAPS_LOCK);
             }
             break;
 
@@ -71,11 +83,22 @@ void keyboard_process_event(struct keyboard *kbd, uint16_t key_code, unsigned ch
 
 int keyboard_init(struct keyboard *kbd)
 {
+    int ret;
+
     if (kbd->set_leds == NULL) {
         return -EINVAL;
+    }
+
+    ret = register_device(&keyboard_driver, &kbd->dev);
+    if (ret < 0) {
+        return ret;
     }
 
     // TODO: Assign keymap once implemented...
     input_manager_init();
     return 0;
 }
+
+struct driver keyboard_driver = {
+    .name = "keyboard",
+};
