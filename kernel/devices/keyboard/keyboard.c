@@ -10,9 +10,9 @@
 #include <uapi/errno.h>
 #include <utils.h>
 
+#include "../internals.h"
 #include "keyboard.h"
 
-// TODO: Currently, the keyboard_state is global, it might be better to have it per tty instance?
 static unsigned char keyboard_state = 0;
 
 static void set_leds()
@@ -77,8 +77,21 @@ void keyboard_process_event(uint16_t key_code, unsigned char status)
 
     // TODO: Implement separate keycode for keypad and regular keys in order to get numlock
     // working...
-
     input_manager_send_event(key_code, status);
+}
+
+unsigned char get_keyboard_state()
+{
+    return keyboard_state;
+}
+
+void set_keyboard_state(unsigned char state)
+{
+    struct keyboard   *kbd;
+    struct list_entry *entry;
+
+    keyboard_state = state;
+    set_leds();
 }
 
 int keyboard_init(struct keyboard *kbd)

@@ -31,6 +31,12 @@ void keyboard_process_event(uint16_t key_code, unsigned char status);
 /* Initialise the keyboard object. Return 0 on success and -ERRNO on failure */
 int keyboard_init(struct keyboard *kbd);
 
+/* Get the global keyboard state */
+unsigned char get_keyboard_state();
+
+/* Set the global keyboard state */
+void set_keyboard_state(unsigned char state);
+
 /* For driver registration */
 extern struct driver keyboard_driver;
 
