@@ -5,6 +5,8 @@
    Copyright (C) 2025 Isak Evaldsson
 */
 
+#include <devices/display/text_mode_display.h>
+
 #include "internals.h"
 #include "keyboard/keyboard.h"
 
@@ -14,6 +16,7 @@ extern struct driver console;
 
 static struct driver *driver_table[] = {
     NULL,  // Major num 0 reserved for errors
+    &text_mode_display_driver,
     &keyboard_driver,
 };
 static_assert(COUNT_ARRAY_ELEMS(driver_table) < MAJOR_MAX);
