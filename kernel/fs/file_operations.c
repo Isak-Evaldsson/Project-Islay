@@ -40,7 +40,7 @@ int open(struct task_fs_data* task_data, const char* path, int oflag)
 
     file->ref_count           = 1;  // Marks the file object as allocated
     task_data->file_table[fd] = file;
-    return 0;
+    return fd;
 }
 
 int close(struct task_fs_data* task_data, int fd)
