@@ -6,16 +6,16 @@
 */
 
 #include <devices/display/text_mode_display.h>
+#include <devices/tty.h>
 
 #include "internals.h"
 #include "keyboard/keyboard.h"
 
 #define LOG(fmt, ...) __LOG(1, "[DRIVER]", fmt, ##__VA_ARGS__)
 
-extern struct driver console;
-
 static struct driver *driver_table[] = {
     NULL,  // Major num 0 reserved for errors
+    &tty_driver,
     &text_mode_display_driver,
     &keyboard_driver,
 };
