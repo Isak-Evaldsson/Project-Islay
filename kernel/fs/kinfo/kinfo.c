@@ -76,7 +76,7 @@ static struct fs_ops kinfo_ops = {
     .fetch_inode = pseudo_fetch_inode,
 };
 
-DEFINE_FS(kinfo, KINFO_FS_NAME, &kinfo_ops);
+DEFINE_FS(kinfo, KINFO_FS_NAME, &kinfo_ops, MOUNT_READONLY);
 
 /*
     kinfo API

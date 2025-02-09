@@ -23,6 +23,9 @@ struct inode;
 /*  Information about an open file */
 struct open_file;
 
+/* Mount flags, controls how a fs should be mounted */
+#define MOUNT_READONLY 0x01
+
 /*
    Object representing a pseudo file, it can be used to build arbitrary file graphs, allowing for
    the implementation of various pseudo filesystems.
@@ -59,9 +62,10 @@ int fs_init(struct boot_data* boot_data);
  * mounting data for a particular file system.
  * @param path were to mount the fs
  * @param name the name of the file system to mount
+ * @param flags allows for specific mount options
  * @param data fs specific data needed for mounting
  * @return 0 on success, -errno on failure */
-int mount(const char* path, const char* name, void* data);
+int mount(const char* path, const char* name, unsigned int flags, void* data);
 
 /* Open file */
 int open(struct task_fs_data* task_data, const char* path, int oflag);

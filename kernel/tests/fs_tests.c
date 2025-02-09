@@ -46,8 +46,8 @@ static struct fs_ops test_fs_ops = {.mount       = test_fs_mount,
                                     .read        = test_fs_read,
                                     .fetch_inode = test_fs_fetch_inode,
                                     .readdir     = test_fs_readdir};
-static DEFINE_FS(test_fs, "test_fs", &test_fs_ops);
-static DEFINE_FS(test_fs2, "test_fs2", &test_fs_ops);
+static DEFINE_FS(test_fs, "test_fs", &test_fs_ops, 0);
+static DEFINE_FS(test_fs2, "test_fs2", &test_fs_ops, 0);
 
 static int register_fs_test()
 {
@@ -80,62 +80,62 @@ static int test_mounting()
     struct data success = {.str = "Hello"};
     struct data fail    = {.fail = 10};
 
-    ret = mount("/testdir", "test_fs", &success);
+    ret = mount("/testdir", "test_fs", 0, &success);
     if (ret) {
         TEST_LOG("Failed to mount testdir1 (%x)\n", ret);
         return -1;
     }
 
-    ret = mount("/testdir2", "test_fs", &success);
+    ret = mount("/testdir2", "test_fs", 0, &success);
     if (ret) {
         TEST_LOG("Failed to mount testdir2 (%x)\n", ret);
         return -1;
     }
 
-    ret = mount("/failure", "test_fs2", &fail);
+    ret = mount("/failure", "test_fs2", 0, &fail);
     if (ret != -EIO) {
         TEST_LOG("A failed call to fs->mount should yield and error (%i)\n", ret);
         return -1;
     }
 
-    ret = mount("/testdir", "test_fs", &success);
+    ret = mount("/testdir", "test_fs", 0, &success);
     if (ret != -EEXIST) {
         TEST_LOG("Mounting at the same path twice should yield an error (%i)\n", ret);
         return -1;
     }
 
-    ret = mount("/failure2", "does_not_exits", &success);
+    ret = mount("/failure2", "does_not_exits", 0, &success);
     if (ret != -ENOENT) {
         TEST_LOG("Trying to mount an not registered file system (%i)\n", ret);
         return -1;
     }
 
-    ret = mount("/dir1/dir2/test1", "test_fs", &success);
+    ret = mount("/dir1/dir2/test1", "test_fs", 0, &success);
     if (ret) {
         TEST_LOG("Failed to mount '/dir1/dir2/test1' (%x)\n", ret);
         return -1;
     }
 
-    ret = mount("/dir1/dir2/test2", "test_fs", &success);
+    ret = mount("/dir1/dir2/test2", "test_fs", 0, &success);
     if (ret) {
         TEST_LOG("Failed to mount '/dir1/dir2/test2' (%x)\n", ret);
         return -1;
     }
 
-    ret = mount("/dir1/dir2/test2", "test_fs", &success);
+    ret = mount("/dir1/dir2/test2", "test_fs", 0, &success);
     if (ret != -EEXIST) {
         TEST_LOG("Mounting at the same path twice should yield an error (%i)\n", ret);
         return -1;
     }
 
     // Do we clean-up correctly (no trailing dirs?)
-    ret = mount("/dir1/dir2/di3/dir4/dir5/dir6", "test_fs", &fail);
+    ret = mount("/dir1/dir2/di3/dir4/dir5/dir6", "test_fs", 0, &fail);
     if (ret != -EIO) {
         TEST_LOG("A failed call to fs->mount should yield and error (%i)\n", ret);
         return -1;
     }
 
-    ret = mount("/", "test_fs", &success);
+    ret = mount("/", "test_fs", 0, &success);
     if (ret != -ENOTSUP) {
         TEST_LOG("Mounting at root should fail (%i)\n", ret);
         return -1;

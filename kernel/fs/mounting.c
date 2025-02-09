@@ -47,10 +47,14 @@ void kinfo_dump_vfs(struct kinfo_buffer* buff)
     }
 }
 
-static int check_required_fs_ops(const struct fs_ops* ops)
+static int check_required_fs_ops(const struct fs_ops* ops, unsigned int static_flags)
 {
     if (!ops->mount || !ops->read || !ops->fetch_inode || !ops->readdir)
         return -1;
+
+    if (!(static_flags & MOUNT_READONLY) && !ops->write) {
+        return -1;
+    }
 
     return 0;
 }
@@ -63,7 +67,7 @@ int register_fs(struct fs* fs)
     if (!fs)
         return -EFAULT;
 
-    if (!fs->ops || check_required_fs_ops(fs->ops))
+    if (!fs->ops || check_required_fs_ops(fs->ops, fs->static_flags))
         return -EINVAL;
 
     len = strlen(fs->name);
@@ -175,7 +179,7 @@ int mount_rootfs(char* name, void* data)
     return 0;
 }
 
-int mount(const char* path, const char* name, void* data)
+int mount(const char* path, const char* name, unsigned int flags, void* data)
 {
     int                ret;
     struct inode*      inode;
@@ -209,6 +213,7 @@ int mount(const char* path, const char* name, void* data)
         put_node(inode);
         return ret;
     }
+    superblk->flags = flags & superblk->fs->static_flags;
     return 0;
 }
 

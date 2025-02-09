@@ -50,7 +50,7 @@ int fs_init(struct boot_data* boot_data)
         return ret;
     }
 
-    ret = mount("/kinfo", KINFO_FS_NAME, NULL);
+    ret = mount("/kinfo", KINFO_FS_NAME, 0, NULL);
     if (ret < 0) {
         LOG("Failed to mount kinfo %i", ret);
         return ret;

@@ -16,7 +16,13 @@
 
 #define FS_NAME_MAXLEN (127)
 
-#define DEFINE_FS(_var, _name, _ops) struct fs _var = {.name = (_name), .ops = (_ops), .next = NULL}
+#define DEFINE_FS(_var, _name, _ops, _sflags) \
+    struct fs _var = {                        \
+        .name         = (_name),              \
+        .ops          = (_ops),               \
+        .static_flags = (_sflags),            \
+        .next         = NULL,                 \
+    }
 
 /*  The primary data structure for all file-system objects */
 struct inode {
@@ -38,6 +44,7 @@ struct superblock {
     struct inode* mounted_inode;  // On which inode is this fs mounted
     struct fs*    fs;             // Which fs does this mountpoint implement
     void*         data;           // For file system specific mountpoint data
+    unsigned int  flags;          // Flags specified by mount()
 
     struct superblock* next;  // Used by the per fs mounts list
 };
@@ -94,6 +101,7 @@ struct fs_ops {
 /*  Static filesystem data */
 struct fs {
     const char         name[FS_NAME_MAXLEN + 1];
+    unsigned int       static_flags;
     struct fs_ops*     ops;
     struct fs*         next;
     struct superblock* mounts;  // List's all superblock mounted to this fs
@@ -134,6 +142,8 @@ struct superblock* find_superblock(const struct inode* mounted);
  * Registers a file system for future mounting. The name of each registered file system is
  * required to be unique and at least 3 characters.
  * @param fs static file system data such as name, opts etc.
+ * @param static_flags mountflags that's always applied when mounting this particular fs, see
+ * mount_flags
  * @return 0 on success, -EEXIST if there's already exists a file system with the same.
  */
 int register_fs(struct fs* fs);
