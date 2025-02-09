@@ -7,8 +7,8 @@
 #include <arch/gdt.h>
 #include <arch/interrupts.h>
 #include <arch/serial.h>
-#include <arch/tty.h>
 #include <devices/device.h>
+#include <devices/tty.h>
 #include <fs.h>
 #include <memory/page_frame_manager.h>
 #include <tasks/scheduler.h>
@@ -28,6 +28,9 @@ void kernel_main(struct boot_data* boot_data)
     if (arch_initialise_static_devices() < 0) {
         kpanic("Failed to initialise static devices");
     }
+
+    kprintf("make console: %i\n", make_tty_devs());
+
     kprintf("Kernel successfully booted at vaddr 0xE0100000 (3.5 GiB + 1 MiB)\n\n");
 
     int ret = fs_init(boot_data);
@@ -40,7 +43,6 @@ void kernel_main(struct boot_data* boot_data)
     run_post_boot_tests();
 #endif
 
-    // TODO: nice looking boot animation (requires timers)
     kshell();
 
     // Keep kernel alive, waiting for interrupts
