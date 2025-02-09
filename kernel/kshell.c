@@ -18,6 +18,8 @@
     Basic kernel shell
 */
 
+static int tty_fd;
+
 /* Internal helper functions */
 static void print_help();
 static void mem_stats();
@@ -40,27 +42,57 @@ static command_t commands[] = {
     {.name = "syslist", .description = "list files in sysfs",                 list_cmd  },
 };
 
+static void kshell_print(const char *restrict format, ...)
+{
+    char    str[200];
+    va_list args;
+    kassert(tty_fd >= 0);
+
+    va_start(args, format);
+    vsnprintf(str, sizeof(str), format, args);
+    va_end(args);
+
+    write(&scheduler_get_current_task()->fs_data, tty_fd, str, sizeof(str));
+}
+
+static void kshell_readline(char *buff, size_t size)
+{
+    int ret;
+    kassert(tty_fd >= 0);
+
+    ret = read(&scheduler_get_current_task()->fs_data, tty_fd, buff, size);
+    if (ret < 0) {
+        return;
+    }
+
+    // ensure null termination and strip newline
+    buff[ret] = '\0';
+    if (buff[ret - 1] == '\n') {
+        buff[ret - 1] = '\0';
+    }
+}
+
 static void print_kernel_header()
 {
-    kprintf("Project Islay, version 0.0.1 (pre-alpha)\n");
+    kshell_print("Project Islay, version 0.0.1 (pre-alpha)\n");
     for (int i = 0; i < TERM_WIDTH; i++)
-        kprintf("=");
+        kshell_print("=");
 }
 
 static void print_help()
 {
-    kprintf("Available commands:\n");
+    kshell_print("Available commands:\n");
     for (size_t i = 0; i < sizeof(commands) / sizeof(commands[0]); i++)
-        kprintf("   %s: %s\n", commands[i].name, commands[i].description);
+        kshell_print("   %s: %s\n", commands[i].name, commands[i].description);
 }
 
 static void mem_stats()
 {
     memory_stats_t mem;
     page_frame_manger_memory_stats(&mem);
-    kprintf("Memory statistics:\n");
-    kprintf("Amount of memory: %u MiB\n", mem.memory_amount >> 20);
-    kprintf("%u of %u available page frames\n", mem.n_available_frames, mem.n_frames);
+    kshell_print("Memory statistics:\n");
+    kshell_print("Amount of memory: %u MiB\n", mem.memory_amount >> 20);
+    kshell_print("%u of %u available page frames\n", mem.n_available_frames, mem.n_frames);
 }
 
 static void list_cmd(char *arg)
@@ -71,7 +103,7 @@ static void list_cmd(char *arg)
     snprintf(path, sizeof(path), "/%s", arg);
     int fd = open(&scheduler_get_current_task()->fs_data, path, O_DIRECTORY);
     if (fd < 0) {
-        kprintf("failed to open %s, errno -%u\n", path, -fd);
+        kshell_print("failed to open %s, errno -%u\n", path, -fd);
         return;
     }
 
@@ -80,19 +112,19 @@ static void list_cmd(char *arg)
     do {
         ret = readdirents(&scheduler_get_current_task()->fs_data, fd, dirs, count);
         if (ret < 0) {
-            kprintf("readdirents failed: errno -%u\n", -ret);
+            kshell_print("readdirents failed: errno -%u\n", -ret);
             goto end;
         }
 
         for (int i = 0; i < ret; i++) {
-            kprintf("(%u): %s\n", dirs[i].d_ino, dirs[i].d_name);
+            kshell_print("(%u): %s\n", dirs[i].d_ino, dirs[i].d_name);
         }
     } while (ret == count);
 
 end:
     int res = close(&scheduler_get_current_task()->fs_data, fd);
     if (res < 0) {
-        kprintf("failed to close fd: %u, errno -%u", fd, -res);
+        kshell_print("failed to close fd: %u, errno -%u", fd, -res);
     }
 }
 
@@ -100,27 +132,27 @@ static void read_cmd(char *arg)
 {
     char path[100];
 
-    snprintf(path, sizeof(path), "/sys/%s", arg);
-    int fd = open(&scheduler_get_current_task()->fs_data, path, 0);
+    snprintf(path, sizeof(path), "/dev/%s", arg);
+    int fd = open(&scheduler_get_current_task()->fs_data, path, O_RDONLY);
     if (fd < 0) {
-        kprintf("failed to open %s, errno %i\n", path, fd);
+        kshell_print("failed to open %s, errno %i\n", path, fd);
         return;
     }
 
     ssize_t nbytes = read(&scheduler_get_current_task()->fs_data, fd, buf, PAGE_SIZE - 1);
     if (nbytes < 0) {
-        kprintf("Failed to read fd %u, errno %i\n", fd, nbytes);
+        kshell_print("Failed to read fd %u, errno %i\n", fd, nbytes);
         goto end;
     }
 
     // Ensure that we print a null-terminated string
     buf[nbytes] = '\0';
-    kprintf("%s\n", buf);
+    kshell_print("%s\n", buf);
 
 end:
     int res = close(&scheduler_get_current_task()->fs_data, fd);
     if (res < 0) {
-        kprintf("failed to close fd: %u, errno -%u", fd, -res);
+        kshell_print("failed to close fd: %u, errno -%u", fd, -res);
     }
 }
 
@@ -140,24 +172,29 @@ static void parse_command(char *cmd)
     }
 
     if (strcmp(cmd, "clear"))
-        kprintf("Invalid command: %s\n", cmd);
+        kshell_print("Invalid command: %s\n", cmd);
 }
 
 void kshell()
 {
     char cmd[200];
 
+    tty_fd = open(&scheduler_get_current_task()->fs_data, "/dev/tty1", O_RDWR);
+    if (tty_fd < 0) {
+        kshell_print("Failed to open tty1\n");
+        return;
+    }
     print_kernel_header();
 
     buf = (char *)vmem_request_free_page(0);
     if (!buf) {
-        kprintf("Failed to allocate kshell buffer\n");
+        kshell_print("Failed to allocate kshell buffer\n");
         return;
     }
 
     while (true) {
-        kprintf("> ");
-        kreadline(sizeof(cmd), cmd);
+        kshell_print("kshell> ");
+        kshell_readline(cmd, sizeof(cmd));
         parse_command(cmd);
     }
 }
