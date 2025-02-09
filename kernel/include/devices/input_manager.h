@@ -7,6 +7,7 @@
 #ifndef DEVICES_INPUT_H
 #define DEVICES_INPUT_H
 
+#include <list.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -40,6 +41,10 @@ enum input_event_status_bits {
 */
 #define CHECK_IF_PRESSED(x)    (!(x & (1 << INPUT_RELEASED)))
 #define CHECK_IF_UPPER_CASE(x) (x & (1 << UPPER_CASE))
+#define CHECK_IF_SHIFT(x)      (x & (1 << MOD_SHIFT))
+#define CHECK_IF_CTRL(x)       (x & (1 << MOD_CTRL))
+#define CHECK_IF_ALT(x)        (x & (1 << MOD_ALT))
+#define CHECK_IF_SUPER(x)      (x & (1 << MOD_SUPER))
 /*
     All key-codes, all printable characters correspond to their ascii equivalents
 */
@@ -136,5 +141,27 @@ bool input_manager_get_event(input_event_t* event);
     the queue.
 */
 void input_manager_wait_for_event(input_event_t* event);
+
+/*
+    To read events report to the input manger, an input subscriber object must be created and
+    supplied to the registration functions bellow.
+
+    When actively subscribing, the on_events_receive callback will be called once events are
+    available.
+*/
+struct input_subscriber {
+    int (*on_events_received)(input_event_t event);
+    struct list_entry list;
+};
+
+/*
+    Register an input subscriber object to actively subscribe on new input events, when a new event
+   is available, the objects associated callback will be called.
+*/
+int input_manger_subscribe(struct input_subscriber* subscriber);
+
+/* Unsubscribe from inputs events, the callback associated to the subscriber object will no longer
+ * be called on new input events. */
+void input_manger_unsubscribe(struct input_subscriber* subscriber);
 
 #endif /* DEVICES_INPUT_H */

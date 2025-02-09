@@ -7,7 +7,12 @@
 #include <arch/interrupts.h>
 #include <devices/input_manager.h>
 #include <ring_buffer.h>
+#include <uapi/errno.h>
 #include <utils.h>
+
+#include "internals.h"
+
+#define LOG(fmt, ...) __LOG(1, "[INPUT_MANAGER]", fmt, ##__VA_ARGS__)
 
 #define EVENT_QUEUE_SIZE 200
 
@@ -21,24 +26,27 @@
 // TODO: more dynamic event queue that a fixed size ring buffer
 static ring_buff_struct(input_event_t, EVENT_QUEUE_SIZE) event_queue;
 
+// Stores all currently registered input event subscribers
+static struct list subscriber_queue = LIST_INIT();
+
 void input_manager_init()
 {
     static bool initiated = false;
 
     if (!initiated) {
         initiated = true;
-        ring_buff_init(event_queue);
+        // TODO: Create input related dev/kinfo files...
     }
 }
 
 /* Allows the input driver to send an input event */
 void input_manager_send_event(uint16_t key_code, unsigned char status)
 {
-    VERIFY_QUEUE_INIT();
-    input_event_t event = {.key_code = key_code, .status = status};
+    struct list_entry* entry;
+    input_event_t      event = {.key_code = key_code, .status = status};
 
-    if (key_code > KEY_DELETE) {
-        kprintf("Input manager warning: received invalid keycode: %u\n", key_code);
+    if (key_code >= VALID_KEY_MAX) {
+        LOG("Input manager warning: received invalid keycode: %u\n", key_code);
         return;
     }
 
@@ -47,6 +55,15 @@ void input_manager_send_event(uint16_t key_code, unsigned char status)
         ring_buffer_push(event_queue, event);
     } else {
         INPUT_MANGER_ERR("input event queue filled up");
+    }
+
+    // TODO: fix clang format, curly bracket should be on the same line
+    LIST_ITER(&subscriber_queue, entry)
+    {
+        struct input_subscriber* subscriber = GET_STRUCT(struct input_subscriber, list, entry);
+
+        // How to handle errors?
+        subscriber->on_events_received(event);
     }
 }
 
@@ -80,3 +97,18 @@ void input_manager_wait_for_event(input_event_t* event)
                                // a scheduler with a proper wait queue)
     } while (!input_manager_get_event(event));
 }
+
+int input_manger_subscribe(struct input_subscriber* subscriber)
+{
+    if (!subscriber->on_events_received) {
+        return -EINVAL;
+    }
+
+    list_add(&subscriber_queue, &subscriber->list);
+}
+
+void input_manger_unsubscribe(struct input_subscriber* subscriber)
+{
+    list_remove(&subscriber_queue, &subscriber->list);
+}
+
