@@ -98,9 +98,6 @@ int kvprintf(const char *restrict, va_list);
 /* Logs formatted message to serial output */
 int log(const char *restrict format, ...);
 
-/* Read line from keyboard into string of a give size, allowing basic kernel shell input */
-void kreadline(size_t size, char *str);
-
 /* kernel heap functions */
 
 /* Does always clear the memory before returning the pointer */

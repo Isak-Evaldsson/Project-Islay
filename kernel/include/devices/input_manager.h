@@ -131,18 +131,6 @@ void input_manager_init();
 void input_manager_send_event(uint16_t key_code, unsigned char status);
 
 /*
-    Read event queue, used by the kernel to receive key events.
-    Returns true if there's an event available.
-*/
-bool input_manager_get_event(input_event_t* event);
-
-/*
-    If fetches an event from the queue if available, else it waits for a new event to be pushed to
-    the queue.
-*/
-void input_manager_wait_for_event(input_event_t* event);
-
-/*
     To read events report to the input manger, an input subscriber object must be created and
     supplied to the registration functions bellow.
 
