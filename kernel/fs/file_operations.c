@@ -12,6 +12,10 @@ int open(struct task_fs_data* task_data, const char* path, int oflag)
     struct open_file* file;
     struct inode*     inode;
 
+    if (!oflag) {
+        return -EPERM;
+    }
+
     fd = alloc_fd(task_data, &file);
     if (fd < 0) {
         return fd;
@@ -27,17 +31,25 @@ int open(struct task_fs_data* task_data, const char* path, int oflag)
         return -ENOTDIR;
     }
 
+    if ((oflag & O_RDWR) || (oflag & O_WRONLY)) {
+        if (inode->super->flags & MOUNT_READONLY) {
+            put_node(inode);
+            return -EPERM;
+        }
+    }
+
     file->file_ops = inode->super->fs->ops;
     file->inode    = inode;
 
     if (file->file_ops->open) {
-        ret = file->file_ops->open(file);
+        ret = file->file_ops->open(file, oflag);
         if (ret < 0) {
             put_node(inode);
             return ret;
         }
     }
 
+    file->oflags              = oflag;
     file->ref_count           = 1;  // Marks the file object as allocated
     task_data->file_table[fd] = file;
     return fd;
@@ -47,7 +59,6 @@ int close(struct task_fs_data* task_data, int fd)
 {
     int ret;
 
-    // TODO: Do we need to call back to fs at close?
     ret = free_fd(task_data, fd);
     if (ret < 0) {
         return ret;

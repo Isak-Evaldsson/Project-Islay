@@ -57,7 +57,7 @@ struct superblock {
     files.
  */
 struct open_file {
-    // TODO: ADD type field
+    int            oflags;     // Under which permissions is this file open
     unsigned int   ref_count;  // How many process are referring to this object with their fd table
     off_t          offset;     // What position within the file are we currently at
     struct inode*  inode;      // Which file does the object correspond to
@@ -85,7 +85,7 @@ struct fs_ops {
     // If defined, open() will be called during file opening after its inode is fetched. This allows
     // the fs implementation to provide additional initialisation before file reads/writes. Returns
     // 0 on success and, -errno on failure
-    int (*open)(struct open_file* file);
+    int (*open)(struct open_file* file, int oflag);
 
     // Fetch inode from disk and fill the supplied inode pointer
     int (*fetch_inode)(const struct superblock* super, ino_t id, struct inode* inode);
