@@ -56,11 +56,11 @@ int close(struct task_fs_data* task_data, int fd)
     return 0;
 }
 
-static ssize_t read_helper(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte,
-                           off_t offset, bool use_file_offset)
+static ssize_t rw_helper(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte,
+                         off_t offset, bool use_file_offset, bool write)
 {
-    int               read_bytes;
-    off_t             read_offset;
+    int               rw_bytes;
+    off_t             rw_offset;
     struct open_file* file;
 
     if (fd < 0 || fd >= MAX_OPEN_PER_PROC) {
@@ -76,30 +76,59 @@ static ssize_t read_helper(struct task_fs_data* task_data, int fd, void* buf, si
         return -EISDIR;
     }
 
-    read_offset = use_file_offset ? file->offset : offset;
+    if (!(file->oflags & O_RDWR)) {
+        if (write && !(file->oflags & O_WRONLY)) {
+            return -EPERM;
+        } else if (!write && !(file->oflags & O_RDONLY)) {
+            return -EPERM;
+        }
+    }
+
+    rw_offset = use_file_offset ? file->offset : offset;
+
+    if (write && use_file_offset && (file->oflags & O_APPEND)) {
+        // TODO: Adjust rw_offset to end of file
+    }
 
     // TODO: Should we count the offset/bytes to ensure that we don't over-read or should we hand
     // over the responsibilty to the fs implementation?
-    read_bytes = file->file_ops->read(buf, nbyte, read_offset, file);
-    if (read_bytes < 0) {
-        return read_bytes;
+    if (write) {
+        if (file->inode->super->flags & MOUNT_READONLY) {
+            return -EPERM;  // can't write to a readonly fs
+        }
+        rw_bytes = file->file_ops->write(buf, nbyte, rw_offset, file);
+    } else {
+        rw_bytes = file->file_ops->read(buf, nbyte, rw_offset, file);
+    }
+    if (rw_bytes < 0) {
+        return rw_bytes;
     }
 
     if (use_file_offset) {
-        file->offset += read_bytes;
+        file->offset += rw_bytes;
     }
 
-    return read_bytes;
+    return rw_bytes;
+}
+
+ssize_t pwrite(struct task_fs_data* task_data, int fd, const void* buf, size_t count, off_t offset)
+{
+    return rw_helper(task_data, fd, buf, count, offset, false, true);
+}
+
+ssize_t write(struct task_fs_data* task_data, int fd, const void* buf, size_t count)
+{
+    return rw_helper(task_data, fd, buf, count, 0, true, true);
 }
 
 ssize_t pread(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte, off_t offset)
 {
-    return read_helper(task_data, fd, buf, nbyte, offset, false);
+    return rw_helper(task_data, fd, buf, nbyte, offset, false, false);
 }
 
 ssize_t read(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte)
 {
-    return read_helper(task_data, fd, buf, nbyte, 0, true);
+    return rw_helper(task_data, fd, buf, nbyte, 0, true, false);
 }
 
 int readdirents(struct task_fs_data* task_data, int fd, struct dirent* buf, int buf_count)

@@ -76,7 +76,11 @@ struct fs_ops {
 
     // Reads size bytes from the file at the specified path at the given offset. Returns -errno on
     // failure, or number of read bytes on success
-    int (*read)(char* buf, size_t size, off_t offset, struct open_file* file);
+    ssize_t (*read)(char* buf, size_t size, off_t offset, struct open_file* file);
+
+    // Write size bytes ro the file at the specified path at the given offset. Returns -errno on
+    // failure, or number of write bytes on success
+    ssize_t (*write)(const char* buf, size_t size, off_t offset, struct open_file* file);
 
     // If defined, open() will be called during file opening after its inode is fetched. This allows
     // the fs implementation to provide additional initialisation before file reads/writes. Returns

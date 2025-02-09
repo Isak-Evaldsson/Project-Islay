@@ -73,6 +73,12 @@ int open(struct task_fs_data* task_data, const char* path, int oflag);
 /* Close file */
 int close(struct task_fs_data* task_data, int fd);
 
+/* Write to file at fixed offset */
+ssize_t pwrite(struct task_fs_data* task_data, int fd, const void* buf, size_t count, off_t offset);
+
+/* Write to file continuously */
+ssize_t write(struct task_fs_data* task_data, int fd, const void* buf, size_t count);
+
 /* Read file continuously */
 ssize_t read(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte);
 
