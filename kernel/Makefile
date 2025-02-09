@@ -37,7 +37,6 @@ fs/pseudo_file.o \
 fs/devfs/devfs.o \
 fs/kinfo/kinfo.o \
 fs/romfs/romfs.o\
-fs/sysfs/sysfs.o \
 memory/heap_allocator.o \
 memory/page_frame_allocator.o \
 memory/vmem_manager.o \
