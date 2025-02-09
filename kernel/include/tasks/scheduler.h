@@ -30,6 +30,7 @@ typedef enum {
     PAUSED,
     TERMINATED,
     WAITING_FOR_LOCK,
+    WAITING_FOR_IO,
 } task_state_t;
 
 /*
