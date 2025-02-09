@@ -6,6 +6,7 @@
 */
 #include <arch/paging.h>
 
+#include "devfs/devfs.h"
 #include "fs-internals.h"
 #include "kinfo/kinfo.h"
 #include "romfs/romfs.h"
@@ -16,6 +17,7 @@ void kinfo_dump_vfs(struct kinfo_buffer* buff);
 
 /* Filesystems to be registered at boot */
 static struct fs* boot_fs_list[] = {
+    &devfs,
     &romfs,
     &kinfo,
 };
@@ -81,8 +83,9 @@ int fs_init(struct boot_data* boot_data)
         return ret;
     }
 
+    ret = mount("/dev", DEVFS_FS_NAME, 0, NULL);
     if (ret < 0) {
-        LOG("Failed to mount sysfs %i", ret);
+        LOG("Failed to mount devfs %i", ret);
         return ret;
     }
 

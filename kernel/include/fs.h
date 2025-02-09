@@ -94,4 +94,15 @@ ssize_t pread(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte, o
 */
 int readdirents(struct task_fs_data* task_data, int fd, struct dirent* buf, int buf_count);
 
+/*
+    Devfs API - the fs side of minimal glue required to connect the device and fs subsystems
+    with each others.
+*/
+
+/*
+    Adds the supplied device object to devfs  relative to the specified directory
+    (or within fs root if NULL). Returns 0 on success, and -ERRNO on failure.
+*/
+int devfs_add_dev(struct pseudo_file* dir, struct pseudo_file* file, dev_t dev_no, char* name,
+                  bool cdev);
 #endif /* FS_H */

@@ -44,22 +44,92 @@ int register_device(struct driver *driver, struct device *device)
     return 0;
 }
 
-int dev_read(dev_t dev_no, char *buf, size_t size, off_t offset)
+int create_device_file(struct pseudo_file *dir, struct device *dev, bool cdev)
 {
-    struct device *device;
-    struct driver *driver;
-    unsigned int   major = GET_MAJOR(dev_no);
-    unsigned int   minor = GET_MINOR(dev_no);
+    dev_t dev_no;
+    char  buff[DRIVER_NAME_MAXLEN + 10];
 
-    driver = get_driver(major);
-    if (driver == NULL) {
+    if (!dev->minor || !dev->driver || !dev->driver->major) {
+        LOG("Trying to create file for invalid device");
         return -EINVAL;
     }
 
-    device = get_device(driver, minor);
-    if (device == NULL) {
-        return -ENODEV;
+    dev_no = GET_DEV_NUM(dev->driver->major, dev->minor);
+    snprintf(buff, sizeof(buff), "%s%u", dev->driver->name, dev->minor);
+    return devfs_add_dev(dir, &dev->file, dev_no, buff, cdev);
+}
+
+static int parse_devno(dev_t dev_no, struct device **device, struct driver **driver)
+{
+    unsigned int major = GET_MAJOR(dev_no);
+    unsigned int minor = GET_MINOR(dev_no);
+
+    *driver = get_driver(major);
+    if (*driver == NULL) {
+        return -EINVAL;
     }
 
+    *device = get_device(*driver, minor);
+    if (*device == NULL) {
+        return -ENODEV;
+    }
+    return 0;
+}
+
+int dev_open(dev_t dev_no, struct open_file *file, int oflag)
+{
+    struct device *device;
+    struct driver *driver;
+
+    int ret = parse_devno(dev_no, &device, &driver);
+    if (ret < 0) {
+        return ret;
+    }
+
+    LOG("Got device %u, driver %s", device, driver->name);
+    return driver->device_open(device, file, oflag);
+}
+
+int dev_close(dev_t dev_no, struct open_file *file)
+{
+    struct device *device;
+    struct driver *driver;
+
+    int ret = parse_devno(dev_no, &device, &driver);
+    if (ret < 0) {
+        return ret;
+    }
+    return driver->device_close(device, file);
+}
+
+ssize_t dev_read(dev_t dev_no, char *buf, size_t size, off_t offset)
+{
+    struct device *device;
+    struct driver *driver;
+
+    int ret = parse_devno(dev_no, &device, &driver);
+    if (ret < 0) {
+        return ret;
+    }
+
+    if (!driver->device_read) {
+        return -ENOTSUP;
+    }
     return driver->device_read(device, buf, size, offset);
+}
+
+ssize_t dev_write(dev_t dev_no, const char *buf, size_t size, off_t offset)
+{
+    struct device *device;
+    struct driver *driver;
+
+    int ret = parse_devno(dev_no, &device, &driver);
+    if (ret < 0) {
+        return ret;
+    }
+
+    if (!driver->device_write) {
+        return -ENOTSUP;
+    }
+    return driver->device_write(device, buf, size, offset);
 }

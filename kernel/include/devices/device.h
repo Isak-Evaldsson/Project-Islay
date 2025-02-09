@@ -22,7 +22,10 @@ struct driver {
     size_t       next_minor;
 
     // Driver functions
-    int (*device_read)(struct device* dev, char* buf, size_t size, off_t offset);
+    ssize_t (*device_read)(struct device* dev, char* buf, size_t size, off_t offset);
+    ssize_t (*device_write)(struct device* dev, const char* buf, size_t size, off_t offset);
+    int (*device_open)(struct device* dev, struct open_file* file, int oflag);
+    int (*device_close)(struct device* dev, struct open_file* file);
 
     struct list devices;  // TODO: Have an array as well to make indexing fast?
 };
@@ -44,9 +47,18 @@ struct device {
 void drivers_init();
 
 /*
+    Creates a device file within devfs for the specified device, creates it at the root dir of devfs
+    unless a directory is supplied. Returns 0 on success, or -ERRNO on failure.
+*/
+int create_device_file(struct pseudo_file* dir, struct device* dev, bool cdev);
+
+/*
     FS interaction API - the device side of minimal glue required to connect the device and fs
     subsystems with each others.
 */
-int dev_read(dev_t dev_no, char* buf, size_t size, off_t offset);
+ssize_t dev_read(dev_t dev_no, char* buf, size_t size, off_t offset);
+ssize_t dev_write(dev_t dev_no, const char* buf, size_t size, off_t offset);
+int     dev_open(dev_t dev_no, struct open_file* file, int oflag);
+int     dev_close(dev_t dev_no, struct open_file* file);
 
 #endif /* DEVICES_DEVICE_H */
