@@ -52,6 +52,7 @@ int alloc_fd(struct task_fs_data *task_data, struct open_file **file)
 /* Frees the open file associated with the fd. Returns 0 on success, else errno. */
 int free_fd(struct task_fs_data *task_data, int fd)
 {
+    int               ret;
     struct open_file *file;
 
     if (fd < 0 || fd >= MAX_OPEN_PER_PROC) {
@@ -68,8 +69,15 @@ int free_fd(struct task_fs_data *task_data, int fd)
         return -EBADF;
     }
 
-    // If the is the last task keeping this file open, free it's inode
+    // If the is the last task keeping this file open, free it's inode and call the fs close
+    // function
     if (file->ref_count == 1) {
+        if (file->file_ops->close) {
+            ret = file->file_ops->close(file);
+            if (ret < 0) {
+                return ret;
+            }
+        }
         put_node(file->inode);
         file->inode == NULL;
     }

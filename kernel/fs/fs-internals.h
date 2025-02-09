@@ -97,7 +97,7 @@ struct fs_ops {
 
     // Called upon when a open file is closed
     // TODO: Needs two methods, one is called on every close and one when refcount == 0
-    int (*close)(const char* path, struct open_file* file);
+    int (*close)(struct open_file* file);
 
     // TODO: Add support for writable file systems
 };
