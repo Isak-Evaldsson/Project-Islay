@@ -8,6 +8,7 @@
 #include <arch/interrupts.h>
 #include <arch/serial.h>
 #include <arch/tty.h>
+#include <devices/device.h>
 #include <fs.h>
 #include <memory/page_frame_manager.h>
 #include <tasks/scheduler.h>
@@ -24,6 +25,9 @@ void kernel_main(struct boot_data* boot_data)
 
     init_gdt();
     init_interrupts();
+    if (arch_initialise_static_devices() < 0) {
+        kpanic("Failed to initialise static devices");
+    }
     kprintf("Kernel successfully booted at vaddr 0xE0100000 (3.5 GiB + 1 MiB)\n\n");
 
     int ret = fs_init(boot_data);

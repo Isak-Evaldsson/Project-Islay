@@ -6,6 +6,7 @@ LIBS:=$(LIBS) -nostdlib -lgcc
 
 # Inherited from make.sh
 ARCHDIR=arch/$(ARCH)
+DRIVER_DIR=devices
 
 include $(ARCHDIR)/make.config
 

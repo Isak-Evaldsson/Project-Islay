@@ -25,4 +25,8 @@ typedef uint32_t physaddr_t;
 #error "Unkown architecture"
 #endif
 
+/* To initialise arch-specific static devices that can be expected to always be there (e.g.
+ * interrupt controllers) */
+int arch_initialise_static_devices();
+
 #endif /* ARCH_ARCH_H */
