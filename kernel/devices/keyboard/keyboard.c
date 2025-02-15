@@ -13,7 +13,9 @@
 #include "../internals.h"
 #include "keyboard.h"
 
-static unsigned char keyboard_state = 0;
+#define LOG(fmt, ...) __LOG(1, "[kbd]", fmt, ##__VA_ARGS__)
+
+static unsigned char global_keylock_state = 0;
 
 static void set_leds()
 {
@@ -23,66 +25,116 @@ static void set_leds()
     LIST_ITER(&keyboard_driver.devices, entry)
     {
         kbd = GET_STRUCT(struct keyboard, dev, LIST_ENTRY_TO_DEV(entry));
-        kbd->set_leds(keyboard_state);
+        kbd->set_leds(global_keylock_state);
     }
 }
 
-static void keyboard_update_state(unsigned char led)
+static void set_modifier_state(struct keyboard *kbd, uint8_t modifier, bool released)
 {
-    if (keyboard_state & (1 << led)) {
-        CLR_BIT(keyboard_state, led);
+    if (released) {
+        CLR_BIT(kbd->modifier_state, modifier);
     } else {
-        SET_BIT(keyboard_state, led);
+        SET_BIT(kbd->modifier_state, modifier);
     }
-    set_leds();
 }
 
-// Do we want to have separate functions for press and release?
-void keyboard_process_event(uint16_t key_code, unsigned char status)
+void keyboard_process_key(struct keyboard *kbd, uint8_t keycode, bool released)
 {
-    if (KEY_LETTER(key_code)) {
-        // TODO: Keymap translation of letter...
+    bool    keylock_state_update = false;
+    uint8_t status               = (released) ? (1 << STATUS_RELEASED) : 0;
 
-        if (status & (1 << MOD_SHIFT)) {
-            SET_BIT(status, UPPER_CASE);
-        };
+    // Drop invalid or erroneous keys codes
+    if (keycode >= KEY_CODE_MAX || keycode <= ERR_UNDEF) {
+        LOG("Invalid keycode received: %u", keycode);
+        return;
+    }
 
-        if (keyboard_state & (1 << LED_CAPS_LOCK)) {
-            INV_BIT(status, UPPER_CASE);
+    // Adjust local keyboard state
+    switch (keycode) {
+        case KEY_LCTRL:
+            set_modifier_state(kbd, KBD_LCTRL, released);
+            break;
+        case KEY_RCTRL:
+            set_modifier_state(kbd, KBD_RCTRL, released);
+            break;
+        case KEY_LALT:
+            set_modifier_state(kbd, KBD_LALT, released);
+            break;
+        case KEY_RALT:
+            set_modifier_state(kbd, KBD_RALT, released);
+            break;
+        case KEY_LSHIFT:
+            set_modifier_state(kbd, KBD_LSHIFT, released);
+            break;
+        case KEY_RSHIFT:
+            set_modifier_state(kbd, KBD_RSHIFT, released);
+            break;
+        case KEY_LSUPER:
+            set_modifier_state(kbd, KBD_LSUPER, released);
+            break;
+        case KEY_RSUPER:
+            set_modifier_state(kbd, KBD_RSUPER, released);
+            break;
+    };
+
+    // Adjust global keyboard state
+    if (!released) {
+        switch (keycode) {
+            case KEY_CAPSLOCK:
+                INV_BIT(global_keylock_state, LED_CAPS_LOCK);
+                keylock_state_update = true;
+                break;
+            case KEY_NUMLOCK:
+                INV_BIT(global_keylock_state, LED_NUM_LOCK);
+                keylock_state_update = true;
+                break;
+            case KEY_SCROLLOCK:
+                INV_BIT(global_keylock_state, LED_SCROLL_LOCK);
+                keylock_state_update = true;
+                break;
         }
+    };
+
+    if (keylock_state_update) {
+        set_leds();
     }
 
-    switch (key_code) {
-        case KEY_CAPS:
-            if (status & (1 << INPUT_RELEASED)) {
-                keyboard_update_state(LED_CAPS_LOCK);
-            }
-            break;
-
-        case KEY_NUMLOCK:
-            if (status & (1 << INPUT_RELEASED)) {
-                keyboard_update_state(LED_NUM_LOCK);
-            }
-            break;
-
-        case KEY_SCROLLOCK:
-            if (status & (1 << INPUT_RELEASED)) {
-                keyboard_update_state(LED_CAPS_LOCK);
-            }
-            break;
-
-        default:
-            // TODO: Keymap translation of non-letter...
+    // Set status based on global and per-keyboard state
+    if ((kbd->modifier_state & (1 << KBD_LSHIFT)) || (kbd->modifier_state & (1 << KBD_RSHIFT))) {
+        SET_BIT(status, STATUS_MOD_SHIFT);
     }
 
-    // TODO: Implement separate keycode for keypad and regular keys in order to get numlock
-    // working...
-    input_manager_send_event(key_code, status);
+    if ((kbd->modifier_state & (1 << KBD_LCTRL)) || (kbd->modifier_state & (1 << KBD_RCTRL))) {
+        SET_BIT(status, STATUS_MOD_CTRL);
+    }
+
+    if ((kbd->modifier_state & (1 << KBD_LALT)) || (kbd->modifier_state & (1 << KBD_RALT))) {
+        SET_BIT(status, STATUS_MOD_ALT);
+    }
+
+    if ((kbd->modifier_state & (1 << KBD_LSUPER)) || (kbd->modifier_state & (1 << KBD_RSUPER))) {
+        SET_BIT(status, STATUS_MOD_SUPER);
+    }
+
+    if (global_keylock_state & (1 << LED_CAPS_LOCK)) {
+        SET_BIT(status, STATUS_CAPSLOCK);
+    }
+
+    if (global_keylock_state & (1 << LED_NUM_LOCK)) {
+        SET_BIT(status, STATUS_NUMLOCK);
+    }
+
+    if (global_keylock_state & (1 << LED_SCROLL_LOCK)) {
+        SET_BIT(status, STATUS_SCROLLOCK);
+    }
+
+    // TODO: Translate from keymap to UTF8...
+    input_manager_send_event((input_event_t){.key_code = ((status << 8) | keycode), .status = 0});
 }
 
 unsigned char get_keyboard_state()
 {
-    return keyboard_state;
+    return global_keylock_state;
 }
 
 void set_keyboard_state(unsigned char state)
@@ -90,7 +142,7 @@ void set_keyboard_state(unsigned char state)
     struct keyboard   *kbd;
     struct list_entry *entry;
 
-    keyboard_state = state;
+    global_keylock_state = state;
     set_leds();
 }
 

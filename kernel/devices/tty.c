@@ -111,20 +111,19 @@ static size_t tty_line_len(struct tty* tty)
 
 static int on_events_received(input_event_t event)
 {
-    char     c;
-    uint16_t key_code = event.key_code;
-    uint16_t status   = event.status;
+    char    c;
+    uint8_t key = KEYCODE_GET_KEY(event.key_code);
 
-    if (CHECK_IF_PRESSED(status)) {
+    if (CHECK_IF_PRESSED(event.key_code)) {
         // Handle tty switch
-        if (key_code >= KEY_F1 && key_code <= KEY_F12) {
-            if (CHECK_IF_CTRL(status) && CHECK_IF_ALT(status)) {
-                tty_switch(key_code - KEY_F1);
+        if (key >= KEY_F1 && key <= KEY_F12) {
+            if (CHECK_IF_CTRL(event.key_code) && CHECK_IF_ALT(event.key_code)) {
+                tty_switch(key - KEY_F1);
             }
-            return;
+            return 0;
         }
 
-        if (key_code == KEY_ENTER) {
+        if (key == KEY_ENTER) {
             tty_append_char('\n');
 
             // Canonical mode specific blocking and line handling
@@ -137,10 +136,10 @@ static int on_events_received(input_event_t event)
                     current_tty->waiting_proc = NULL;
                 }
             }
-            return;
+            return 0;
         }
 
-        if (key_code == KEY_BACKSPACE) {
+        if (key == KEY_BACKSPACE) {
             // Only do line-editing in canonical mode
             if (current_tty->mode & TTY_MODE_CANONICAL) {
                 // Only delete if we have characters to commit
@@ -152,14 +151,11 @@ static int on_events_received(input_event_t event)
             } else {
                 tty_append_char('\b');
             }
-            return;
+            return 0;
         }
 
-        if (KEY_ASCII_PRINTABLE(key_code)) {
-            c = key_code;
-            if (KEY_LETTER(key_code) && CHECK_IF_UPPER_CASE(status)) {
-                c -= ('a' - 'A');
-            }
+        c = keycode_to_ascii(event.key_code);
+        if (c != '\0') {
             tty_append_char(c);
         }
     }
