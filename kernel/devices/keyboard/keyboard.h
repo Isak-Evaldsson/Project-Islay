@@ -8,7 +8,10 @@
 #ifndef DEVICES_KEYBOARD_KEYBOARD_H
 #define DEVICES_KEYBOARD_KEYBOARD_H
 
+#include <devices/device.h>
 #include <stdint.h>
+
+#include "keymaps.h"
 
 enum keyboard_leds {
     LED_CAPS_LOCK,
@@ -29,11 +32,12 @@ enum kbd_modifier_state {
 
 /* Object to store common data and functions needed by all keyboard drivers  */
 struct keyboard {
-    struct device dev;
-    uint8_t       modifier_state;  // Currently pressed modifier, see enum kbd_modifier_state
+    struct device  dev;
+    uint8_t        modifier_state;  // Currently pressed modifier, see enum kbd_modifier_state
+    struct keymap *keymap;
 
-    // Callback to change the keyboard leds, the different bits within corresponds to leds defined
-    // in enum keyboard_leds
+    // Callback to change the keyboard leds, the different bits within corresponds to leds
+    // defined in enum keyboard_leds
     void (*set_leds)(unsigned char);
 };
 

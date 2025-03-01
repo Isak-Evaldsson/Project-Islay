@@ -154,8 +154,12 @@ static int on_events_received(input_event_t event)
             return 0;
         }
 
-        c = keycode_to_ascii(event.key_code);
-        if (c != '\0') {
+        if (event.ucs2_char != UCS2_NOCHAR) {
+            // Temporary UC2->ASCII until the tty re-written to properly handle ucs2
+            char c = 0x1A;  // use ascii sub as default char
+            if (!(event.ucs2_char >> 7)) {
+                c = event.ucs2_char & 0x7f;
+            }
             tty_append_char(c);
         }
     }

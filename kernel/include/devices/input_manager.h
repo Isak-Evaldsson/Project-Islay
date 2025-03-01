@@ -7,6 +7,7 @@
 #ifndef DEVICES_INPUT_H
 #define DEVICES_INPUT_H
 
+#include <devices/unicode.h>
 #include <list.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -18,8 +19,8 @@
 
 /* Representing system input as an input event object */
 typedef struct input_event_t {
-    uint16_t      key_code;  // high bit contains status and low bit keycode
-    unsigned char status;    /* status flags */
+    uint16_t key_code;  // high bit contains status and low bit keycode
+    ucs2_t   ucs2_char;
 } input_event_t;
 
 /*
@@ -233,8 +234,6 @@ enum key_codes {
 
 #define KEY_ASCII_PRINTABLE(key) (key >= KEY_SPACE && key <= KEY_TILDE)
 #define KEY_LETTER(key)          (key >= KEY_A && key <= KEY_Z)
-
-char keycode_to_ascii(uint16_t keycode);
 
 /* Initialises the input manager */
 void input_manager_init();

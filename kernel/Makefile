@@ -27,6 +27,7 @@ devices/drivers.o \
 devices/display/text_mode_display.o \
 devices/input_manager.o \
 devices/keyboard/keyboard.o\
+devices/keyboard/keymaps.o \
 devices/keyboard/ps2_keyboard.o\
 devices/timer.o \
 fs/file_operations.o \

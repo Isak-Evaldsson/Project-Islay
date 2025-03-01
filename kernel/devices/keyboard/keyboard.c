@@ -40,8 +40,9 @@ static void set_modifier_state(struct keyboard *kbd, uint8_t modifier, bool rele
 
 void keyboard_process_key(struct keyboard *kbd, uint8_t keycode, bool released)
 {
-    bool    keylock_state_update = false;
-    uint8_t status               = (released) ? (1 << STATUS_RELEASED) : 0;
+    bool          keylock_state_update = false;
+    uint8_t       status               = (released) ? (1 << STATUS_RELEASED) : 0;
+    input_event_t event;
 
     // Drop invalid or erroneous keys codes
     if (keycode >= KEY_CODE_MAX || keycode <= ERR_UNDEF) {
@@ -128,8 +129,9 @@ void keyboard_process_key(struct keyboard *kbd, uint8_t keycode, bool released)
         SET_BIT(status, STATUS_SCROLLOCK);
     }
 
-    // TODO: Translate from keymap to UTF8...
-    input_manager_send_event((input_event_t){.key_code = ((status << 8) | keycode), .status = 0});
+    event.key_code  = (status << 8) | keycode;
+    event.ucs2_char = keymap_get_key(kbd->keymap, event.key_code);
+    input_manager_send_event(event);
 }
 
 unsigned char get_keyboard_state()
@@ -139,9 +141,6 @@ unsigned char get_keyboard_state()
 
 void set_keyboard_state(unsigned char state)
 {
-    struct keyboard   *kbd;
-    struct list_entry *entry;
-
     global_keylock_state = state;
     set_leds();
 }
@@ -159,7 +158,7 @@ int keyboard_init(struct keyboard *kbd)
         return ret;
     }
 
-    // TODO: Assign keymap once implemented...
+    kbd->keymap = default_keymap;
     input_manager_init();
     return 0;
 }
