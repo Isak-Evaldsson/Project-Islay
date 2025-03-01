@@ -175,8 +175,25 @@ enum key_codes {
     KEY_VOL_DOWN = 0x81,
     // Locking keys: 0x82 - 0x84
     KEYPAD_COMMA = 0x85,
-    // Keypad equal: 0x84
-    // International 1-9 + LANG 1-9
+    // Keypad equal: 0x86
+    KEY_INT1      = 0x87,
+    KEY_INT2      = 0x88,
+    KEY_INT3      = 0x89,
+    KEY_INT4      = 0x8a,
+    KEY_INT5      = 0x8b,
+    KEY_INT6      = 0x8c,
+    KEY_INT7      = 0x8d,
+    KEY_INT8      = 0x8e,
+    KEY_INT9      = 0x8f,
+    KEY_LANG1     = 0x90,
+    KEY_LANG2     = 0x91,
+    KEY_LANG3     = 0x92,
+    KEY_LANG4     = 0x93,
+    KEY_LANG5     = 0x94,
+    KEY_LANG6     = 0x95,
+    KEY_LANG7     = 0x96,
+    KEY_LANG8     = 0x97,
+    KEY_LANG9     = 0x98,
     KEY_ERASE     = 0x99,
     KEY_SYSREQ    = 0x9a,
     KEY_CANCEL    = 0x9b,
