@@ -14,6 +14,7 @@
 
 #include "internals.h"
 #include "keyboard/keyboard.h"
+#include "keyboard/keymaps.h"
 
 #define TTY_MODE_CANONICAL 0x01
 
@@ -45,8 +46,10 @@ struct tty {
     size_t char_buffer_commit_idx;
     char*  char_buffer;
 
-    bool         keys_dropped;     // Has the keys been dropped due to the char buffer being full
-    unsigned int saved_kbd_state;  // Keyboard state for that tty
+    bool keys_dropped;  // Has the keys been dropped due to the char buffer being full
+
+    uint8_t kbd_modifier_state;
+    uint8_t kbd_led_state;
 };
 
 #define MAX_TTYS 8
@@ -64,12 +67,11 @@ static void tty_switch(size_t index)
     LOG("Switch from %u to %u", old ? old : 0, index);
     if (old) {
         input_manger_unsubscribe(&old->subscriber);
-        old->saved_kbd_state = get_keyboard_state();
     }
 
     current_tty = tty_table + index;
     input_manger_subscribe(&current_tty->subscriber);  // TODO: Error check...
-    set_keyboard_state(current_tty->saved_kbd_state);
+    set_keyboard_leds(current_tty->kbd_led_state);
     text_mode_set_active_display(current_tty->text_mode_dev);
 }
 
@@ -111,59 +113,82 @@ static size_t tty_line_len(struct tty* tty)
 
 static int on_events_received(input_event_t event)
 {
-    char    c;
-    uint8_t key = KEYCODE_GET_KEY(event.key_code);
+    char     c;
+    uint16_t keycode = event.keycode;
+    uint8_t  key     = KEYCODE_GET_KEY(keycode);
 
-    if (CHECK_IF_PRESSED(event.key_code)) {
-        // Handle tty switch
-        if (key >= KEY_F1 && key <= KEY_F12) {
-            if (CHECK_IF_CTRL(event.key_code) && CHECK_IF_ALT(event.key_code)) {
-                tty_switch(key - KEY_F1);
+    switch (KEYCODE_GET_TYPE(keycode)) {
+        case KEYCODE_TYPE_LOCK:
+            if (!KEYCODE_CHECK_RELEASED(keycode)) {
+                INV_BIT(current_tty->kbd_led_state, KEYCODE_GET_MODIFIER(keycode));
+                set_keyboard_leds(current_tty->kbd_led_state);
             }
             return 0;
-        }
 
-        if (key == KEY_ENTER) {
-            tty_append_char('\n');
-
-            // Canonical mode specific blocking and line handling
-            if ((current_tty->mode & TTY_MODE_CANONICAL) && current_tty->opened) {
-                // Commit the current line
-                current_tty->char_buffer_commit_idx = current_tty->char_buffer_write_idx;
-
-                if (current_tty->waiting_proc) {
-                    scheduler_unblock_task(current_tty->waiting_proc);
-                    current_tty->waiting_proc = NULL;
-                }
-            }
-            return 0;
-        }
-
-        if (key == KEY_BACKSPACE) {
-            // Only do line-editing in canonical mode
-            if (current_tty->mode & TTY_MODE_CANONICAL) {
-                // Only delete if we have characters to commit
-                if (tty_line_len(current_tty) > 0) {
-                    current_tty->char_buffer_write_idx =
-                        (current_tty->char_buffer_write_idx - 1) % PAGE_SIZE;
-                    text_mode_del(current_tty->text_mode_dev, 1);
-                }
+        case KEYCODE_TYPE_MOD:
+            if (KEYCODE_CHECK_RELEASED(keycode)) {
+                CLR_BIT(current_tty->kbd_modifier_state, KEYCODE_GET_MODIFIER(keycode));
             } else {
-                tty_append_char('\b');
+                SET_BIT(current_tty->kbd_modifier_state, KEYCODE_GET_MODIFIER(keycode));
             }
             return 0;
-        }
 
-        if (event.ucs2_char != UCS2_NOCHAR) {
-            // Temporary UC2->ASCII until the tty re-written to properly handle ucs2
-            char c = 0x1A;  // use ascii sub as default char
-            if (!(event.ucs2_char >> 7)) {
-                c = event.ucs2_char & 0x7f;
+        case KEYCODE_TYPE_REG:
+            if (!KEYCODE_CHECK_RELEASED(keycode)) {
+                // Handle tty switch
+                if (key >= KEY_F1 && key <= KEY_F12) {
+                    if ((current_tty->kbd_modifier_state &
+                         ((1 << KEYCODE_MOD_LCTRL) | (1 << KEYCODE_MOD_RCTRL))) &&
+                        (current_tty->kbd_modifier_state &
+                         ((1 << KEYCODE_MOD_LALT) | (1 << KEYCODE_MOD_RALT)))) {
+                        tty_switch(key - KEY_F1);
+                    }
+                    return 0;
+                }
+
+                if (key == KEY_ENTER) {
+                    tty_append_char('\n');
+
+                    // Canonical mode specific blocking and line handling
+                    if ((current_tty->mode & TTY_MODE_CANONICAL) && current_tty->opened) {
+                        // Commit the current line
+                        current_tty->char_buffer_commit_idx = current_tty->char_buffer_write_idx;
+
+                        if (current_tty->waiting_proc) {
+                            scheduler_unblock_task(current_tty->waiting_proc);
+                            current_tty->waiting_proc = NULL;
+                        }
+                    }
+                    return 0;
+                }
+
+                if (key == KEY_BACKSPACE) {
+                    // Only do line-editing in canonical mode
+                    if (current_tty->mode & TTY_MODE_CANONICAL) {
+                        // Only delete if we have characters to commit
+                        if (tty_line_len(current_tty) > 0) {
+                            current_tty->char_buffer_write_idx =
+                                (current_tty->char_buffer_write_idx - 1) % PAGE_SIZE;
+                            text_mode_del(current_tty->text_mode_dev, 1);
+                        }
+                    } else {
+                        tty_append_char('\b');
+                    }
+                    return 0;
+                }
+
+                ucs2_t ucs2_char = keymap_get_key(keycode, current_tty->kbd_modifier_state,
+                                                  current_tty->kbd_led_state);
+                if (ucs2_char != UCS2_NOCHAR) {
+                    // Temporary UC2->ASCII until the tty re-written to properly handle ucs2
+                    char c = 0x1A;  // use ascii sub as default char
+                    if (!(ucs2_char >> 7)) {
+                        c = ucs2_char & 0x7f;
+                    }
+                    tty_append_char(c);
+                }
             }
-            tty_append_char(c);
-        }
     }
-
     return 0;
 }
 
@@ -281,7 +306,6 @@ static int tty_init(size_t index)
     }
 
     tty_dev->subscriber.on_events_received = on_events_received;
-    tty_dev->saved_kbd_state               = 0;
 
     ret = register_device(&tty_driver, &tty_dev->device);
     if (ret < 0) {

@@ -9,19 +9,10 @@
 
 #include <devices/unicode.h>
 
-/* Data structure for the keymap related tables */
-struct keymap {
-    char *name;
+/* Translate a keycode to a usc2 character using the supplie state */
+ucs2_t keymap_get_key(uint16_t keycode, uint8_t modifier_state, uint8_t lock_state);
 
-    // Tables with 4 columns representing  Regular, Shift, Alt, Ctrl
-    ucs2_t regular_keys[53][4];  // The key present on an us keyboard
-    ucs2_t int_keys[18][4];      // For international/lang keycodes
-};
-
-/* Pointer to the built-in standard keymap */
-extern struct keymap *default_keymap;
-
-/* Translate a keycode to a usc2 character using the supplied keymap */
-ucs2_t keymap_get_key(struct keymap *keymap, uint16_t keycode);
+/* Set global keymap based on the supplied name. returns 0 if it exists, otherwise -ERRNO */
+int set_keymap(const char *name);
 
 #endif /* DEVICES_KEYBOARD_KEYMAPS_H */

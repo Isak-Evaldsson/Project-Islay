@@ -19,42 +19,59 @@
 
 /* Representing system input as an input event object */
 typedef struct input_event_t {
-    uint16_t key_code;  // high bit contains status and low bit keycode
+    // Encodes different types of keycodes with the following bit-pattern:
+    // RTTMMMMCCCCCCCCC
+    // | | |  |
+    // | | |  USB HID Key, see enum keys
+    // | | Lock types (see enum keycode_lock_keys ) or Modifiers (see enum keycode_modifiers)
+    // | Type: keycode_types
+    // Released if high
+    uint16_t keycode;
     ucs2_t   ucs2_char;
 } input_event_t;
 
-/*
-    Keycode status bits
-*/
-enum keycode_status_bits {
-    STATUS_RELEASED,
-    STATUS_CAPSLOCK,
-    STATUS_NUMLOCK,
-    STATUS_SCROLLOCK,
+#define KEYCODE_CHECK_RELEASED(keycode) (((keycode) & 0x8000) >> 15)
+#define KEYCODE_GET_TYPE(keycode)       (((keycode) & 0x6000) >> 13)
+#define KEYCODE_GET_MODIFIER(keycode)   (((keycode) & 0x1e00) >> 9)
+#define KEYCODE_GET_KEY(keycode)        (((keycode) & 0x01ff))
 
-    // Key Modifier bits, 1 if set
-    STATUS_MOD_SHIFT,
-    STATUS_MOD_CTRL,
-    STATUS_MOD_ALT,
-    STATUS_MOD_SUPER,
+#define KEYCODE_CREATE(rel, type, mod, key) \
+    (((rel) & 0x01) << 15) | (((type) & 0x03) << 13) | (((mod) & 0x0f) << 9) | ((key) & 0x01ff)
+
+#define KEYCODE_MKEY(mod)  KEYCODE_CREATE(0, KEYCODE_TYPE_MOD, mod, 0)
+#define KEYCODE_LKEY(lock) KEYCODE_CREATE(0, KEYCODE_TYPE_LOCK, lock, 0)
+#define KEYCODE_RKEY(key)  KEYCODE_CREATE(0, KEYCODE_TYPE_REG, 0, key)
+
+/* The different types of keycodes */
+enum keycode_types {
+    KEYCODE_TYPE_REG,   // Regular keys
+    KEYCODE_TYPE_LOCK,  // Lock keys such as caps lock, scroll lock etc.
+    KEYCODE_TYPE_MOD,   // Modifier keys such as lshift, ralt, etc.
+};
+
+/* Keycode lock keys, as defined by USB HID usage table 0x08 */
+enum keycode_lock_keys {
+    KEYCODE_NUM_LOCK    = 0x01,
+    KEYCODE_CAPS_LOCK   = 0x02,
+    KEYCODE_SCROLL_LOCK = 0x03,
+};
+
+/* Keycode modifier keys  */
+enum keycode_modifiers {
+    KEYCODE_MOD_LCTRL,
+    KEYCODE_MOD_RCTRL,
+    KEYCODE_MOD_LSHIFT,
+    KEYCODE_MOD_RSHIFT,
+    KEYCODE_MOD_LALT,
+    KEYCODE_MOD_RALT,
+    KEYCODE_MOD_LSUPER,
+    KEYCODE_MOD_RSUPER,
 };
 
 /*
-    Macros to check the flags
+    Keycode keys, as defined by USB HID usage table 0x07
 */
-#define CHECK_IF_PRESSED(keycode) (!(KEYCODE_GET_STATUS(keycode) & (1 << STATUS_RELEASED)))
-#define CHECK_IF_UPPER_CASE(x)    (x & (1 << UPPER_CASE))
-#define CHECK_IF_SHIFT(x)         (x & (1 << STATUS_MOD_SHIFT))
-#define CHECK_IF_CTRL(x)          (x & (1 << STATUS_MOD_CTRL))
-#define CHECK_IF_ALT(x)           (x & (1 << STATUS_MOD_ALT))
-#define CHECK_IF_SUPER(x)         (x & (1 << STATUS_MOD_SUPER))
-
-#define KEYCODE_GET_KEY(keycode)    (keycode & 0xff)
-#define KEYCODE_GET_STATUS(keycode) (keycode >> 8)
-/*
-    Key codes, as defined by USB HID usage table 0x07
-*/
-enum key_codes {
+enum keys {
     KEY_NONE        = 0x00,
     ERR_ROLLOVER    = 0x01,
     ERR_POSTFAIL    = 0x02,
@@ -229,7 +246,7 @@ enum key_codes {
     KEY_MEDIA_FAVORITES = 0xf3,
     KEY_SLEEP           = 0xf4,
     KEY_WAKE            = 0xf5,
-    KEY_CODE_MAX,
+    KEY_MAX,
 };
 
 #define KEY_ASCII_PRINTABLE(key) (key >= KEY_SPACE && key <= KEY_TILDE)

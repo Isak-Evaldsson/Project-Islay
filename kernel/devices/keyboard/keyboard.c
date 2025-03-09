@@ -15,9 +15,7 @@
 
 #define LOG(fmt, ...) __LOG(1, "[kbd]", fmt, ##__VA_ARGS__)
 
-static unsigned char global_keylock_state = 0;
-
-static void set_leds()
+void set_keyboard_leds(unsigned char leds)
 {
     struct keyboard   *kbd;
     struct list_entry *entry;
@@ -25,124 +23,8 @@ static void set_leds()
     LIST_ITER(&keyboard_driver.devices, entry)
     {
         kbd = GET_STRUCT(struct keyboard, dev, LIST_ENTRY_TO_DEV(entry));
-        kbd->set_leds(global_keylock_state);
+        kbd->set_leds(leds);
     }
-}
-
-static void set_modifier_state(struct keyboard *kbd, uint8_t modifier, bool released)
-{
-    if (released) {
-        CLR_BIT(kbd->modifier_state, modifier);
-    } else {
-        SET_BIT(kbd->modifier_state, modifier);
-    }
-}
-
-void keyboard_process_key(struct keyboard *kbd, uint8_t keycode, bool released)
-{
-    bool          keylock_state_update = false;
-    uint8_t       status               = (released) ? (1 << STATUS_RELEASED) : 0;
-    input_event_t event;
-
-    // Drop invalid or erroneous keys codes
-    if (keycode >= KEY_CODE_MAX || keycode <= ERR_UNDEF) {
-        LOG("Invalid keycode received: %u", keycode);
-        return;
-    }
-
-    // Adjust local keyboard state
-    switch (keycode) {
-        case KEY_LCTRL:
-            set_modifier_state(kbd, KBD_LCTRL, released);
-            break;
-        case KEY_RCTRL:
-            set_modifier_state(kbd, KBD_RCTRL, released);
-            break;
-        case KEY_LALT:
-            set_modifier_state(kbd, KBD_LALT, released);
-            break;
-        case KEY_RALT:
-            set_modifier_state(kbd, KBD_RALT, released);
-            break;
-        case KEY_LSHIFT:
-            set_modifier_state(kbd, KBD_LSHIFT, released);
-            break;
-        case KEY_RSHIFT:
-            set_modifier_state(kbd, KBD_RSHIFT, released);
-            break;
-        case KEY_LSUPER:
-            set_modifier_state(kbd, KBD_LSUPER, released);
-            break;
-        case KEY_RSUPER:
-            set_modifier_state(kbd, KBD_RSUPER, released);
-            break;
-    };
-
-    // Adjust global keyboard state
-    if (!released) {
-        switch (keycode) {
-            case KEY_CAPSLOCK:
-                INV_BIT(global_keylock_state, LED_CAPS_LOCK);
-                keylock_state_update = true;
-                break;
-            case KEY_NUMLOCK:
-                INV_BIT(global_keylock_state, LED_NUM_LOCK);
-                keylock_state_update = true;
-                break;
-            case KEY_SCROLLOCK:
-                INV_BIT(global_keylock_state, LED_SCROLL_LOCK);
-                keylock_state_update = true;
-                break;
-        }
-    };
-
-    if (keylock_state_update) {
-        set_leds();
-    }
-
-    // Set status based on global and per-keyboard state
-    if ((kbd->modifier_state & (1 << KBD_LSHIFT)) || (kbd->modifier_state & (1 << KBD_RSHIFT))) {
-        SET_BIT(status, STATUS_MOD_SHIFT);
-    }
-
-    if ((kbd->modifier_state & (1 << KBD_LCTRL)) || (kbd->modifier_state & (1 << KBD_RCTRL))) {
-        SET_BIT(status, STATUS_MOD_CTRL);
-    }
-
-    if ((kbd->modifier_state & (1 << KBD_LALT)) || (kbd->modifier_state & (1 << KBD_RALT))) {
-        SET_BIT(status, STATUS_MOD_ALT);
-    }
-
-    if ((kbd->modifier_state & (1 << KBD_LSUPER)) || (kbd->modifier_state & (1 << KBD_RSUPER))) {
-        SET_BIT(status, STATUS_MOD_SUPER);
-    }
-
-    if (global_keylock_state & (1 << LED_CAPS_LOCK)) {
-        SET_BIT(status, STATUS_CAPSLOCK);
-    }
-
-    if (global_keylock_state & (1 << LED_NUM_LOCK)) {
-        SET_BIT(status, STATUS_NUMLOCK);
-    }
-
-    if (global_keylock_state & (1 << LED_SCROLL_LOCK)) {
-        SET_BIT(status, STATUS_SCROLLOCK);
-    }
-
-    event.key_code  = (status << 8) | keycode;
-    event.ucs2_char = keymap_get_key(kbd->keymap, event.key_code);
-    input_manager_send_event(event);
-}
-
-unsigned char get_keyboard_state()
-{
-    return global_keylock_state;
-}
-
-void set_keyboard_state(unsigned char state)
-{
-    global_keylock_state = state;
-    set_leds();
 }
 
 int keyboard_init(struct keyboard *kbd)
@@ -158,7 +40,6 @@ int keyboard_init(struct keyboard *kbd)
         return ret;
     }
 
-    kbd->keymap = default_keymap;
     input_manager_init();
     return 0;
 }
