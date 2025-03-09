@@ -9,49 +9,31 @@
 #define DEVICES_KEYBOARD_KEYBOARD_H
 
 #include <devices/device.h>
+#include <devices/input_manager.h>
 #include <stdint.h>
-
-#include "keymaps.h"
-
-enum keyboard_leds {
-    LED_CAPS_LOCK,
-    LED_SCROLL_LOCK,
-    LED_NUM_LOCK,
-};
-
-enum kbd_modifier_state {
-    KBD_LCTRL,
-    KBD_RCTRL,
-    KBD_LSHIFT,
-    KBD_RSHIFT,
-    KBD_LALT,
-    KBD_RALT,
-    KBD_LSUPER,
-    KBD_RSUPER,
-};
 
 /* Object to store common data and functions needed by all keyboard drivers  */
 struct keyboard {
-    struct device  dev;
-    uint8_t        modifier_state;  // Currently pressed modifier, see enum kbd_modifier_state
-    struct keymap *keymap;
+    struct device dev;
 
     // Callback to change the keyboard leds, the different bits within corresponds to leds
-    // defined in enum keyboard_leds
+    // defined in enum keycode_lock_keys
     void (*set_leds)(unsigned char);
 };
 
-/* Process keycodes received by the keyboard and pass then further up the input stack */
-void keyboard_process_key(struct keyboard *kbd, uint8_t keycode, bool released);
+/* Send keycodes received by the keyboard and pass then further up the input stack */
+void inline keyboard_send_key(uint16_t keycode, bool released)
+{
+    input_event_t event;
+    event.keycode = ((released & 0x01) << 15) | keycode;
+    input_manager_send_event(event);
+}
 
 /* Initialise the keyboard object. Return 0 on success and -ERRNO on failure */
 int keyboard_init(struct keyboard *kbd);
 
-/* Get the global keyboard state */
-unsigned char get_keyboard_state();
-
-/* Set the global keyboard state */
-void set_keyboard_state(unsigned char state);
+/* Set keyboard leds for all keyboards */
+void set_keyboard_leds(unsigned char leds);
 
 /* For driver registration */
 extern struct driver keyboard_driver;

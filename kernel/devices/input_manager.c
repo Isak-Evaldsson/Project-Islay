@@ -31,9 +31,11 @@ void input_manager_init()
 void input_manager_send_event(input_event_t event)
 {
     struct list_entry* entry;
+    uint16_t           keycode = event.keycode;
+    uint8_t            key     = KEYCODE_GET_KEY(event.keycode);
 
-    if ((event.key_code & 0xff) >= KEY_CODE_MAX) {
-        LOG("Input manager warning: received invalid keycode: %u\n", event.key_code);
+    if (KEYCODE_GET_TYPE(keycode) == KEYCODE_TYPE_REG && (key >= KEY_MAX || key <= ERR_UNDEF)) {
+        LOG("Input manager warning: received invalid keycode: %u\n", keycode);
         return;
     }
 

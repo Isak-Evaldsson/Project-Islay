@@ -5,6 +5,8 @@
    Copyright (C) 2025 Isak Evaldsson
 */
 #include <devices/input_manager.h>
+#include <uapi/errno.h>
+#include <utils.h>
 
 #include "keymaps.h"
 
@@ -12,15 +14,23 @@
     TODO/Improvements:
      1. Use hashmap instead of static table to save space
      2. Support Alt+Shift
-     3. Distinguish between alt + alt gr
      4. Add some kind of keymap switching mechanism, within kinfo?
 */
+
+/* Data structure for the keymap related tables */
+struct keymap {
+    char *name;
+
+    // Tables with 4 columns representing  Regular, Shift, Alt, Ctrl
+    ucs2_t regular_keys[53][4];  // The key present on an us keyboard
+    ucs2_t int_keys[18][4];      // For international/lang keycodes
+};
 
 // clang-format off
 static struct keymap us_keymap = {
     .name = "iso-us",
     .regular_keys = {
-        // None         Shift           Alt             Ctrl
+        // None         Shift           AltGr           Ctrl
         {0x0061,        0x0041,         UCS2_NOCHAR,    UCS2_NOCHAR}, // KEY_A
         {0x0062,        0x0042,         UCS2_NOCHAR,    UCS2_NOCHAR}, // KEY_B
         {0x0063,        0x0043,         UCS2_NOCHAR,    UCS2_NOCHAR}, // KEY_C
@@ -101,7 +111,7 @@ static struct keymap us_keymap = {
 static struct keymap swe_keymap = { 
     .name = "iso-swe",
     .regular_keys = {
-        // None         Shift           Alt             Ctrl
+        // None         Shift           AltGr           Ctrl
         {0x0061,        0x0041,         UCS2_NOCHAR,    UCS2_NOCHAR}, // KEY_A
         {0x0062,        0x0042,         UCS2_NOCHAR,    UCS2_NOCHAR}, // KEY_B
         {0x0063,        0x0043,         UCS2_NOCHAR,    UCS2_NOCHAR}, // KEY_C
@@ -198,40 +208,61 @@ static ucs2_t keypad_map[16][2] = {
     {0x002E, UCS2_NOCHAR}, // KEYPAD_DOT
 };
 
-struct keymap *default_keymap = &us_keymap;
+struct keymap *keymaps[] = {
+    &us_keymap,
+    &swe_keymap,
+};
 
-ucs2_t keymap_get_key(struct keymap *keymap, uint16_t keycode)
+struct keymap *current_keymap = &us_keymap;
+
+int set_keymap(const char *name)
 {
-    uint8_t status = KEYCODE_GET_STATUS(keycode);
-    uint8_t key    = KEYCODE_GET_KEY(keycode);
+    for (size_t i = 0; i < COUNT_ARRAY_ELEMS(keymaps); i++) {
+        if (strcmp(keymaps[i]->name, name) == 0) {
+            current_keymap == keymaps[i];
+            return 0;
+        }
+    }
+    return -ENOENT;
+}
+
+ucs2_t keymap_get_key(uint16_t keycode, uint8_t modifier_state, uint8_t lock_state)
+{
+    uint8_t key = KEYCODE_GET_KEY(keycode);
 
     if (key >= KEYPAD_FSLASH && key <= KEYPAD_DOT) {
-        return keypad_map[key - KEYPAD_FSLASH][(status & (1 << STATUS_NUMLOCK)) ? 0 : 1];
+        return keypad_map[key - KEYPAD_FSLASH][(lock_state & (1 << KEYCODE_NUM_LOCK)) ? 0 : 1];
     }
 
+    // TODO: Is there a more clever way to handle the indexing?
     if ((key >= KEY_A && key <= KEY_FSLASH) || (key >= KEY_INT1 && key <= KEY_LANG9)) {
         int index = 0;
 
         if (key <= KEY_Z || key >= KEY_INT1) {
-            if (status & (1 << STATUS_CAPSLOCK)) {
+            if (lock_state & (1 << KEYCODE_CAPS_LOCK)) {
                 index = 1;
             }
         }
 
-        if (status & (1 << STATUS_MOD_SHIFT)) {
+        if (modifier_state & ((1 << KEYCODE_MOD_LSHIFT) | (1 << KEYCODE_MOD_RSHIFT))) {
             index = !index;
         }
-        if (status & (1 << STATUS_MOD_ALT)) {
+
+        if (modifier_state & (1 << KEYCODE_MOD_RALT)) {
             index = 2;
         }
-        if (status & (1 << STATUS_MOD_CTRL)) {
+
+        if (modifier_state & (1 << KEYCODE_MOD_LALT)) {
+            return UCS2_NOCHAR;
+        }
+        if (modifier_state & ((1 << KEYCODE_MOD_LCTRL) | (1 << KEYCODE_MOD_RCTRL))) {
             index = 3;
         }
 
         if (key >= KEY_INT1) {
-            return keymap->int_keys[key - KEY_INT1][index];
+            return current_keymap->int_keys[key - KEY_INT1][index];
         }
-        return keymap->regular_keys[key - KEY_A][index];
+        return current_keymap->regular_keys[key - KEY_A][index];
     }
 
     return UCS2_NOCHAR;
