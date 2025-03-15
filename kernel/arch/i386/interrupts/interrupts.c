@@ -118,6 +118,12 @@ void exception_handler(struct interrupt_stack_state *state, uint32_t interrupt_n
             kpanic("Division by zero in kernel at 0x%x\n", state->eip);
             break;
 
+        case 1:
+            uint32_t dr6;
+            asm volatile("mov %%dr6, %0" : "r="(dr6));
+            kpanic("Debug exception at %x with dr6=%x\n", state->eip, dr6 & 0xffff);
+            break;
+
         case 14:
             kpanic("Page fault at (0x%x) when accessing address 0x%x error code %x\n", state->eip,
                    get_cr2(), state->error_code);
