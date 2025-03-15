@@ -147,8 +147,8 @@ static int test_mounting()
     return 0;
 }
 
-int (*fs_tests[])() = {
-    register_fs_test,
+struct test_func fs_tests[] = {
+    CREATE_TEST_FUNC(register_fs_test),
     /* TODO: Fix mounting tests... */
 };
 

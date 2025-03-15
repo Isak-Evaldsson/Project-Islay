@@ -59,8 +59,8 @@ static int scheduler_test()
                // time event?
 }
 
-int (*scheduling_tests[])() = {
-    scheduler_test,
+struct test_func scheduling_tests[] = {
+    CREATE_TEST_FUNC(scheduler_test),
 };
 
 struct test_suite scheduler_test_suite = {

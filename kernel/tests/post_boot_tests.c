@@ -33,8 +33,9 @@ static bool run_suite(struct test_suite* suite)
     }
 
     for (size_t i = 0; i < suite->n_tests; i++) {
-        kprintf("  Running test %u: ", i);
-        ret = suite->tests[i]();
+        struct test_func* test = suite->tests + i;
+        kprintf("  Running test %u - '%s': ", i, test->name);
+        ret = test->ptr();
         if (ret != 0) {
             kprintf("Failed (%i)\n", ret);
             failed = true;

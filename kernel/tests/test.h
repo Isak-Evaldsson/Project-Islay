@@ -9,12 +9,19 @@
 
 #include <utils.h>
 
+struct test_func {
+    int (*ptr)();
+    const char* name;
+};
+
+#define CREATE_TEST_FUNC(func) {.ptr = func, .name = #func}
+
 struct test_suite {
     char* name;
-    int (*setup)();        // Runs once before executing the tests
-    int (*teardown)();     // Runs once after executing the tests
-    int (**tests)();       // The tests to be executed
-    unsigned int n_tests;  // Number of tests with the tests array
+    int (*setup)();             // Runs once before executing the tests
+    int (*teardown)();          // Runs once after executing the tests
+    struct test_func* tests;    // The tests to be executed
+    unsigned int      n_tests;  // Number of tests with the tests array
 };
 
 /* The currently running test suite */

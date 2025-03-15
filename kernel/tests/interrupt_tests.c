@@ -143,9 +143,9 @@ static int test_successive_bottom_halfs()
     return 0;
 }
 
-int (*interrupt_tests[])() = {
-    test_interrupt_ordering,
-    test_successive_bottom_halfs,
+struct test_func interrupt_tests[] = {
+    CREATE_TEST_FUNC(test_interrupt_ordering),
+    CREATE_TEST_FUNC(test_successive_bottom_halfs),
 };
 
 struct test_suite interrupt_test_suite = {
