@@ -450,98 +450,56 @@ void scheduler_terminate_task()
     critical_section_end(flags);
 }
 
-/*
-    Wrapper functions for new tasks handling proper setup/cleanup
-*/
-static void new_task_wrapper(void *ip)
-{
-    void (*func)() = ip;
-
-    /* call actual task function */
-    func();
-
-    /* since were done, terminate task */
-    scheduler_terminate_task();
-
-    kassert(false); /* unreachable */
-}
-
-/*
-    Creates a new task executing the code at the address ip and sets it's state to ready-to-run
- */
-task_t *scheduler_create_task(void *ip)
-{
-    uint32_t flags;
-    task_t  *task = kalloc(sizeof(task_t));
-    if (task == NULL) {
-        return NULL;
-    }
-
-    // Initialise fields
-    task->next      = NULL;
-    task->time_used = 0;
-    task->state     = READY_TO_RUN;
-    task->status    = 0;
-    task_data_init(&task->fs_data);
-
-    // Allocate stack
-    task->kstack_bottom = vmem_request_free_page(0);
-    task->kstack_size   = PAGE_SIZE;
-    uintptr_t stack_top = task->kstack_bottom + task->kstack_size;
-
-    // Setup thread registers
-    init_thread_regs_with_stack(&task->regs, (void *)stack_top, new_task_wrapper, ip);
-
-    LOG("Create task: %x", task);
-
-    scheduler_lock(&flags);
-    task_queue_enque(&ready_queue, task);
-    scheduler_unlock(flags);
-    return task;
-}
-
-/*
-    Frees the memory of the task object
-*/
-void free_task(task_t *task)
-{
-    vmem_free_page(task->kstack_bottom);
-    kfree(task);
-}
-
 static void cleanup_thread()
 {
     uint32_t flags;
+    task_t  *next;
     task_t  *task;
+    bool     tasks_left;
 
+    // TODO: Re-write to handle refcount...
     while (true) {
         critical_section_start(&flags);
 
-        // Empty termination queue
-        while (termination_queue.start != NULL) {
-            task = task_queue_dequeue(&termination_queue);
+        // Remove all tasks from the termination queue
+        next                    = termination_queue.start;
+        termination_queue.start = NULL;
+        termination_queue.end   = NULL;
 
+        while (next != NULL) {
+            task       = next;
+            next       = task->next;
+            task->next = NULL;  // ensure that we don't accidentally insert multiple tasks in lists
+
+            kassert(task->state == TERMINATED);
+            if (atomic_load(&task->ref_count) > 0) {
+                LOG("Terminated task %x still in use", task);
+                task_queue_enque(&termination_queue, task);
+            } else {
             LOG("Cleaning up memory for task %x", task);
             free_task(task);
+            }
         }
 
+        if (termination_queue.start != NULL) {
+            // There tasks left to kill, hopefully they can be free'd the next time this thread runs
+            schedule();
+        } else {
+            // The work is done, but to sleep until there's more work to do
         scheduler_block_task(PAUSED);
+        }
+
         critical_section_end(flags);
     }
 }
 
 void scheduler_init()
 {
-    current_task = kalloc(sizeof(task_t));
+    current_task = create_root_task();
     if (current_task == NULL) {
         kpanic("Failed to allocate memory for initial task");
     }
 
-    init_initial_thread_regs(&current_task->regs);
-    current_task->next   = NULL;
-    current_task->state  = RUNNING;
-    current_task->status = 0;
-    task_data_init(&current_task->fs_data);
     last_count              = timer_get_time_since_boot();
     preemption_timestamp_ns = timer_get_time_since_boot() + TIME_SLICE_NS;
 
@@ -552,7 +510,7 @@ void scheduler_init()
     LOG("Initialise scheduler (root proc: %x)", current_task);
 
     // Start task cleaning up terminated task
-    cleanup_task = scheduler_create_task(cleanup_thread);
+    cleanup_task = get_task(create_task(cleanup_thread));
 }
 
 /* Gets a pointer to the currently executing task */

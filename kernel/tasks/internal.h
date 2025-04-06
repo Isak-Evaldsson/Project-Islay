@@ -16,6 +16,12 @@ extern task_t *current_task;
  * on single threaded */
 extern bool scheduler_initialised;
 
+/* Frees the memory of the task object */
+void free_task(task_t *task);
+
+/* Function handling creation of the root task */
+task_t *create_root_task();
+
 /* Marks the start of a critical section. All code between begin and end will run uninterrupted
  * by preemption or calls to schedule */
 void critical_section_start(uint32_t *interrupt_flags);
@@ -35,4 +41,4 @@ void scheduler_start_of_interrupt();
  * done executing allowing the scheduler to perform save preemption */
 void scheduler_end_of_interrupt();
 
-#endif /*TASKS_INTERNAL_H */
+#endif /* TASKS_INTERNAL_H */

@@ -43,9 +43,9 @@ static int scheduler_test()
     //
     TEST_LOG("Spawn new task\n");
     m = mutex_create();
-    scheduler_create_task(&sleeper);
-    scheduler_create_task(&f1);
-    scheduler_create_task(&f2);
+    create_task(&sleeper);
+    create_task(&f1);
+    create_task(&f2);
     mutex_lock(m);
 
     TEST_LOG("Back to main.");
