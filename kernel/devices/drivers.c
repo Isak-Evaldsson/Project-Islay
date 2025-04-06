@@ -34,6 +34,7 @@ void drivers_init()
 
         driver->major      = i;  // mark as registered
         driver->next_minor = 1;
+        driver->devices    = LIST_INIT(driver->devices);
     }
 }
 
