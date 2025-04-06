@@ -6,7 +6,7 @@
 */
 #ifndef TASK_TASK_QUEUE_H
 #define TASK_TASK_QUEUE_H
-#include <tasks/scheduler.h>
+#include <tasks/task.h>
 
 // Queue object storing the start and and end of a linked list of task
 typedef struct task_queue {
