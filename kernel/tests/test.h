@@ -45,6 +45,15 @@ extern struct test_suite* current_suite;
         }                                                       \
     } while (0)
 
+/* Return if expression is false */
+#define TEST_RETURN_IF_FALSE(expr)                        \
+    do {                                                  \
+        if (!(expr)) {                                    \
+            TEST_LOG("'%s' failed, returning %i", #expr); \
+            return -1;                                    \
+        }                                                 \
+    } while (0)
+
 void run_post_boot_tests();
 
 #endif /* TESTS_TEST_H */

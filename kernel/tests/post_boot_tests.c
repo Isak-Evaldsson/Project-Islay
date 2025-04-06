@@ -9,11 +9,13 @@
 extern struct test_suite interrupt_test_suite;
 extern struct test_suite fs_test_suite;
 extern struct test_suite scheduler_test_suite;
+extern struct test_suite list_test_suite;
 
 static struct test_suite* post_boot_tests[] = {
     &interrupt_test_suite,
     &fs_test_suite,
     &scheduler_test_suite,
+    &list_test_suite,
 };
 
 struct test_suite* current_suite;
