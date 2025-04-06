@@ -15,7 +15,7 @@
 #define LOG(fmt, ...) __LOG(1, "[INPUT_MANAGER]", fmt, ##__VA_ARGS__)
 
 // Stores all currently registered input event subscribers
-static struct list subscriber_queue = LIST_INIT();
+static DEFINE_LIST(subscriber_queue);
 
 void input_manager_init()
 {
@@ -55,10 +55,10 @@ int input_manger_subscribe(struct input_subscriber* subscriber)
         return -EINVAL;
     }
 
-    list_add(&subscriber_queue, &subscriber->list);
+    list_add_last(&subscriber_queue, &subscriber->list);
 }
 
 void input_manger_unsubscribe(struct input_subscriber* subscriber)
 {
-    list_remove(&subscriber_queue, &subscriber->list);
+    list_entry_remove(&subscriber->list);
 }
