@@ -45,6 +45,7 @@ memory/page_frame_allocator.o \
 memory/vmem_manager.o \
 tasks/interrupts.o \
 tasks/scheduler.o \
+tasks/tasks.o \
 tasks/task_queue.o \
 tasks/locking.o \
 tests/fs_tests.o \
