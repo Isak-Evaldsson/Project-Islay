@@ -88,9 +88,34 @@ static int test_ordering()
     return 0;
 }
 
+static int test_remove_during_iter()
+{
+    DEFINE_LIST(l);
+    struct list_entry  entries[5];
+    struct list_entry* e;
+
+    for (size_t i = 0; i < 5; i++) {
+        e = entries + i;
+        list_add_first(&l, e);
+    }
+    TEST_ERRNO_FUNC(verify_list(&l));
+
+    int iters = 0;
+    LIST_ITER_SAFE_REMOVAL(&l, e)
+    {
+        list_entry_remove(e);
+        iters++;
+        TEST_RETURN_IF_FALSE(iters <= 5);
+    }
+    TEST_RETURN_IF_FALSE(iters == 5);
+    TEST_RETURN_IF_FALSE(LIST_EMPTY(&l));
+    return 0;
+}
+
 static struct test_func list_tests[] = {
     CREATE_TEST_FUNC(test_add_and_remove),
     CREATE_TEST_FUNC(test_ordering),
+    CREATE_TEST_FUNC(test_remove_during_iter),
 };
 
 struct test_suite list_test_suite = {
