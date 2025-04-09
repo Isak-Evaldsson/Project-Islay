@@ -30,6 +30,7 @@ typedef enum {
     TERMINATED,
     WAITING_FOR_LOCK,
     WAITING_FOR_IO,
+    TASK_STATE_MAX,
 } task_state_t;
 
 /* Number identify an existing task */
