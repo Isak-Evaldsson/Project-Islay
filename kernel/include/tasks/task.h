@@ -33,6 +33,9 @@ typedef enum {
     TASK_STATE_MAX,
 } task_state_t;
 
+// Temporary solution? I see two options 1: Merge headers, 2: Forward reference
+typedef struct task_queue task_queue_t;
+
 /* Number identify an existing task */
 typedef unsigned int tid_t;
 
@@ -45,8 +48,9 @@ typedef struct task task_t;
 struct task {
     struct thread_regs regs;  // Architecture depended register used for task switching, at offset 0
                               // in order to allow arch specific asm to re-use task struct pointers.
-    task_t *next;             // Nest pointer allows the scheduler to have task lists
-    tid_t   tid;              // Unique identifier for each task
+    tid_t             tid;    // Unique identifier for each task
+    struct list_entry task_queue_entry;    // Allows the task to be in queue
+    task_queue_t*     current_task_queue;  // What task_queue does the task currently belongs to
 
     atomic_uint_t     ref_count;  // To ensure that the task isn't killed when the object is in use
     struct list_entry task_list_entry;  // Global list of all tasks
@@ -68,13 +72,13 @@ struct task {
 assert_offset(struct task, regs, 0);
 
 /* Creates a new task executing the code at the address ip */
-tid_t create_task(void *ip);
+tid_t create_task(void* ip);
 
 /* Gives task control block associated to the supplied tid. Needs to call put_task() when do to
  * allow it to be properly cleaned up on termination */
-task_t *get_task(tid_t tid);
+task_t* get_task(tid_t tid);
 
 /* Mark the supplied task control block as no longer used */
-void put_task(task_t *task);
+void put_task(task_t* task);
 
 #endif /* TASK_TASK_H */

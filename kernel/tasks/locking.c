@@ -21,7 +21,7 @@ semaphore_t *semaphore_create(int max_count)
 {
     semaphore_t *semaphore = kalloc(sizeof(semaphore_t));
     if (semaphore != NULL) {
-        *semaphore = (semaphore_t)SEMAPHORE_INIT(max_count);
+        *semaphore = (semaphore_t)SEMAPHORE_INIT(*semaphore, max_count);
     }
 
     return semaphore;
@@ -50,8 +50,7 @@ void semaphore_acquire(semaphore_t *semaphore)
 
     } else {
         LOG("%x failed to  acquired semaphore/mutex %x", current_task, semaphore);
-        current_task->next = NULL;  // ensure we dont accidentally insert multiple tasks
-        task_queue_enque(&semaphore->waiting_tasks, current_task);
+        task_queue_enqueue(&semaphore->waiting_tasks, current_task);
         scheduler_block_task(WAITING_FOR_LOCK);
     }
     critical_section_end(semaphore->interrupt_flags);
@@ -77,7 +76,7 @@ void semaphore_release(semaphore_t *semaphore)
     critical_section_start(&semaphore->interrupt_flags);
     LOG("%x released semaphore/mutex %x", current_task, semaphore);
 
-    if (semaphore->waiting_tasks.start != NULL) {
+    if (!TASK_QUEUE_EMPTY(&semaphore->waiting_tasks)) {
         // pick the first waiting task
         task = task_queue_dequeue(&semaphore->waiting_tasks);
         scheduler_unblock_task(task);
@@ -94,7 +93,7 @@ mutex_t *mutex_create()
 {
     mutex_t *mutex = kalloc(sizeof(mutex_t));
     if (mutex != NULL) {
-        *mutex = (mutex_t)MUTEX_INIT();
+        *mutex = (mutex_t)MUTEX_INIT(*mutex);
     }
 
     return mutex;

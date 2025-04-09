@@ -36,8 +36,13 @@ static EMPTY_QUEUE(ready_queue);
 // Sleep queue
 static EMPTY_QUEUE(sleep_queue);
 
-// Task waiting to be terminated
-static EMPTY_QUEUE(termination_queue);
+/*
+ * Task waiting to be terminated. The regular task queue wraps the list strucure and add some extra
+ * checks and a refcount. The purpose of the refcount is to make sure that a task object can't be
+ * free'd while in a task queue, if that was used for the termination queue, the refcount would
+ * never be 0, preventing the cleanup thread from doing its job.
+ */
+static DEFINE_LIST(termination_queue);
 
 // Counter variables keeping track of the time consumption of each task
 static uint64_t last_count    = 0;
@@ -90,13 +95,13 @@ static void switch_task(task_t *new_task)
     // Re-add current task to list if it's still in running state
     if (current_task->state == RUNNING) {
         current_task->state = READY_TO_RUN;
-        task_queue_enque(&ready_queue, current_task);
+        task_queue_enqueue(&ready_queue, current_task);
     }
 
     if (current_task == NULL) {
         // Task unblocked and stopped us being idle, so only one task can be running
         preemption_timestamp_ns = 0;
-    } else if ((ready_queue.start == NULL) && (current_task->state != RUNNING)) {
+    } else if (TASK_QUEUE_EMPTY(&ready_queue) && (current_task->state != RUNNING)) {
         // Currently running task blocked and the task we're switching to is the only task left
         preemption_timestamp_ns = 0;
     } else {
@@ -182,13 +187,13 @@ void scheduler_unblock_task(task_t *task)
     scheduler_lock(&flags);
     LOG("Unblock task %x", task);
 
-    // Only enqeue if the task isn't already in the queue
+    // Only enqueue if the task isn't already in the queue
     if (task->state != READY_TO_RUN) {
         task->state = READY_TO_RUN;
 
         // Never preempt, always append to end of queue
         LOG("Unblock: put %x in ready_queue", task);
-        task_queue_enque(&ready_queue, task);
+        task_queue_enqueue(&ready_queue, task);
     }
 
     // Ensure that the currently running thread is preempted, maybe do something smarter like having
@@ -242,7 +247,7 @@ void schedule()
 
         LOG("Enter sleep state");
 
-        kassert(ready_queue.start == NULL);
+        kassert(TASK_QUEUE_EMPTY(&ready_queue));
 
         // Do nothing while waiting for a task to unblock and become "ready to run".  The only
         // thing that is going to update the ready queue is going to be from a timer IRQ
@@ -255,7 +260,7 @@ void schedule()
             enable_interrupts();   // enable interrupts to allow the timer to fire
             wait_for_interrupt();  // halt and wait for the timer to fire
             disable_interrupts();  // disable interrupts again to see if there is something to
-        } while (ready_queue.start == NULL);
+        } while (TASK_QUEUE_EMPTY(&ready_queue));
 
         // Set the blocked task to running again
         current_task = task;
@@ -279,33 +284,22 @@ void schedule()
 static void sleep_expiry_callback(uint64_t time_since_boot_ns, uint64_t timestamp_ns)
 {
     // NOTE: No need to lock scheduler since function will be called within the timer ISR
-    task_t *next;
-    task_t *task;
+    task_t            *task;
+    struct list_entry *entry;
 
     (void)timestamp_ns;  // silence unused warning
-
-    // Remove all task from sleep queue
-    next              = sleep_queue.start;
-    sleep_queue.start = NULL;
-    sleep_queue.end   = NULL;
 
     // Reset first wakeup flag
     scheduler_earliest_wakeup = UINT64_MAX;
 
-    while (next != NULL) {
-        task       = next;
-        next       = task->next;
-        task->next = NULL;  // ensure that we don't accidentally insert multiple tasks in lists
-
-        // Unblock task if succeficcent time has passed
+    LIST_ITER_SAFE_REMOVAL(&sleep_queue.list, entry)
+    {
+        task = GET_STRUCT(task_t, task_queue_entry, entry);
         if (task->sleep_expiry <= time_since_boot_ns) {
             LOG("Wake-up task %x from sleep at %u", task, time_since_boot_ns);
+            task_remove_from_current_task_queue(task);
             scheduler_unblock_task(task);
         } else {
-            // Re-add into queue
-            LOG("CHECK SLEEP QUEUE: put %x in sleep queue", task);
-            task_queue_enque(&sleep_queue, task);
-
             // Decrement first wakeup flag if necessary
             if (task->sleep_expiry < scheduler_earliest_wakeup) {
                 scheduler_earliest_wakeup = task->sleep_expiry;
@@ -370,7 +364,7 @@ void scheduler_nano_sleep_until(uint64_t when)
     current_task->sleep_expiry = when;
 
     // Add task to sleep queue
-    task_queue_enque(&sleep_queue, current_task);
+    task_queue_enqueue(&sleep_queue, current_task);
 
     // Adjust first wakeup if necessary
     if (when < scheduler_earliest_wakeup) {
@@ -437,7 +431,7 @@ void scheduler_terminate_task()
     critical_section_start(&flags);
 
     // Insert task in termination queue
-    task_queue_enque(&termination_queue, current_task);
+    list_add_last(&termination_queue, &current_task->task_queue_entry);
 
     // block task, so that a task switch occur once the lock is released
     scheduler_block_task(TERMINATED);
@@ -452,37 +446,34 @@ void scheduler_terminate_task()
 
 static void cleanup_thread()
 {
-    uint32_t flags;
-    task_t  *next;
-    task_t  *task;
-    bool     tasks_left;
+    uint32_t           flags;
+    task_t            *task;
+    struct list_entry *entry;
 
     // TODO: Re-write to handle refcount...
+
     while (true) {
+        LOG("wakeup");
         critical_section_start(&flags);
 
-        // Remove all tasks from the termination queue
-        next                    = termination_queue.start;
-        termination_queue.start = NULL;
-        termination_queue.end   = NULL;
+        LIST_ITER_SAFE_REMOVAL(&termination_queue, entry)
+        {
+            task = GET_STRUCT(task_t, task_queue_entry, entry);
 
-        while (next != NULL) {
-            task       = next;
-            next       = task->next;
-            task->next = NULL;  // ensure that we don't accidentally insert multiple tasks in lists
+            kassert(task->state == TERMINATED && !task->current_task_queue);
+            if (atomic_load(&task->ref_count) == 0) {
+                LOG("Cleanup terminated task %x", task);
 
-            kassert(task->state == TERMINATED);
-            if (atomic_load(&task->ref_count) > 0) {
-                LOG("Terminated task %x still in use", task);
-                task_queue_enque(&termination_queue, task);
+                list_entry_remove(&task->task_queue_entry);
+                free_task(task);
             } else {
-            LOG("Cleaning up memory for task %x", task);
-            free_task(task);
+                LOG("Terminated thread still in use %x", task);
             }
         }
 
-        if (termination_queue.start != NULL) {
-            // There tasks left to kill, hopefully they can be free'd the next time this thread runs
+        if (!LIST_EMPTY(&termination_queue)) {
+            // There tasks left to kill, hopefully they can be free'd the next time this thread
+            // runs
             schedule();
         } else {
             // The work is done, but to sleep until there's more work to do
