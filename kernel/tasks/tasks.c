@@ -62,7 +62,6 @@ tid_t create_task(void* ip)
 
     // Initialise fields
     task->tid       = alloc_tid();
-    task->next      = NULL;
     task->time_used = 0;
     task->state     = BLOCKED;  // initially blocked, since the scheduler doesn't know about it yet
     task->status    = 0;
@@ -93,7 +92,6 @@ task_t* create_root_task()
 
     // Initialise fields
     task->tid       = 0;
-    task->next      = NULL;
     task->time_used = 0;
     task->state     = RUNNING;
     task->status    = 0;
