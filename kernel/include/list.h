@@ -70,6 +70,11 @@ struct list {
     for (entry_ptr = (list_ptr)->head.next; entry_ptr != &(list_ptr)->head; \
          entry_ptr = entry_ptr->next)
 
+/* Macro for list iterations that allows that safely allows entry_ptr to be removed */
+#define LIST_ITER_SAFE_REMOVAL(list_ptr, entry_ptr)                                             \
+    for (struct list_entry* _next                  = (entry_ptr = (list_ptr)->head.next)->next; \
+         entry_ptr != &(list_ptr)->head; entry_ptr = _next, _next = _next->next)
+
 /*
     High level list operations, designed to be easy to use and safe
  */
