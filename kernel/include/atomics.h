@@ -5,7 +5,7 @@
    Copyright (C) 2024 Isak Evaldsson
 */
 #ifndef ATOMICS_H
-#define ATMOICS_H
+#define ATOMICS_H
 #include <stdint.h>
 
 /*
