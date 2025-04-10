@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# See README.md and LICENSE.txt for license details.
+#
+# Copyright (C) 2025 Isak Evaldsson
+#
+#!/bin/bash
+
+set -e 
+source ./envsetup.sh
+
+echo "Installing toolchain for target $TARGET at $PREFIX"
+
+# Platform specfic dependencies
+case $OSTYPE in 
+    'darwin'*)
+        ./install-grub.sh
+        ;;
+
+    'linux-gnu')
+        if ! command -v "apt" 2>&1 >/dev/null; then
+            echo "Not a debain based distro, you need to handle depencies own your own"
+        else
+            apt install 'qemu-system-$ARCH'
+        fi
+        ;;
+esac
+
+# Building and installing tools from src
+./install-binutils.sh
+./install-gcc.sh
+./install-genromfs.sh
