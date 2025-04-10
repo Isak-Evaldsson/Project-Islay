@@ -26,5 +26,5 @@ fi
 
 # build/install
 pushd $SRC_DIR
-make PREFIX=$PREFIX install
+make -j $CORE_COUNT PREFIX=$PREFIX install
 popd

@@ -32,9 +32,9 @@ pushd $OBJ_DIR
 # Build and install
 "$SRC_DIR/configure" --target=$TARGET --prefix="$PREFIX" --disable-nls --enable-languages=c,c++ --without-headers --disable-hosted-libstdcxx
 
-make all-gcc
-make all-target-libgcc
-make all-target-libstdc++-v3
+make -j $CORE_COUNT all-gcc
+make -j $CORE_COUNT all-target-libgcc
+make -j $CORE_COUNT all-target-libstdc++-v3
 make install-gcc
 make install-target-libgcc
 make install-target-libstdc++-v3

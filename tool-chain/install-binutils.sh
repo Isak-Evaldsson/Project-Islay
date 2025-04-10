@@ -29,7 +29,9 @@ fi
 mkdir -p $OBJ_DIR
 pushd $OBJ_DIR
 
+
 "$SRC_DIR/configure" --target=$TARGET --prefix="$PREFIX" --with-sysroot --disable-nls --disable-werror
-make
+echo $(MAKE) $(ARCH)
+make -j $CORE_COUNT
 make PREFIX=$PREFIX install
 popd

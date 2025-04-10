@@ -18,6 +18,7 @@ PREFIX="$BIN_DIR/cross"
 ARCH="i686" # What architecture are we building for
 TARGET="$ARCH-elf" # What architecture are we building for
 PATH="$PREFIX/bin:$PATH" # Ensure that the tools in prefix is used during buildsteps
+CORE_COUNT=$(nproc)
 
 mkdir -p $BIN_DIR
 mkdir -p $TMP_DIR
