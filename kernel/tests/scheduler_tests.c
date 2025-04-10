@@ -151,9 +151,50 @@ static int cleanup_test()
     return ret;
 }
 
+// #define WORK_RESULT 10
+// static atomic_uint_t work = ATOMIC_INIT();
+// static int           null_work;
+
+// static void io_worker()
+// {
+//     sleep(5);
+//     atomic_store(&work, WORK_RESULT);
+//     scheduler_wakeup_io(&work);
+// }
+
+// static void other_io()
+// {
+//     scheduler_wait_io(&null_work);
+// }
+
+// static int io_wait_test()
+// {
+//     TEST_LOG("Create worker");
+//     create_task(&io_worker);
+//     tid_t tid = create_task(&other_io);
+
+//     TEST_LOG("Wait for work to complete");
+//     scheduler_wait_io(&work);
+
+//     if (atomic_load(&work) != WORK_RESULT) {
+//         return -1;
+//     }
+
+//     // Ensure the unrelated worker is still asleep
+//     task_t *t = get_task(tid);
+//     if (t->state != WAITING_FOR_IO) {
+//         return -2;
+//     }
+//     put_task(t);
+
+//     // Wakeup thread so it gets properly terminated
+//     scheduler_wakeup_io(&null_work);
+//     return 0;
+// }
 
 struct test_func scheduling_tests[] = {
     CREATE_TEST_FUNC(sleep_test), CREATE_TEST_FUNC(mutex_test), CREATE_TEST_FUNC(cleanup_test),
+    // CREATE_TEST_FUNC(io_wait_test),
 };
 
 struct test_suite scheduler_test_suite = {

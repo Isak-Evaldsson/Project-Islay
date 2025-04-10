@@ -177,7 +177,7 @@ void ps2_keyboard_send(unsigned char scancode)
             case 0xE0: kbd.state = 1; break; // Extended keys and print screen
             case 0xE1: kbd.state = 4; break; // Pause
 			case PS2_RESPONSE_ACK:
-                ring_buffer_pop(kbd.cmd_buffer, cmd);
+                cmd = ring_buffer_pop(kbd.cmd_buffer);
 
                 // Send next command if available
                 if(!ring_buff_empty(kbd.cmd_buffer)) {

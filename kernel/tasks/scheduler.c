@@ -36,6 +36,9 @@ static EMPTY_QUEUE(ready_queue);
 // Sleep queue
 static EMPTY_QUEUE(sleep_queue);
 
+// TODO: Document + better name
+static EMPTY_QUEUE(io_wait_queue);
+
 /*
  * Task waiting to be terminated. The regular task queue wraps the list strucure and add some extra
  * checks and a refcount. The purpose of the refcount is to make sure that a task object can't be
@@ -480,7 +483,7 @@ static void cleanup_thread()
             schedule();
         } else {
             // The work is done, but to sleep until there's more work to do
-        scheduler_block_task(PAUSED);
+            scheduler_block_task(PAUSED);
         }
 
         critical_section_end(flags);
@@ -512,3 +515,51 @@ task_t *scheduler_get_current_task()
 {
     return current_task;
 }
+
+// Move?
+// void scheduler_wait_io(void *io_addr)
+// {
+//     uint32_t flags;
+//     critical_section_start(&flags);
+
+//     LOG("Add %x to io_wait_queue for addr %x", current_task, io_addr);
+//     current_task->io_wait_addr = io_addr;
+//     task_queue_enque(&io_wait_queue, current_task);
+
+//     scheduler_block_task(WAITING_FOR_IO);
+//     critical_section_end(flags);
+// }
+
+// void scheduler_wakeup_io(void *io_addr)
+// {
+//     uint32_t flags;
+//     task_t  *next;
+//     task_t  *task;
+
+//     // TODO: Do we need to lock?
+//     // Yes, since we access the queue
+//     critical_section_start(&flags);
+
+//     LOG("IO wakeup for add %x", io_addr);
+
+//     // TODO: Better with an explicit removal?
+//     // Remove all task from sleep queue
+//     next                = io_wait_queue.start;
+//     io_wait_queue.start = NULL;
+//     io_wait_queue.end   = NULL;
+
+//     while (next != NULL) {
+//         task       = next;
+//         next       = task->next;
+//         task->next = NULL;  // ensure that we don't accidentally insert multiple tasks in
+//         lists
+
+//         if (task->io_wait_addr == io_addr) {
+//             scheduler_unblock_task(task);
+//         } else {
+//             // Re-add into queue
+//             task_queue_enque(&io_wait_queue, task);
+//         }
+//     }
+//     critical_section_end(flags);
+// }

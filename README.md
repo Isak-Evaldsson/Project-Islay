@@ -14,7 +14,8 @@ them.
 * Sebastian Raase, a colleague and friend of mine, has not only contributed with 
   great design ideas, I have also used his ROMFS FUSE implementation (licensed
   under MIT, see LICENSES/romfs-license.txt) as a foundation of the kernel's 
-  romfs implementation.
+  romfs implementation. Parts of the keyboard drivers is also based on sample code
+  I have received by him.
 
 * Minix 2, by Andrew S. Tanenbaum and Albert S. Woodhull. Apart from the book
   itself (Operating Systems: Design And Implementation), which has been very

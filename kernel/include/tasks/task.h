@@ -33,11 +33,15 @@ typedef enum {
     TASK_STATE_MAX,
 } task_state_t;
 
-// Temporary solution? I see two options 1: Merge headers, 2: Forward reference
-typedef struct task_queue task_queue_t;
-
 /* Number identify an existing task */
 typedef unsigned int tid_t;
+
+/* A generic task queue, with an API to ensure that task are safely queued. To simply scheduling, a
+ * task can only be in one queue at the time. */
+typedef struct task_queue {
+    // TODO: Add lock
+    struct list list;
+} task_queue_t;
 
 /*
     The task control block which stores all relevant data for each task (thread or process). This is
@@ -71,6 +75,10 @@ struct task {
 /* Asset offset to ensure asm compatiblity */
 assert_offset(struct task, regs, 0);
 
+/*
+    Task API
+*/
+
 /* Creates a new task executing the code at the address ip */
 tid_t create_task(void* ip);
 
@@ -80,5 +88,28 @@ task_t* get_task(tid_t tid);
 
 /* Mark the supplied task control block as no longer used */
 void put_task(task_t* task);
+
+/*
+    Task queue API
+*/
+#define QUEUE_INIT(name) {.list = LIST_INIT((name).list)}
+
+/* Initialise an empty task queue */
+#define EMPTY_QUEUE(name) task_queue_t name = QUEUE_INIT(name)
+
+/* Check if the task queue is empty */
+#define TASK_QUEUE_EMPTY(queue_ptr) LIST_EMPTY(&(queue_ptr)->list)
+
+/* Adds a task to the end of the queue */
+void task_queue_enqueue(task_queue_t* queue, task_t* task);
+
+/* Adds task to the front of queue */
+void task_queue_add_first(task_queue_t* queue, task_t* task);
+
+/* Removes the first task form the queue */
+task_t* task_queue_dequeue(task_queue_t* queue);
+
+/* Removes a task for it's current task queue*/
+void task_remove_from_current_task_queue(task_t* task);
 
 #endif /* TASK_TASK_H */

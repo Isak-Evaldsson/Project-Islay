@@ -30,8 +30,9 @@
 
 // TODO: Have a more granular system with fixed point time to allowing avoiding clock drift for
 // clock with a decimal period
-static uint64_t time_since_boot_ns;  // Time since the device was booted in ns allows about 584
-                                     // years of uptime before overflow, should proably be enough :)
+static uint64_t
+    time_since_boot_ns;  // Time since the device was booted in ns allows about 584
+                         // years of uptime before overflow, should probably be enough :)
 
 /*
     Struct for each element in the internal timed event priority queue
@@ -239,8 +240,13 @@ void timer_report_clock_pulse(uint64_t period_ns)
 {
     timed_event_t event;
 
-    time_since_boot_ns += period_ns;
+    // Top half
+    time_since_boot_ns += period_ns;  // ATOMIC WRITE
+    LOG("Time since boot: %u", time_since_boot_ns);
 
+    // Bottom half
+
+    // Lock heap?
     // Check the event queue for timed event
     while (event_queue.size > 0 && event_queue.array[0].timestamp_ns <= time_since_boot_ns) {
         extract_min_element(&event);

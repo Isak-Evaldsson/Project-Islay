@@ -38,6 +38,14 @@ common_interrupt_handler:               # the common parts of the generic interr
     # call the C function
     call generic_interrupt_handler
 
+	# Just do the context switch here....
+	# compare current and next proc, if different and next not null 
+	# How do we extract the thread_regs_t, are thy needed to be actlly
+	# Consts header? and the staticlly assert them? 
+	# do switch...
+
+skip_task_switch:
+
     # restore the registers
 	pop	%edi
 	pop	%esi

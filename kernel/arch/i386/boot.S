@@ -109,6 +109,7 @@ end:
 	movl $(0x000BE000 | 0x003), boot_page_table1 - HIGHER_HALF_ADDR + 1022 * 4
 	movl $(0x000BF000 | 0x003), boot_page_table1 - HIGHER_HALF_ADDR + 1023 * 4
 
+	# TODO: Should we have a way of detecting when the kenrel overrites the VGA area
 
 	# The page table is used at both page directory entry 0 (virtually from 0x0
 	# to 0x3FFFFF) (thus identity mapping the kernel) and page directory entry

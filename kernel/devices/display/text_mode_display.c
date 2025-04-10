@@ -80,6 +80,18 @@ size_t text_mode_write(struct text_mode_device* dev, const char* str, size_t n)
     return i;
 }
 
+void text_mode_write_char(struct text_mode_device* dev, ucs2_t c)
+{
+    char byte = 0x1A;  // use ascii sub as default char
+
+    // For ascii compatiblity, the 7 lowest bits are encode the same as ASCII
+    if (!(c >> 7)) {
+        byte = c & 0x7f;
+    }
+
+    write_char(dev, byte);
+}
+
 void text_mode_del(struct text_mode_device* dev, size_t n)
 {
     for (size_t i = 0; i < n; i++) {

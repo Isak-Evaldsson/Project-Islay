@@ -12,6 +12,7 @@
 
 #include <arch/platfrom.h>
 #include <devices/device.h>
+#include <devices/unicode.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -62,6 +63,8 @@ void   text_mode_putc(struct text_mode_device* dev, char c);
 size_t text_mode_write(struct text_mode_device* dev, const char* str, size_t n);
 void   text_mode_del(struct text_mode_device* dev, size_t n);
 void   text_mode_clear(struct text_mode_device* dev);
+
+void text_mode_write_char(struct text_mode_device* dev, ucs2_t c);
 
 /* Switch to the text mode display */
 void text_mode_set_active_display(struct text_mode_device* dev);

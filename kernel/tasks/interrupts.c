@@ -115,15 +115,14 @@ void generic_interrupt_handler()
     interrupt_level++;
     kassert(interrupt_level <= 2);
 
+    // LOG("Got interrupt %u", interrupt_number);
     kassert(interrupt_number <= ARCH_N_INTERRUPTS);
-    scheduler_start_of_interrupt();  // Replace, with some kind atomic section macro
+    scheduler_start_of_interrupt();  // TODO: Inline or replace with some kind atomic section macro
 
     if (!(atomic_load(&entry->flags) & (1 << INTERRUPT_ENABLED))) {
         LOG("Unregistered interrupt %u fired, bug?", interrupt_number);
         goto end;
     }
-
-    LOG("N: %u, L: %u", interrupt_number, interrupt_level);
 
     if (entry->top_half) {
         entry->top_half(state, interrupt_number);

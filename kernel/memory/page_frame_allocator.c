@@ -271,7 +271,7 @@ physaddr_t page_frame_alloc_page(uint8_t options)
     mutex_lock(&page_alloc_lock);
     uint32_t page_num = find_available_page();
     if (page_num == 0) {
-        return 0;
+        return NULL;
     }
 
     mark_page(page_num, false);

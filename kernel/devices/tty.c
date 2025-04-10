@@ -10,6 +10,7 @@
 #include <devices/input_manager.h>
 #include <devices/tty.h>
 #include <memory/vmem_manager.h>
+#include <ring_buffer.h>
 #include <tasks/scheduler.h>
 
 #include "internals.h"
@@ -19,6 +20,69 @@
 #define TTY_MODE_CANONICAL 0x01
 
 #define LOG(fmt, ...) __LOG(1, "[TTY]", fmt, ##__VA_ARGS__)
+
+/*
+    TTY Re-design:
+
+    Have two input queues (of uc2-events);
+    - raw queue - inserted to on input events in interrupt context, wakeup all procss waiting for
+      the queue to be empty
+    - canonical queue - when reading, move chars from raw queue to canonical queue (and line edit on
+      they way if needed), then copy as many you need to the reader. How do we deal with waits?
+      Two scenarios:
+        kthread - just do a wait-loop
+        userspace syscall bottom half handler - but proc to sleep, then
+
+    - if overflow, simply flush the queues (canonical as well?, unix v6 does)
+
+    Have an output queue:
+    - When echoing char, add it to queue (and start time event if it isn't started).
+    - When writing to tty, add it to queue and but process to sleep - What if the there's not
+      enough space in the queue? for kthreads a simple wait loop is fine, but what if it's a syscall
+      running in bottom half isr? Iterate over all wait process, re-submit chars, wait again
+
+    - How to handle overflows?
+    - Who to to actually output? Start a timed event (if there's not one already running), the
+      callback does the following:
+        - Dumps a fixed number of chars (or until the queue is empty)
+        - If empty, wakeup processes waiting for the queue to be empty, stop the timed events
+        - else continue the timed events
+
+    How to do escape code handling?
+
+    Except for the tty itself, what other infrastructure is needed?
+    - A mechansm for a process to wait on a particular address, and a wakeup
+
+
+    Buffer wait API:
+
+    buffer_wait(const char* wait_buff, char* dest_buff, size_t n):
+        1. Block running task
+        2. Note buffers in process record
+        3. Add task to wait queue
+
+    buffer_wakeup_waiters(const char* buff, size_t n):
+        1. Find all waiting tasks (either a global io wait queue or one per buffer)
+        2. For each waiting task:
+            1. Copy n bytes (or as many dest_buff holds)
+            2. Unblock task...
+            3. Regarding unblocking, I guess we could have two modes:
+                - Require buffer to be filled
+                - Always unblock
+            4. Do we need a distinction between kernel and userspace threads?
+
+    How would that API be used in the tty?
+    Well, in tty_input, when an enter is received, call buffer_wakeup_waiter(raw_buff, )
+
+    On tty_read - if the current raw buffer is empty, call buffer_wait()
+*/
+
+#define TTY_BUF_SIZE  PAGE_SIZE
+#define TTY_BUF_ELEMS (TTY_BUF_SIZE / sizeof(ucs2_t))
+
+ring_buff_type(tty_buff, ucs2_t, /* DYNAMICLY ALLOCATED */);
+
+#define TTY_BUFF_INIT(buff, size) ring_buff_init_with_cap(buff, size - sizeof(struct tty_buff))
 
 struct tty {
     struct device            device;
@@ -41,21 +105,147 @@ struct tty {
     // Ring buffers containing all chars read to be read. In order to have line editing in canonical
     // mode it's split into two halfs, the commited part [read_idx, commited_idx] read to be read
     // and the current line part [commited_idx, write_idx] which can be edited
-    size_t char_buffer_read_idx;
-    size_t char_buffer_write_idx;
-    size_t char_buffer_commit_idx;
-    char*  char_buffer;
+    size_t       char_buffer_read_idx;
+    size_t       char_buffer_write_idx;
+    size_t       char_buffer_commit_idx;
+    char*        char_buffer;
 
+<<<<<<< Updated upstream
+    bool         keys_dropped;     // Has the keys been dropped due to the char buffer being full
+    unsigned int saved_kbd_state;  // Keyboard state for that tty
+=======
     bool keys_dropped;  // Has the keys been dropped due to the char buffer being full
 
     uint8_t kbd_modifier_state;
     uint8_t kbd_led_state;
+
+    // TODO: Dynamically allocate...
+    struct tty_buff* raw_input_buff;
+    struct tty_buff* canonical_input_buff;
+    struct tty_buff* output_buff;
+>>>>>>> Stashed changes
 };
 
 #define MAX_TTYS 8
 static struct tty  tty_table[MAX_TTYS];
 static size_t      num_ttys;
 static struct tty* current_tty;
+
+static void tty_switch(size_t index);
+static void tty_send_char(ucs2_t c);
+
+static int tty_on_input(input_event_t event)
+{
+    ucs2_t         c;
+    const uint16_t keycode = event.keycode;
+    const uint8_t  key     = KEYCODE_GET_KEY(keycode);
+
+    switch (KEYCODE_GET_TYPE(keycode)) {
+        case KEYCODE_TYPE_LOCK:
+            if (!KEYCODE_CHECK_RELEASED(keycode)) {
+                INV_BIT(current_tty->kbd_led_state, KEYCODE_GET_MODIFIER(keycode));
+                set_keyboard_leds(current_tty->kbd_led_state);
+            }
+            break;
+
+        case KEYCODE_TYPE_MOD:
+            if (KEYCODE_CHECK_RELEASED(keycode)) {
+                CLR_BIT(current_tty->kbd_modifier_state, KEYCODE_GET_MODIFIER(keycode));
+            } else {
+                SET_BIT(current_tty->kbd_modifier_state, KEYCODE_GET_MODIFIER(keycode));
+            }
+            break;
+
+        case KEYCODE_TYPE_REG:
+            if (!KEYCODE_CHECK_RELEASED(keycode)) {
+                // Handle tty switch
+                if (key >= KEY_F1 && key <= KEY_F12) {
+                    if ((current_tty->kbd_modifier_state &
+                         ((1 << KEYCODE_MOD_LCTRL) | (1 << KEYCODE_MOD_RCTRL))) &&
+                        (current_tty->kbd_modifier_state &
+                         ((1 << KEYCODE_MOD_LALT) | (1 << KEYCODE_MOD_RALT)))) {
+                        tty_switch(key - KEY_F1);
+                    }
+                    return 0;
+                }
+
+                if (key == KEY_ENTER) {
+                    // TODO: Handle wakeup reader magic...
+                }
+
+                c = keymap_get_key(keycode, current_tty->kbd_modifier_state,
+                                   current_tty->kbd_led_state);
+                if (c != UCS2_NOCHAR) {
+                    // TODO: Handle echoing...
+
+                    if (!ring_buff_full(*current_tty->raw_input_buff)) {
+                        ring_buffer_push(*current_tty->raw_input_buff, c);
+                    } else {
+                        // TODO: Dropped keys flags + flushing?
+                    }
+                }
+            }
+    }
+    return 0;
+}
+
+static void tty_canonicalize_input()
+{
+    ucs2_t c;
+
+    while (!ring_buff_empty(*current_tty->raw_input_buff)) {
+        c = ring_buffer_pop(*current_tty->raw_input_buff);
+
+        // TODO: Should we assume the canonical buffer to always have space?,
+        // Then we need to flush both on overflow in tty_on_input
+
+        if (/* Line editing... */ 1) {
+            if (c == 0x007F /*TODO DELETE MACRO*/) {
+                if (!ring_buff_empty(*current_tty->canonical_input_buff)) {
+                    ring_buffer_pop(*current_tty->canonical_input_buff);
+                }
+                continue;
+            }
+        }
+
+        ring_buffer_push(*current_tty->canonical_input_buff, c);
+    }
+}
+
+static void tty_send_char(ucs2_t c)
+{
+    // TODO: How to handle the overflow case?
+    // We have two scenarios:
+    // 1. on write - just put the writer to sleep
+    // 2. on echo - unclear?
+    ring_buffer_push(*current_tty->output_buff, c);
+    // TODO: Start the dump timer if not already created...
+}
+
+#define DUMP_LIMIT (100)
+
+static void dump_char_timed_event()
+{
+    ucs2_t c;
+
+    if (ring_buff_empty(*current_tty->output_buff)) {
+        return;  // Nothing to do
+    }
+
+    for (size_t i = 0; i < DUMP_LIMIT; i++) {
+        c = ring_buffer_pop(*current_tty->output_buff);
+        // TODO: Write to vga display
+
+        if (ring_buff_empty(*current_tty->output_buff)) {
+            break;
+        }
+    }
+
+    // TODO: Wakeup waiters...
+    if (!ring_buff_empty(*current_tty->output_buff)) {
+        // TODO: Register new timed event...
+    }
+}
 
 static void tty_switch(size_t index)
 {
@@ -316,6 +506,26 @@ static int tty_init(size_t index)
     if (ret < 0) {
         return ret;
     }
+
+    // Allocate buffers... (Can we move them to open?),
+    tty_dev->raw_input_buff = vmem_request_free_page(1);
+    if (tty_dev->raw_input_buff == NULL) {
+        return -ENOMEM;
+    }
+
+    tty_dev->canonical_input_buff = vmem_request_free_page(1);
+    if (tty_dev->canonical_input_buff == NULL) {
+        return -ENOMEM;
+    }
+
+    tty_dev->output_buff = vmem_request_free_page(1);
+    if (tty_dev->output_buff == NULL) {
+        return -ENOMEM;
+    }
+
+    TTY_BUFF_INIT(*tty_dev->raw_input_buff, PAGE_SIZE);
+    TTY_BUFF_INIT(*tty_dev->canonical_input_buff, PAGE_SIZE);
+    TTY_BUFF_INIT(*tty_dev->output_buff, PAGE_SIZE);
 
     // Reset ringbuffer
     tty_dev->char_buffer_read_idx   = 0;

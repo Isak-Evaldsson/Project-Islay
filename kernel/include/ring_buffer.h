@@ -15,13 +15,15 @@
 /*
     Macros defining the ring buffer struct
 */
-#define ring_buff_struct(T, SIZE) \
-    struct {                      \
-        size_t size;              \
-        size_t read_idx;          \
-        size_t write_idx;         \
-        size_t cap;               \
-        T      array[SIZE];       \
+#define ring_buff_struct(TYPE, SIZE) ring_buff_type(, TYPE, SIZE)
+
+#define ring_buff_type(NAME, TYPE, SIZE) \
+    struct NAME {                        \
+        size_t size;                     \
+        size_t read_idx;                 \
+        size_t write_idx;                \
+        size_t cap;                      \
+        TYPE   array[SIZE];              \
     }
 
 /*
@@ -33,6 +35,14 @@
         (buff).read_idx  = 0;                                              \
         (buff).write_idx = 0;                                              \
         (buff).cap       = sizeof((buff).array) / sizeof((buff).array[0]); \
+    } while (0)
+
+#define ring_buff_init_with_cap(buff, capacity) \
+    do {                                        \
+        (buff).size      = 0;                   \
+        (buff).read_idx  = 0;                   \
+        (buff).write_idx = 0;                   \
+        (buff).cap       = capacity;            \
     } while (0)
 
 /*
@@ -63,6 +73,20 @@
         (var)           = ring_buff_first(buff);              \
         (buff).read_idx = ((buff).read_idx + 1) % (buff).cap; \
         (buff).size--;                                        \
+    } while (0)
+
+#define ring_buffer_pop(buff)                                               \
+    ({                                                                      \
+        typeof((buff).array[0]) _item = ring_buff_first((buff));            \
+        (buff).read_idx               = ((buff).read_idx + 1) % (buff).cap; \
+        (buff).size--;                                                      \
+        _item;                                                              \
+    })
+
+#define ring_buffer_rest(buff) \
+    do {                       \
+        (buff).read_idx  = 0;  \
+        (buff).write_idx = 0;  \
     } while (0)
 
 #endif /* KLIB_RING_BUFFER_H */
