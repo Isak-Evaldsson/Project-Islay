@@ -22,7 +22,8 @@ static tid_t alloc_tid()
         kpanic("Can't create new task, out of tids");
     }
 
-    return prev;
+    kassert(new > 0);
+    return new;
 }
 
 /* Wrapper functions for new tasks handling proper setup/cleanup */
@@ -45,13 +46,13 @@ tid_t create_task(void* ip)
     uint32_t flags;
     task_t*  task = kalloc(sizeof(task_t));
     if (task == NULL) {
-        return NULL;
+        return 0;
     }
 
     // Allocate stack
     task->kstack_bottom = vmem_request_free_page(0);
     if (task->kstack_bottom == NULL) {
-        return NULL;
+        return 0;
     }
 
     task->kstack_size   = PAGE_SIZE;
@@ -91,7 +92,7 @@ task_t* create_root_task()
     init_initial_thread_regs(&task->regs);
 
     // Initialise fields
-    task->tid       = 0;
+    task->tid       = alloc_tid();
     task->time_used = 0;
     task->state     = RUNNING;
     task->status    = 0;
@@ -109,6 +110,10 @@ task_t* get_task(tid_t tid)
 {
     task_t*            task;
     struct list_entry* entry;
+
+    if (tid == 0) {
+        return NULL;
+    }
 
     LIST_ITER(&task_list, entry)
     {

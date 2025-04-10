@@ -151,9 +151,10 @@ static int cleanup_test()
     return ret;
 }
 
-
 struct test_func scheduling_tests[] = {
-    CREATE_TEST_FUNC(sleep_test), CREATE_TEST_FUNC(mutex_test), CREATE_TEST_FUNC(cleanup_test),
+    CREATE_TEST_FUNC(sleep_test),
+    CREATE_TEST_FUNC(mutex_test),
+    CREATE_TEST_FUNC(cleanup_test),
 };
 
 struct test_suite scheduler_test_suite = {

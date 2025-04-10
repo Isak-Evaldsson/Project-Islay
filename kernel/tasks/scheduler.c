@@ -271,6 +271,9 @@ void schedule()
         task = task_queue_dequeue(&ready_queue);
         if (task != current_task) {
             switch_task(task);
+        } else {
+            // If no task switch is needed, set current task to a running state
+            current_task->state = RUNNING;
         }
     }
 
