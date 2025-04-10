@@ -26,6 +26,9 @@ if [ ! -d $SRC_DIR ]; then
 fi
 
 # Create objects dir
+if [ -d $OBJ_DIR ]; then
+    rm -rf $OBJ_DIR # Delete dir to avoid object missmatch
+fi
 mkdir -p $OBJ_DIR
 pushd $OBJ_DIR
 

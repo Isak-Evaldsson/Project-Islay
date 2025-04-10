@@ -10,13 +10,24 @@
 # Common variables and functions used by multiple scripts
 #
 
+# Set by make.sh or other callers
+echo "Found: $ARCH"
+if [ -z "$ARCH" ]; then 
+    echo "No ARCH specified" && exit 1;
+fi
+
+# Handle that envsetup is called from both <git root> and <git root>/toolchain
+if [ $(basename $(pwd)) != "toolchain" ]; then
+    TOOLCHAIN_ROOT="$(pwd)/toolchain"
+else 
+    ROOT=$(pwd)
+fi
+
 # General configuration
-ROOT=$(pwd)
-TMP_DIR="$ROOT/tmp"
-BIN_DIR="$ROOT/bin"
+TMP_DIR="$TOOLCHAIN_ROOT/tmp"
+BIN_DIR="$TOOLCHAIN_ROOT/bin"
 PREFIX="$BIN_DIR/cross"
-ARCH="i686" # What architecture are we building for
-TARGET="$ARCH-elf" # What architecture are we building for
+TARGET="$ARCH-elf"
 PATH="$PREFIX/bin:$PATH" # Ensure that the tools in prefix is used during buildsteps
 CORE_COUNT=$(nproc)
 

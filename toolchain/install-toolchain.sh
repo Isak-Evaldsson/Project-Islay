@@ -7,8 +7,14 @@
 #!/bin/bash
 
 set -e 
-source ./envsetup.sh
 
+if [ $# -ne 1 ]; then
+    echo "$0: missing argument <ARCH>"
+    exit 1
+fi
+
+export ARCH=$1 # Must be set before calling envsetup
+source ./envsetup.sh
 echo "Installing toolchain for target $TARGET at $PREFIX"
 
 # Platform specfic dependencies

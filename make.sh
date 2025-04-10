@@ -21,7 +21,6 @@ SYSTEM_HEADER_PROJECTS="kernel"
 # Options configured by the input parameters
 USE_GDB=false
 ARCH=i386
-COMPILER_PREFIX=i686-elf # Depends on arch
 RUN_TESTS=false
 
 # Display script help text
@@ -55,7 +54,19 @@ function clean() {
 }
 
 function config() {
-    echo "Configuring environment for the $ARCH / $COMPILER_PREFIX tool-chain"
+    echo "Configuring environment for the $ARCH"
+
+    # Import variables from envsetup.sh
+    source "toolchain/envsetup.sh"
+
+    # Ensure that the correct toolchin is installed
+    if [ ! -d "$PREFIX/$TARGET" ]; then
+        echo "$SOURCE"
+        echo "$PREFIX/$TARGET"
+        echo "No toolchain installed, please run:"
+        echo "$ toolchain/install-toolchain $ARCH"
+        exit 1
+    fi
 
     # Export ARCH to called makefiles
     export ARCH=$ARCH
@@ -72,9 +83,9 @@ function config() {
     fi
 
     # Define tool-chain
-    export AR=${COMPILER_PREFIX}-ar
-    export AS=${COMPILER_PREFIX}-as
-    export CC=${COMPILER_PREFIX}-gcc
+    export AR=${TARGET}-ar
+    export AS=${TARGET}-as
+    export CC=${TARGET}-gcc
     export MAKE=${MAKE:-make}
 
     # Do we need to export?, why are them even needed?
@@ -91,7 +102,7 @@ function config() {
 
     # Work around that the -elf gcc targets doesn't have a system include directory
     # because it was configured with --without-headers rather than --with-sysroot.
-    if echo "$COMPILER_PREFIX" | grep -Eq -- '-elf($|-)'; then
+    if echo "$TARGET" | grep -Eq -- '-elf($|-)'; then
         export CC="$CC -isystem=$INCLUDEDIR"
     fi
 }
@@ -177,7 +188,6 @@ while [[ $# -gt 0 ]]; do
                 ;&
                 i686)
                 ARCH=i386
-                COMPILER_PREFIX=i686-elf
                 ;;
                 *)
                 echo "error: unkown architecture '$2'"
