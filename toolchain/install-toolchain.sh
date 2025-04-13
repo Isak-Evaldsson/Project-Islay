@@ -27,7 +27,7 @@ case $OSTYPE in
         if ! command -v "apt" 2>&1 >/dev/null; then
             echo "Not a debain based distro, you need to handle depencies own your own"
         else
-            apt install 'qemu-system-$ARCH'
+            sudo apt install "qemu-system-$ARCH" build-essential libmpfr-dev libgmp3-dev libmpc-dev xorriso mtools grub-pc-bin -y
         fi
         ;;
 esac
@@ -36,3 +36,5 @@ esac
 ./install-binutils.sh
 ./install-gcc.sh
 ./install-genromfs.sh
+
+echo "Toolchain installation complete!"
