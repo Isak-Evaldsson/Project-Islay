@@ -117,14 +117,15 @@ function build_iso() {
     mkdir -p isodir/boot
     mkdir -p isodir/boot/grub
 
-    cp -r sysroot/boot/. isodir/boot/.
+    cp -r $SYSROOT/$BOOTDIR/. isodir/boot/
     cat > isodir/boot/grub/grub.cfg << EOF
 menuentry "Project Islay" {
 	multiboot /boot/kernel.elf
 	module /boot/project_islay.initrd
 }
 EOF
-    grub-mkrescue -o islayos.iso isodir
+    # Include i386-pc to make sure the iso is built for pc-bios and not efi
+    grub-mkrescue /usr/lib/grub/i386-pc -o islayos.iso isodir
 }
 
 # Starts the qemu session
@@ -154,7 +155,7 @@ function qemu() {
         qemu-system-$ARCH "${qemu_opts[@]}" -S -s &
         gdb "${gdb_opts[@]}"
     else
-        qemu-system-$ARCH "${qemu_opts[@]}"
+	qemu-system-$ARCH "${qemu_opts[@]}"
     fi
 }
 
