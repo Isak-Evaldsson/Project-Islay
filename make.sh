@@ -61,8 +61,6 @@ function config() {
 
     # Ensure that the correct toolchin is installed
     if [ ! -d "$PREFIX/$TARGET" ]; then
-        echo "$SOURCE"
-        echo "$PREFIX/$TARGET"
         echo "No toolchain installed, please run:"
         echo "$ toolchain/install-toolchain $ARCH"
         exit 1
@@ -89,22 +87,14 @@ function config() {
     export MAKE=${MAKE:-make}
 
     # Do we need to export?, why are them even needed?
-    export PREFIX=/usr
     export EXEC_PREFIX=$PREFIX
     export BOOTDIR=/boot
     export LIBDIR=$EXEC_PREFIX/lib
-    export INCLUDEDIR=$PREFIX/include
 
 
     # Configure the cross-compiler to use the desired system root.
-    export SYSROOT="$(pwd)/sysroot"
+    export SYSROOT="$PREFIX/lib/gcc/$TARGET/14.2.0"
     export CC="$CC --sysroot=$SYSROOT"
-
-    # Work around that the -elf gcc targets doesn't have a system include directory
-    # because it was configured with --without-headers rather than --with-sysroot.
-    if echo "$TARGET" | grep -Eq -- '-elf($|-)'; then
-        export CC="$CC -isystem=$INCLUDEDIR"
-    fi
 }
 
 function build_iso() {
