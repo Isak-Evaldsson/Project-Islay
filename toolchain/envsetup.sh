@@ -20,7 +20,7 @@ fi
 if [ $(basename $(pwd)) != "toolchain" ]; then
     TOOLCHAIN_ROOT="$(pwd)/toolchain"
 else 
-    ROOT=$(pwd)
+    TOOLCHAIN_ROOT=$(pwd)
 fi
 
 # General configuration
@@ -28,7 +28,7 @@ TMP_DIR="$TOOLCHAIN_ROOT/tmp"
 BIN_DIR="$TOOLCHAIN_ROOT/bin"
 PREFIX="$BIN_DIR/cross"
 TARGET="$ARCH-elf"
-PATH="$PREFIX/bin:$PATH" # Ensure that the tools in prefix is used during buildsteps
+PATH="$PREFIX/bin:$PREFIX/usr/bin:$PATH" # Ensure that the tools in prefix is used during buildsteps
 CORE_COUNT=$(nproc)
 
 mkdir -p $BIN_DIR
