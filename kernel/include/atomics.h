@@ -97,7 +97,7 @@ typedef struct {
         /* Type check expected and val */                                                \
         typeof((*atomic_ptr).__atomic) *__expected = (expected_ptr);                     \
         typeof((*atomic_ptr).__atomic)  __val      = (val);                              \
-        _ __atomic_compare_exchange_n(&(atomic_ptr)->__atomic, __expected, __val, false, \
+        __atomic_compare_exchange_n(&(atomic_ptr)->__atomic, __expected, __val, false, \
                                       __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);               \
     })
 

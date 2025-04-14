@@ -7,6 +7,7 @@
 #ifndef POSIX_LIMITS_H
 #define POSIX_LIMITS_H
 #include <stdint.h>
+
 /*
     types.h: POSIX defined constants
 
@@ -18,5 +19,8 @@
 
 /* Maximum number of bytes in a pathname, including the terminating null character. */
 #define PATH_MAX (4096)
+
+/* Inherit int macros from gcc */
+#define INT_MAX __INT_MAX__
 
 #endif /* POSIX_LIMITS_H */

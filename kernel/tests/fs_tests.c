@@ -16,8 +16,11 @@ struct data {
     const char *str;
 };
 
-static int test_fs_mount(void *data)
+static int test_fs_mount(struct superblock* super, void* data, ino_t* root_ptr)
 {
+    (void)super;
+    (void)root_ptr;
+
     struct data *msg = data;
     if (msg->fail) {
         return -EIO;
@@ -27,7 +30,7 @@ static int test_fs_mount(void *data)
     return 0;
 }
 
-static int test_fs_read(char *buf, size_t size, off_t offset, struct open_file *file)
+static ssize_t test_fs_read(char *buf, size_t size, off_t offset, struct open_file *file)
 {
     return -EINVAL;
 }

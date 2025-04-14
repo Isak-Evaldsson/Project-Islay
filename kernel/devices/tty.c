@@ -121,7 +121,7 @@ static int on_events_received(input_event_t event)
             if (CHECK_IF_CTRL(status) && CHECK_IF_ALT(status)) {
                 tty_switch(key_code - KEY_F1);
             }
-            return;
+            return 0;
         }
 
         if (key_code == KEY_ENTER) {
@@ -137,7 +137,7 @@ static int on_events_received(input_event_t event)
                     current_tty->waiting_proc = NULL;
                 }
             }
-            return;
+            return 0;
         }
 
         if (key_code == KEY_BACKSPACE) {
@@ -152,7 +152,7 @@ static int on_events_received(input_event_t event)
             } else {
                 tty_append_char('\b');
             }
-            return;
+            return 0;
         }
 
         if (KEY_ASCII_PRINTABLE(key_code)) {
@@ -182,7 +182,7 @@ static int tty_open(struct device* dev, struct open_file* file, int oflag)
     tty->opened = file;
 
     if (tty->char_buffer == NULL) {
-        tty->char_buffer = vmem_request_free_page(1);
+        tty->char_buffer = (char*)vmem_request_free_page(1);
         if (tty->char_buffer == NULL) {
             return -ENOMEM;
         }

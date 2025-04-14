@@ -33,7 +33,7 @@ static struct kinfo_file root = {
              .sibling = NULL}
 };
 
-static int kinfo_read(char* buf, size_t size, off_t offset, struct open_file* file)
+static ssize_t kinfo_read(char* buf, size_t size, off_t offset, struct open_file* file)
 {
     struct kinfo_file* f = GET_STRUCT(struct kinfo_file, file, GET_PSEUDO_FILE(file));
 

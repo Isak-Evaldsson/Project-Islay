@@ -21,13 +21,13 @@
 #endif
 
 /* state variables for test_interrupt_ordering  */
-static atomic_uint64_t fail             = ATOMIC_INIT();
-static atomic_uint64_t isr1_top_done    = ATOMIC_INIT();
-static atomic_uint64_t isr2_top_done    = ATOMIC_INIT();
-static atomic_uint64_t isr1_bottom_done = ATOMIC_INIT();
+static atomic_uint_t fail             = ATOMIC_INIT();
+static atomic_uint_t isr1_top_done    = ATOMIC_INIT();
+static atomic_uint_t isr2_top_done    = ATOMIC_INIT();
+static atomic_uint_t isr1_bottom_done = ATOMIC_INIT();
 
 /* state variables for test_successive_bottom_halfs */
-static atomic_uint64_t bottom_half_count = ATOMIC_INIT();
+static atomic_uint_t bottom_half_count = ATOMIC_INIT();
 
 static void test_isr_ordering_top(struct interrupt_stack_state *state, uint32_t interrupt_number)
 {

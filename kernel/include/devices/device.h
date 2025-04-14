@@ -12,6 +12,15 @@
 #include <stddef.h>
 #include <uapi/sys/types.h>
 
+/* Struct representing a single device instance belonging to a particular driver */
+struct device {
+    unsigned int       minor;
+    struct driver*     driver;
+    struct pseudo_file file;
+    void*              data;
+    struct list_entry  list;
+};
+
 /*
     Per driver object, stores both statical data (such as driver functions) as well as share data
     for all devices controlled by this driver.
@@ -28,15 +37,6 @@ struct driver {
     int (*device_close)(struct device* dev, struct open_file* file);
 
     struct list devices;  // TODO: Have an array as well to make indexing fast?
-};
-
-/* Struct representing a single device instance belonging to a particular driver */
-struct device {
-    unsigned int       minor;
-    struct driver*     driver;
-    struct pseudo_file file;
-    void*              data;
-    struct list_entry  list;
 };
 
 /* Convert a pointer for a list entry embedded within a device to device object itself, useful when

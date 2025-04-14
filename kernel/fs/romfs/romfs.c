@@ -215,7 +215,7 @@ static int romfs_getattr(const struct open_file* file, struct stat* stat)
     return 0;
 }
 
-static int romfs_read(char* buf, size_t size, off_t offset, struct open_file* file)
+static ssize_t romfs_read(char* buf, size_t size, off_t offset, struct open_file* file)
 {
     int                 ret;
     size_t              data;

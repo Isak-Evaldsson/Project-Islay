@@ -4,10 +4,11 @@
 
    Copyright (C) 2024 Isak Evaldsson
 */
-#include <limits.h>
+#include <uapi/limits.h>
 #include <utils.h>
 
 #include "internal.h"
+
 
 /* Converts unsigned int to string, returns number of chars */
 static size_t itoa(unsigned int n, char *buffer, size_t len, char radix)
