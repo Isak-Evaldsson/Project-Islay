@@ -248,7 +248,7 @@ static ssize_t tty_read(struct device* dev, char* buf, size_t size, off_t offset
     if (tty->mode & TTY_MODE_CANONICAL) {
         if (tty->char_buffer_read_idx == tty->char_buffer_commit_idx) {
             tty->waiting_proc = scheduler_get_current_task();
-            scheduler_block_task(WAITING_FOR_IO);
+            scheduler_block_task(BLOCK_REASON_IO_WAIT);
         }
     }
 

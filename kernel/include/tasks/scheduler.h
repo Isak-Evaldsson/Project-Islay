@@ -18,7 +18,7 @@ void scheduler_init();
 task_t *scheduler_get_current_task();
 
 /* Block the currently running task */
-void scheduler_block_task(unsigned int reason);
+void scheduler_block_task(block_reason_t reason);
 
 /* Unblock the specified ask */
 void scheduler_unblock_task(task_t *task);

@@ -171,13 +171,14 @@ void scheduler_unlock(uint32_t interrupt_flags)
 #endif
 }
 
-void scheduler_block_task(unsigned int reason)
+void scheduler_block_task(block_reason_t reason)
 {
     uint32_t flags;
     scheduler_lock(&flags);
 
     LOG("Block task %x, reason %u", current_task, reason);
-    current_task->state = reason;
+    current_task->state        = BLOCKED;
+    current_task->block_reason = reason;
     schedule();
 
     scheduler_unlock(flags);
@@ -382,7 +383,7 @@ void scheduler_nano_sleep_until(uint64_t when)
         timer_register_timed_event(when, sleep_expiry_callback);
     }
     spinlock_unlock(&sleep_lock, flags);
-    scheduler_block_task(SLEEPING);
+    scheduler_block_task(BLOCK_REASON_SLEEP);
 }
 
 /* Called by the interrupt handler allowing notifying the scheduler that the interrupt handler is
@@ -441,8 +442,8 @@ void scheduler_terminate_task()
     list_add_last(&termination_queue, &current_task->task_queue_entry);
     spinlock_unlock(&termination_lock, flags);
 
-    // block task, so that a task switch occur once the lock is released
-    scheduler_block_task(TERMINATED);
+    current_task->state = TERMINATED;
+    schedule();
 
     // make sure our task is not blocked
     scheduler_unblock_task(cleanup_task);
@@ -485,7 +486,7 @@ static void cleanup_thread()
             scheduler_yield();
         } else {
             // The work is done, but to sleep until there's more work to do
-            scheduler_block_task(PAUSED);
+            scheduler_block_task(BLOCK_REASON_PAUSED);
         }
     }
 }

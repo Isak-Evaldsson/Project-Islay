@@ -58,7 +58,7 @@ static void __semaphore_wait(semaphore_t *semaphore)
             LOG("%x failed to acquire semaphore/mutex %x", current_task, semaphore);
             scheduler_disable_preemption();
             task_queue_enqueue(&semaphore->waiting_tasks, current_task);
-            scheduler_block_task(WAITING_FOR_LOCK);
+            scheduler_block_task(BLOCK_REASON_LOCK_WAIT);
             scheduler_enable_preemption();
             current = atomic_load(&semaphore->count);
         }
