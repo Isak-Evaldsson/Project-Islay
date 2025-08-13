@@ -8,7 +8,7 @@
 /*
     Intel 8253/8254 Programmable Interval Timer (PIT) driver
 */
-#include <arch/i386/io.h>
+#include <arch/i686/io.h>
 #include <arch/interrupts.h>
 #include <devices/timer.h>
 #include <stdbool.h>

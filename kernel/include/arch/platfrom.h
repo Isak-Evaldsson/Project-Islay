@@ -7,10 +7,10 @@
 #ifndef ARCH_PLATFORM_H
 #define ARCH_PLATFORM_H
 
-#ifdef __i386__
-#define PLATFORM_IS_ARCH_i386() 1
+#ifdef __i686__
+#define PLATFORM_IS_ARCH_i686() 1
 #else
-#define PLATFORM_IS_ARCH_i386() 0
+#define PLATFORM_IS_ARCH_i686() 0
 #endif
 
 #define ARCH(arch) (PLATFORM_IS_ARCH_##arch())

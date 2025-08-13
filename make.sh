@@ -20,8 +20,9 @@ SYSTEM_HEADER_PROJECTS="kernel"
 
 # Options configured by the input parameters
 USE_GDB=false
-ARCH=i386
+ARCH=i686
 RUN_TESTS=false
+QEMU_VARIANT=i386
 
 # Display script help text
 function help() {
@@ -152,10 +153,10 @@ function qemu() {
 
     if [ $USE_GDB = true ]; then
         echo "Running with gdb..."
-        qemu-system-$ARCH "${qemu_opts[@]}" -S -s &
+        qemu-system-$QEMU_VARIANT "${qemu_opts[@]}" -S -s &
         gdb "${gdb_opts[@]}"
     else
-	qemu-system-$ARCH "${qemu_opts[@]}"
+	qemu-system-$QEMU_VARIANT "${qemu_opts[@]}"
     fi
 }
 
@@ -173,12 +174,11 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         -a|--arch)
             case $2 in
-                i386)
-                ;&
                 x86)
                 ;&
                 i686)
-                ARCH=i386
+                ARCH=i686
+                QEMU_VARIANT=i386
                 ;;
                 *)
                 echo "error: unkown architecture '$2'"

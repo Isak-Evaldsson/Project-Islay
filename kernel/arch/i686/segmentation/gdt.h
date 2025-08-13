@@ -4,8 +4,8 @@
 
    Copyright (C) 2024 Isak Evaldsson
 */
-#ifndef ARCH_i386_GDT_H
-#define ARCH_i386_GDT_H
+#ifndef ARCH_i686_GDT_H
+#define ARCH_i686_GDT_H
 
 #include <stdint.h>
 
@@ -22,4 +22,4 @@ typedef struct gdt_ptr_t {
 */
 extern void load_gdt(gdt_ptr_t *ptr);
 
-#endif /* ARCH_i386_GDT_H */
+#endif /* ARCH_i686_GDT_H */

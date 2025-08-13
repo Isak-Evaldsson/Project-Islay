@@ -6,7 +6,7 @@
 */
 
 #define ASM_FILE
-#include <arch/i386/thread.h>
+#include <arch/i686/thread.h>
 
 #define TSS_ESPO_OFFSET 4
 

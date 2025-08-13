@@ -4,8 +4,8 @@
 
    Copyright (C) 2024 Isak Evaldsson
 */
-#ifndef ARCH_i386_PIC_H
-#define ARCH_i386_PIC_H
+#ifndef ARCH_i686_PIC_H
+#define ARCH_i686_PIC_H
 #include <arch/interrupts.h>
 #include <stdint.h>
 
@@ -78,4 +78,4 @@ uint16_t pic_get_isr();
 int pic_register_interrupt(uint32_t irq_num, top_half_handler_t top_half,
                            bottom_half_handler_t bottom_half);
 
-#endif /* ARCH_i386_PIC_H */
+#endif /* ARCH_i686_PIC_H */

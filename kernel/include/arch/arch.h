@@ -15,7 +15,7 @@
 #define ENDIAN_BIG    1
 #define ENDIAN_LITTLE 2
 
-#if ARCH(i386)
+#if ARCH(i686)
 #include <stdint.h>
 typedef uint32_t virtaddr_t;
 typedef uint32_t physaddr_t;

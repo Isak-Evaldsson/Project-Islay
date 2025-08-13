@@ -14,7 +14,7 @@
 #define TEST_INTERRUPT3 (ARCH_N_INTERRUPTS - 2)
 #define TEST_INTERRUPT4 (ARCH_N_INTERRUPTS - 1)
 
-#if ARCH(i386)
+#if ARCH(i686)
 #define INT(i) asm volatile("int %0\n\t" ::"i"(i))
 #else
 #error "Test not implemented for this arch"
