@@ -94,7 +94,7 @@ function config() {
 
 
     # Configure the cross-compiler to use the desired system root.
-    export SYSROOT="$PREFIX/lib/gcc/$TARGET/14.2.0"
+    export SYSROOT="$PREFIX/lib/gcc/$TARGET/15.2.0"
     export CC="$CC --sysroot=$SYSROOT"
 }
 
