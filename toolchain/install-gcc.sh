@@ -12,7 +12,7 @@ source ./envsetup.sh
 #
 # Script downloading, building and installing gcc cross compiler
 #
-GCC_VERSION="14.2.0"
+GCC_VERSION="15.2.0"
 GCC_NAME="gcc-$GCC_VERSION"
 DOWNLOAD_URL="https://ftp.gnu.org/gnu/gcc/$GCC_NAME/$GCC_NAME.tar.gz"
 SUB_DIR="gcc"
