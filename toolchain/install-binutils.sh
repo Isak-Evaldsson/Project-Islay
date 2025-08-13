@@ -12,9 +12,9 @@ source ./envsetup.sh
 #
 # Script downloading, building and installing binutils for cross compilation
 #
-BINUTILS_VERSION="2.44"
+BINUTILS_VERSION="2.45"
 BINUTILS_NAME="binutils-$BINUTILS_VERSION"
-DOWNLOAD_URL="https://ftp.gnu.org/gnu/binutils/binutils-2.44.tar.gz"
+DOWNLOAD_URL="https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.gz"
 SUB_DIR="binutils"
 SRC_DIR="$TMP_DIR/$SUB_DIR/$BINUTILS_NAME"
 OBJ_DIR="$TMP_DIR/$SUB_DIR/objects"
