@@ -4,8 +4,8 @@
 
    Copyright (C) 2024 Isak Evaldsson
 */
-#ifndef ARCH_i386_PIT_H
-#define ARCH_i386_PIT_H
+#ifndef ARCH_i686_PIT_H
+#define ARCH_i686_PIT_H
 
 #include <stdbool.h>
 
@@ -18,4 +18,4 @@ void pit_set_default_frequency();
 void pit_init();
 void pit_interrupt_handler();
 
-#endif /* ARCH_i386_PIT_H */
+#endif /* ARCH_i686_PIT_H */

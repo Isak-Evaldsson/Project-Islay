@@ -4,8 +4,8 @@
 
    Copyright (C) 2024 Isak Evaldsson
 */
-#ifndef ARCH_i386_TSS_H
-#define ARCH_i386_TSS_H
+#ifndef ARCH_i686_TSS_H
+#define ARCH_i686_TSS_H
 
 #include <stdint.h>
 
@@ -60,4 +60,4 @@ void init_kernel_tss();
 */
 void tss_set_stack(uint32_t segment_index, uint32_t sp);
 
-#endif /* ARCH_i386_TSS_H */
+#endif /* ARCH_i686_TSS_H */

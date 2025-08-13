@@ -10,8 +10,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#if ARCH(i386)
-#include "i386/interrupts.h"
+#if ARCH(i686)
+#include "i686/interrupts.h"
 #endif
 
 /* Architecture dependent struct representing the stack state when generic_interrupt_handler is

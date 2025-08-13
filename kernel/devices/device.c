@@ -40,7 +40,7 @@ int register_device(struct driver *driver, struct device *device)
     device->minor  = driver->next_minor++;
     device->driver = driver;
 
-    list_add(&driver->devices, &device->list);
+    list_add_last(&driver->devices, &device->list);
     return 0;
 }
 

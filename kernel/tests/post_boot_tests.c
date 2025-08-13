@@ -9,11 +9,13 @@
 extern struct test_suite interrupt_test_suite;
 extern struct test_suite fs_test_suite;
 extern struct test_suite scheduler_test_suite;
+extern struct test_suite list_test_suite;
 
 static struct test_suite* post_boot_tests[] = {
     &interrupt_test_suite,
     &fs_test_suite,
     &scheduler_test_suite,
+    &list_test_suite,
 };
 
 struct test_suite* current_suite;
@@ -33,8 +35,9 @@ static bool run_suite(struct test_suite* suite)
     }
 
     for (size_t i = 0; i < suite->n_tests; i++) {
-        kprintf("  Running test %u: ", i);
-        ret = suite->tests[i]();
+        struct test_func* test = suite->tests + i;
+        kprintf("  Running test %u - '%s': ", i, test->name);
+        ret = test->ptr();
         if (ret != 0) {
             kprintf("Failed (%i)\n", ret);
             failed = true;

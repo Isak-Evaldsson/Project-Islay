@@ -4,8 +4,8 @@
 
    Copyright (C) 2024 Isak Evaldsson
 */
-#ifndef ARCH_i386_PS2_H
-#define ARCH_i386_PS2_H
+#ifndef ARCH_i686_PS2_H
+#define ARCH_i686_PS2_H
 
 #include <arch/interrupts.h>
 
@@ -22,4 +22,4 @@ void ps2_init();
 void ps2_top_irq(struct interrupt_stack_state *state, uint32_t interrupt_number);
 void ps2_bottom_irq(uint32_t irq_no);
 
-#endif /* ARCH_i386_PS2_H */
+#endif /* ARCH_i686_PS2_H */

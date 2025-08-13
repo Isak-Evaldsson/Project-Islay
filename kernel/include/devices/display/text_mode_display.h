@@ -72,7 +72,7 @@ struct text_mode_device* text_mode_get_display(size_t minor);
 /* How many text mode buffers are available to the system */
 size_t text_get_number_of_displays();
 
-#if ARCH(i386)
+#if ARCH(i686)
 /* Creates vga based text mode devices. Returns 0 on success, -ERRNO on failure */
 int create_vga_text_display();
 #endif

@@ -4,7 +4,7 @@
 
    Copyright (C) 2024 Isak Evaldsson
 */
-#include <arch/i386/io.h>
+#include <arch/i686/io.h>
 #include <arch/tty.h>
 #include <stdint.h>
 

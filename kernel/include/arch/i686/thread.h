@@ -4,8 +4,8 @@
 
    Copyright (C) 2024 Isak Evaldsson
 */
-#ifndef ARCH_I386_THREAD_H
-#define ARCH_I386_THREAD_H
+#ifndef ARCH_i686_THREAD_H
+#define ARCH_i686_THREAD_H
 
 #define THREAD_REGS_ESP_OFFSET  0
 #define THREAD_REGS_CR3_OFFSET  4
@@ -27,4 +27,4 @@ assert_offset(struct thread_regs, cr3, THREAD_REGS_CR3_OFFSET);
 assert_offset(struct thread_regs, esp0, THREAD_REGS_ESP0_OFFSET);
 
 #endif /* ASM_FILE*/
-#endif /* ARCH_I386_THREAD_H */
+#endif /* ARCH_i686_THREAD_H */

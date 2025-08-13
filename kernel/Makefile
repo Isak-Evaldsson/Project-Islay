@@ -27,6 +27,7 @@ devices/drivers.o \
 devices/display/text_mode_display.o \
 devices/input_manager.o \
 devices/keyboard/keyboard.o\
+devices/keyboard/keymaps.o \
 devices/keyboard/ps2_keyboard.o\
 devices/timer.o \
 fs/file_operations.o \
@@ -44,10 +45,12 @@ memory/page_frame_allocator.o \
 memory/vmem_manager.o \
 tasks/interrupts.o \
 tasks/scheduler.o \
+tasks/tasks.o \
 tasks/task_queue.o \
 tasks/locking.o \
 tests/fs_tests.o \
 tests/interrupt_tests.o \
+tests/list_tests.o \
 tests/post_boot_tests.o \
 tests/scheduler_tests.o \
 utils/endianness.o \

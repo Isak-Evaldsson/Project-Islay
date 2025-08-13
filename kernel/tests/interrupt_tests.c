@@ -14,7 +14,7 @@
 #define TEST_INTERRUPT3 (ARCH_N_INTERRUPTS - 2)
 #define TEST_INTERRUPT4 (ARCH_N_INTERRUPTS - 1)
 
-#if ARCH(i386)
+#if ARCH(i686)
 #define INT(i) asm volatile("int %0\n\t" ::"i"(i))
 #else
 #error "Test not implemented for this arch"
@@ -143,9 +143,9 @@ static int test_successive_bottom_halfs()
     return 0;
 }
 
-int (*interrupt_tests[])() = {
-    test_interrupt_ordering,
-    test_successive_bottom_halfs,
+struct test_func interrupt_tests[] = {
+    CREATE_TEST_FUNC(test_interrupt_ordering),
+    CREATE_TEST_FUNC(test_successive_bottom_halfs),
 };
 
 struct test_suite interrupt_test_suite = {

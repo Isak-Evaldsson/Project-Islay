@@ -20,17 +20,6 @@
 
 #define KBD_CMD_BUFF_SIZE 32
 
-enum ps2_modifier_bits {
-    LSHIFT,
-    RSHIFT,
-    LCTRL,
-    RCTRL,
-    LALT,
-    RALT,
-    LSUPER,
-    RSUPER,
-};
-
 /* PS2 commands */
 #define PS2_CMD_SET_LEDS     0xED
 #define PS2_CMD_NONE         0xEE
@@ -47,7 +36,6 @@ struct ps2_keyboard {
 
     // Keyboard state, driving the internal state machine
     unsigned int state;
-    unsigned int modifiers;
 
     // Managing commands to the keyboard
     keyboard_send_cmd_t send_cmd;
@@ -57,61 +45,61 @@ struct ps2_keyboard {
 };
 
 /* maps set 1 scan codes to input event key codes */
-static const uint8_t set1_to_keycode[] = {
+static const uint16_t set1_to_keycode[] = {
     // clang-format off
-    INVALID_KEY,            KEY_ESCAPE,             KEY_1,                  KEY_2,      
-    KEY_3,                  KEY_4,                  KEY_5,                  KEY_6,                
-    KEY_7,                  KEY_8,                  KEY_9,                  KEY_0,                  
-    KEY_MINUS,              KEY_EQUAL,              KEY_BACKSPACE,          KEY_TAB,       
-    KEY_Q,                  KEY_W,                  KEY_E,                  KEY_R,
-    KEY_T,                  KEY_Y,                  KEY_U,                  KEY_I,      
-    KEY_O,                  KEY_P,                  KEY_LSBRACKET,          KEY_RSBRACKET,
-    KEY_ENTER,              /*LCTRL*/INVALID_KEY,   KEY_A,                  KEY_S,
-    KEY_D,                  KEY_F,                  KEY_G,                  KEY_H,
-    KEY_J,                  KEY_K,                  KEY_L,                  KEY_SEMI,
-    KEY_APOSTROPHE,         KEY_BACKTICK,           /*LSHIFT*/INVALID_KEY,  KEY_BSLASH, 
-    KEY_Z,                  KEY_X,                  KEY_C,                  KEY_V,                  
-    KEY_B,                  KEY_N,                  KEY_M,                  KEY_COMMA,  
-    KEY_DOT,                KEY_FSLASH,             /*RSHIFT*/INVALID_KEY,  KEY_ASTERISK,
-    /*LALT*/INVALID_KEY,    KEY_SPACE,              KEY_CAPS,               KEY_F1,
-    KEY_F2,                 KEY_F3,                 KEY_F4,                 KEY_F5,    
-    KEY_F6,                 KEY_F7,                 KEY_F8,                 KEY_F9,                 
-    KEY_F10,                KEY_NUMLOCK,            KEY_SCROLLOCK,          KEY_7,
-    KEY_8,                  KEY_9,                  KEY_MINUS,              KEY_4,
-    KEY_5,                  KEY_6,                  KEY_PLUS,               KEY_1,
-    KEY_2,                  KEY_3,                  KEY_0,                  KEY_DOT,
-    INVALID_KEY,            INVALID_KEY,            INVALID_KEY,            KEY_F11,
-    KEY_F12
+    KEYCODE_RKEY(KEY_NONE),         KEYCODE_RKEY(KEY_ESCAPE),           KEYCODE_RKEY(KEY_1),                KEYCODE_RKEY(KEY_2),      
+    KEYCODE_RKEY(KEY_3),            KEYCODE_RKEY(KEY_4),                KEYCODE_RKEY(KEY_5),                KEYCODE_RKEY(KEY_6),                
+    KEYCODE_RKEY(KEY_7),            KEYCODE_RKEY(KEY_8),                KEYCODE_RKEY(KEY_9),                KEYCODE_RKEY(KEY_0),                  
+    KEYCODE_RKEY(KEY_MINUS),        KEYCODE_RKEY(KEY_EQUAL),            KEYCODE_RKEY(KEY_BACKSPACE),        KEYCODE_RKEY(KEY_TAB),       
+    KEYCODE_RKEY(KEY_Q),            KEYCODE_RKEY(KEY_W),                KEYCODE_RKEY(KEY_E),                KEYCODE_RKEY(KEY_R),
+    KEYCODE_RKEY(KEY_T),            KEYCODE_RKEY(KEY_Y),                KEYCODE_RKEY(KEY_U),                KEYCODE_RKEY(KEY_I),      
+    KEYCODE_RKEY(KEY_O),            KEYCODE_RKEY(KEY_P),                KEYCODE_RKEY(KEY_LBRACKET),         KEYCODE_RKEY(KEY_RBRACKET),
+    KEYCODE_RKEY(KEY_ENTER),        KEYCODE_MKEY(KEYCODE_MOD_LCTRL),    KEYCODE_RKEY(KEY_A),                KEYCODE_RKEY(KEY_S),
+    KEYCODE_RKEY(KEY_D),            KEYCODE_RKEY(KEY_F),                KEYCODE_RKEY(KEY_G),                KEYCODE_RKEY(KEY_H),
+    KEYCODE_RKEY(KEY_J),            KEYCODE_RKEY(KEY_K),                KEYCODE_RKEY(KEY_L),                KEYCODE_RKEY(KEY_COLON),
+    KEYCODE_RKEY(KEY_APOSTROPHE),   KEYCODE_RKEY(KEY_GRAVE),            KEYCODE_MKEY(KEYCODE_MOD_LSHIFT),   KEYCODE_RKEY(KEY_BSLASH), 
+    KEYCODE_RKEY(KEY_Z),            KEYCODE_RKEY(KEY_X),                KEYCODE_RKEY(KEY_C),                KEYCODE_RKEY(KEY_V),                  
+    KEYCODE_RKEY(KEY_B),            KEYCODE_RKEY(KEY_N),                KEYCODE_RKEY(KEY_M),                KEYCODE_RKEY(KEY_COMMA),  
+    KEYCODE_RKEY(KEY_DOT),          KEYCODE_RKEY(KEY_FSLASH),           KEYCODE_MKEY(KEYCODE_MOD_RSHIFT),   KEYCODE_RKEY(KEYPAD_ASTERISK),
+    KEYCODE_MKEY(KEYCODE_MOD_LALT), KEYCODE_RKEY(KEY_SPACE),            KEYCODE_LKEY(KEYCODE_CAPS_LOCK),    KEYCODE_RKEY(KEY_F1),
+    KEYCODE_RKEY(KEY_F2),           KEYCODE_RKEY(KEY_F3),               KEYCODE_RKEY(KEY_F4),               KEYCODE_RKEY(KEY_F5),    
+    KEYCODE_RKEY(KEY_F6),           KEYCODE_RKEY(KEY_F7),               KEYCODE_RKEY(KEY_F8),               KEYCODE_RKEY(KEY_F9),                 
+    KEYCODE_RKEY(KEY_F10),          KEYCODE_LKEY(KEYCODE_NUM_LOCK),     KEYCODE_LKEY(KEYCODE_SCROLL_LOCK),  KEYCODE_RKEY(KEYPAD_7),
+    KEYCODE_RKEY(KEYPAD_8),         KEYCODE_RKEY(KEYPAD_9),             KEYCODE_RKEY(KEYPAD_MINUS),         KEYCODE_RKEY(KEYPAD_4),
+    KEYCODE_RKEY(KEYPAD_5),         KEYCODE_RKEY(KEYPAD_6),             KEYCODE_RKEY(KEYPAD_PLUS),          KEYCODE_RKEY(KEYPAD_1),
+    KEYCODE_RKEY(KEYPAD_2),         KEYCODE_RKEY(KEYPAD_3),             KEYCODE_RKEY(KEYPAD_0),             KEYCODE_RKEY(KEYPAD_DOT),
+    KEYCODE_RKEY(KEY_NONE),         KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_INT1),             KEYCODE_RKEY(KEY_F11),
+    KEYCODE_RKEY(KEY_F12)
     //clang-format on
 };
 
 /* maps set 1 extended (E0, 0x10 + index) scan codes to input event key codes */
-static const uint8_t set1_extended_to_keycode[] = {
+static const uint16_t set1_extended_to_keycode[] = {
     // clang-format off
-    KEY_MM_PREV,            INVALID_KEY,            INVALID_KEY,        INVALID_KEY,
-    INVALID_KEY,            INVALID_KEY,            INVALID_KEY,        INVALID_KEY,
-    INVALID_KEY,            KEY_MM_NEXT,            INVALID_KEY,        INVALID_KEY,
-    KEY_ENTER,              /*RCTRL*/INVALID_KEY,   INVALID_KEY,        INVALID_KEY,
-    KEY_MM_MUTE,            KEY_MM_CALC,            KEY_MM_PLAY,        INVALID_KEY,
-    KEY_MM_STOP,            INVALID_KEY,            INVALID_KEY,        INVALID_KEY,
-    INVALID_KEY,            INVALID_KEY,            INVALID_KEY,        INVALID_KEY,
-    INVALID_KEY,            INVALID_KEY,            KEY_MM_VOL_DOWN,    INVALID_KEY,
-    KEY_MM_VOL_UP,          INVALID_KEY,            KEY_MM_HOME,        INVALID_KEY,
-    INVALID_KEY,            KEY_FSLASH,             INVALID_KEY,        INVALID_KEY,
-    /*RALT*/INVALID_KEY,    INVALID_KEY,            INVALID_KEY,        INVALID_KEY,
-    INVALID_KEY,            INVALID_KEY,            INVALID_KEY,        INVALID_KEY,
-    INVALID_KEY,            INVALID_KEY,            INVALID_KEY,        INVALID_KEY,
-    INVALID_KEY,            INVALID_KEY,            INVALID_KEY,        KEY_HOME,
-    KEY_UP,                 KEY_PAGEUP,             INVALID_KEY,        KEY_LEFT,
-    INVALID_KEY,            KEY_RIGHT,              INVALID_KEY,        KEY_END,
-    KEY_DOWN,               KEY_PAGEDOWN,           KEY_INSERT,         KEY_DELETE,
-    INVALID_KEY,            INVALID_KEY,            INVALID_KEY,        INVALID_KEY,
-    INVALID_KEY,            INVALID_KEY,            INVALID_KEY,        /*LSUPER*/INVALID_KEY,
-    /*RSUPER*/INVALID_KEY,  KEY_MM_APPS,            KEY_ACPI_POWER,     KEY_ACPI_SLEEP,
-    INVALID_KEY,            INVALID_KEY,            INVALID_KEY,        KEY_ACPI_WAKE,
-    INVALID_KEY,            KEY_MM_SEARCH,          KEY_MM_FAVORITES,   KEY_MM_REFRESH,
-    KEY_MM_STOP,            KEY_MM_FORWARD,         KEY_MM_BACK,        KEY_MM_COMPUTER,
-    KEY_MM_EMAIL,           KEY_MM_SELECT,
+    KEYCODE_RKEY(KEY_MEDIA_PREV),       KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),
+    KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),
+    KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_MEDIA_NEXT),       KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),
+    KEYCODE_RKEY(KEYPAD_ENTER),         KEYCODE_MKEY(KEYCODE_MOD_RCTRL),    KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),
+    KEYCODE_RKEY(KEY_MUTE),             KEYCODE_RKEY(KEY_MEDIA_CALC),       KEYCODE_RKEY(KEY_MEDIA_PLAY),       KEYCODE_RKEY(KEY_NONE),
+    KEYCODE_RKEY(KEY_STOP),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),
+    KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),
+    KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_VOL_DOWN),         KEYCODE_RKEY(KEY_NONE),
+    KEYCODE_RKEY(KEY_VOL_UP),           KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_HOME),             KEYCODE_RKEY(KEY_NONE),
+    KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEYPAD_FSLASH),        KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),
+    KEYCODE_MKEY(KEYCODE_MOD_RALT),     KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),
+    KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),
+    KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),
+    KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_HOME),
+    KEYCODE_RKEY(KEY_UP),               KEYCODE_RKEY(KEY_PAGEUP),           KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_LEFT),
+    KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_RIGHT),            KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_END),
+    KEYCODE_RKEY(KEY_DOWN),             KEYCODE_RKEY(KEY_PAGEDOWN),         KEYCODE_RKEY(KEY_INSERT),           KEYCODE_RKEY(KEY_DELETE),
+    KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),
+    KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_MKEY(KEYCODE_MOD_LSUPER),
+    KEYCODE_MKEY(KEYCODE_MOD_RSUPER),   KEYCODE_RKEY(KEY_APP),              KEYCODE_RKEY(KEY_POWER),            KEYCODE_RKEY(KEY_SLEEP),
+    KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_WAKE),
+    KEYCODE_RKEY(KEY_NONE),             KEYCODE_RKEY(KEY_MEDIA_SEARCH),     KEYCODE_RKEY(KEY_MEDIA_FAVORITES),  KEYCODE_RKEY(KEY_MEDIA_REFRESH),
+    KEYCODE_RKEY(KEY_MEDIA_STOP),       KEYCODE_RKEY(KEY_MEDIA_FORWARD),    KEYCODE_RKEY(KEY_MEDIA_BACK),       KEYCODE_RKEY(KEY_MEDIA_COMPUTER),
+    KEYCODE_RKEY(KEY_MEDIA_EMAIL),      KEYCODE_RKEY(KEY_SELECT),
     // clang-format on
 };
 
@@ -137,18 +125,17 @@ void ps2_send_command(unsigned char data)
 
 static void ps2_keyboard_set_leds(unsigned char leds)
 {
-    uint16_t      cmd      = 0;
     unsigned char led_bits = 0;
 
-    if (leds & (1 << LED_CAPS_LOCK)) {
+    if (leds & (1 << KEYCODE_CAPS_LOCK)) {
         SET_BIT(led_bits, 2);
     }
 
-    if (leds & (1 << LED_NUM_LOCK)) {
+    if (leds & (1 << KEYCODE_NUM_LOCK)) {
         SET_BIT(led_bits, 1);
     }
 
-    if (leds & (1 << LED_SCROLL_LOCK)) {
+    if (leds & (1 << KEYCODE_SCROLL_LOCK)) {
         SET_BIT(led_bits, 0);
     }
 
@@ -178,41 +165,6 @@ void ps2_keyboard_register(char* device_name, keyboard_send_cmd_t fn)
     kprintf("PS/2 keyboard driver: successfully registered %s\n", device_name);
 }
 
-/* Helper function, that sends key event to the input manger based on the supplied keycode, handles
-   scancode independet internal state such as caps_lock etc. */
-void send_event(uint16_t keycode, bool released)
-{
-    unsigned char status = 0;
-
-    if (keycode == INVALID_KEY) {
-        LOG("received invalid keycode");
-        return;
-    }
-
-    if ((kbd.modifiers & (1 << LSHIFT)) || (kbd.modifiers & (1 << RSHIFT))) {
-        SET_BIT(status, MOD_SHIFT);
-    }
-
-    if ((kbd.modifiers & (1 << LCTRL)) || (kbd.modifiers & (1 << RCTRL))) {
-        SET_BIT(status, MOD_CTRL);
-    }
-
-    if ((kbd.modifiers & (1 << LALT)) || (kbd.modifiers & (1 << RALT))) {
-        SET_BIT(status, MOD_ALT);
-    }
-
-    if ((kbd.modifiers & (1 << LSUPER)) || (kbd.modifiers & (1 << RSUPER))) {
-        SET_BIT(status, MOD_SUPER);
-    }
-
-    // Covert scancode modifiers to os key status
-    if (released) {
-        SET_BIT(status, INPUT_RELEASED);
-    }
-
-    keyboard_process_event(keycode, status);
-}
-
 void ps2_keyboard_send(unsigned char scancode)
 {
     uint8_t cmd;
@@ -222,14 +174,6 @@ void ps2_keyboard_send(unsigned char scancode)
     switch (kbd.state) {
         case 0:  // Initial state, regular keys
             switch (scancode) {
-            case 0x2A: SET_BIT(kbd.modifiers, LSHIFT); kbd.state = 0; break;
-            case 0x36: SET_BIT(kbd.modifiers, RSHIFT); kbd.state = 0; break;
-            case 0x1D: SET_BIT(kbd.modifiers, LCTRL);  kbd.state = 0; break;
-            case 0x38: SET_BIT(kbd.modifiers, LALT);   kbd.state = 0; break;
-            case 0xAA: CLR_BIT(kbd.modifiers, LSHIFT); kbd.state = 0; break;
-            case 0xB6: CLR_BIT(kbd.modifiers, RSHIFT); kbd.state = 0; break;
-            case 0x9D: CLR_BIT(kbd.modifiers, LCTRL);  kbd.state = 0; break;
-            case 0xB8: CLR_BIT(kbd.modifiers, LALT);   kbd.state = 0; break;
             case 0xE0: kbd.state = 1; break; // Extended keys and print screen
             case 0xE1: kbd.state = 4; break; // Pause
 			case PS2_RESPONSE_ACK:
@@ -249,30 +193,22 @@ void ps2_keyboard_send(unsigned char scancode)
             break;
             default: // Regular key
                 if (scancode <= 0x58) {
-                    send_event(set1_to_keycode[scancode], false);
+                    keyboard_send_key(set1_to_keycode[scancode], false);
                 } else if (scancode >= 0x80 && scancode <= 0xD7) {
-                    send_event(set1_to_keycode[scancode - 0x80], true);
+                    keyboard_send_key(set1_to_keycode[scancode - 0x80], true);
                 }
                 kbd.state = 0; break;
             }
             break;
         case 1: // Extended keys, media, apci, etc.
             switch (scancode) {
-            case 0x1D: SET_BIT(kbd.modifiers, RCTRL);   kbd.state = 0; break;
-            case 0x38: SET_BIT(kbd.modifiers, RALT);    kbd.state = 0; break;
-            case 0x5B: SET_BIT(kbd.modifiers, LSUPER);  kbd.state = 0; break;
-            case 0x5C: SET_BIT(kbd.modifiers, RSUPER);  kbd.state = 0; break;
-            case 0x9D: CLR_BIT(kbd.modifiers, RCTRL);   kbd.state = 0; break;
-            case 0xB8: CLR_BIT(kbd.modifiers, RALT);    kbd.state = 0; break;
-            case 0xDB: CLR_BIT(kbd.modifiers, LSUPER);  kbd.state = 0; break;
-            case 0xDC: CLR_BIT(kbd.modifiers, RSUPER);  kbd.state = 0; break;
             case 0x2A: kbd.state = 2; break; // Print screen pressed: 0xE0, 0x2A, 0xE0, 0x37
             case 0xB7: kbd.state = 2; break; // Print screen released: 0xE0, 0xB7, 0xE0, 0xAA
             default: 
                 if (scancode >= 0x10 && scancode <= 0x6D) {
-                    send_event(set1_extended_to_keycode[scancode - 0x10], false);
+                    keyboard_send_key(set1_extended_to_keycode[scancode - 0x10], false);
                 } else if (scancode >= 0x90 && scancode <= 0xED) {
-                    send_event(set1_extended_to_keycode[scancode - 0x90], true);
+                    keyboard_send_key(set1_extended_to_keycode[scancode - 0x90], true);
                 }
                 kbd.state = 0; break; 
             }
@@ -280,7 +216,7 @@ void ps2_keyboard_send(unsigned char scancode)
         case 2: kbd.state = (scancode == 0xE0 ? 3 : 0); break;
         case 3:
             if (scancode == 0x37 || scancode == 0xAA) {
-                send_event(KEY_PRTSC, scancode == 0xAA);
+                keyboard_send_key(KEYCODE_RKEY(KEY_PRTSC), scancode == 0xAA);
             }
             kbd.state = 0; break; 
         // Pause/Break pressed (has no pressed): 0xE1, 0x1D, 0x45, 0xE1, 0x9D, 0xC5 
@@ -290,7 +226,7 @@ void ps2_keyboard_send(unsigned char scancode)
         case 7: kbd.state = (scancode == 0x9D ? 8 : 0); break;
         case 9:
             if (scancode == 0xC5) {
-                send_event(KEY_BREAK, true);
+                keyboard_send_key(KEYCODE_RKEY(KEY_PAUSE), true);
             }
             kbd.state = 0; break;
         default:

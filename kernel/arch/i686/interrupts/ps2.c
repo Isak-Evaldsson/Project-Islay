@@ -8,7 +8,7 @@
     Simple "8042" PS/2 Controller driver,
     see: https://wiki.osdev.org/%228042%22_PS/2_Controller
 */
-#include <arch/i386/io.h>
+#include <arch/i686/io.h>
 #include <devices/keyboard/ps2_keyboard.h>
 #include <stdbool.h>
 #include <stddef.h>

@@ -4,8 +4,8 @@
 
    Copyright (C) 2024 Isak Evaldsson
 */
-#ifndef ARCH_I386_IO_H
-#define ARCH_I386_IO_H
+#ifndef ARCH_i686_IO_H
+#define ARCH_i686_IO_H
 #include <atomics.h>
 #include <stdint.h>
 
@@ -33,4 +33,4 @@ uint8_t asm_inb(uint16_t port);
         asm_inb(port);      \
     })
 
-#endif /* ARCH_I386_IO_H */
+#endif /* ARCH_i686_IO_H */

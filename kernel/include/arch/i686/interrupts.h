@@ -4,8 +4,8 @@
 
    Copyright (C) 2024 Isak Evaldsson
 */
-#ifndef ARCH_I386_INTERRUPTS_H
-#define ARCH_I386_INTERRUPTS_H
+#ifndef ARCH_i686_INTERRUPTS_H
+#define ARCH_i686_INTERRUPTS_H
 
 /*
     Struct representing the stack state when the generic interrupt handler is called.
@@ -50,4 +50,4 @@ struct interrupt_stack_state {
 */
 #define ARCH_GET_INTERRUPT_STACK_STATE() __builtin_frame_address(0) + 2 * sizeof(void *)
 
-#endif /* ARCH_I386_INTERRUPTS_H */
+#endif /* ARCH_i686_INTERRUPTS_H */

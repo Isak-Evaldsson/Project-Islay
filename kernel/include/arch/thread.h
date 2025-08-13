@@ -11,8 +11,8 @@
 
 /* Import architecture independent defintion of struct thread_regs. Struct storing the register data
  * necessary for context switching */
-#if ARCH(i386)
-#include "i386/thread.h"
+#if ARCH(i686)
+#include "i686/thread.h"
 #else
 #error "Unkown architecture"
 #endif

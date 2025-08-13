@@ -14,9 +14,8 @@
 
 #define LOG(fmt, ...) __LOG(1, "[INPUT_MANAGER]", fmt, ##__VA_ARGS__)
 
-
 // Stores all currently registered input event subscribers
-static struct list subscriber_queue = LIST_INIT();
+static DEFINE_LIST(subscriber_queue);
 
 void input_manager_init()
 {
@@ -29,13 +28,14 @@ void input_manager_init()
 }
 
 /* Allows the input driver to send an input event */
-void input_manager_send_event(uint16_t key_code, unsigned char status)
+void input_manager_send_event(input_event_t event)
 {
     struct list_entry* entry;
-    input_event_t      event = {.key_code = key_code, .status = status};
+    uint16_t           keycode = event.keycode;
+    uint8_t            key     = KEYCODE_GET_KEY(event.keycode);
 
-    if (key_code >= VALID_KEY_MAX) {
-        LOG("Input manager warning: received invalid keycode: %u\n", key_code);
+    if (KEYCODE_GET_TYPE(keycode) == KEYCODE_TYPE_REG && (key >= KEY_MAX || key <= ERR_UNDEF)) {
+        LOG("Input manager warning: received invalid keycode: %u\n", keycode);
         return;
     }
 
@@ -55,11 +55,10 @@ int input_manger_subscribe(struct input_subscriber* subscriber)
         return -EINVAL;
     }
 
-    list_add(&subscriber_queue, &subscriber->list);
+    list_add_last(&subscriber_queue, &subscriber->list);
 }
 
 void input_manger_unsubscribe(struct input_subscriber* subscriber)
 {
-    list_remove(&subscriber_queue, &subscriber->list);
+    list_entry_remove(&subscriber->list);
 }
-

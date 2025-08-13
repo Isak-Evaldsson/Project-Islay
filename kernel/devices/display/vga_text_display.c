@@ -4,12 +4,12 @@
 
    Copyright (C) 2025 Isak Evaldsson
 */
-#include <arch/i386/io.h>
+#include <arch/i686/io.h>
 #include <devices/display/text_mode_display.h>
 #include <utils.h>
 
-#if !ARCH(i386)
-#error "This driver is only available on i386"
+#if !ARCH(i686)
+#error "This driver is only available on i686"
 #endif
 
 /*

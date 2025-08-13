@@ -10,7 +10,7 @@
 #include <arch/boot.h>
 
 /* Architecture dependent paging properties */
-#if ARCH(i386)
+#if ARCH(i686)
 #define PAGE_SIZE (4096)
 #else
 #error "Unkown architecture"

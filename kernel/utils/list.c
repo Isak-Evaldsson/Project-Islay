@@ -6,34 +6,80 @@
 */
 #include <list.h>
 
-void list_add(struct list* list, struct list_entry* entry)
+/* Removes list_entry from it's list */
+void list_entry_remove(struct list_entry* entry)
 {
-    entry->next = NULL;
-    entry->prev = list->tail;
+    // Remove form list
+    entry->prev->next = entry->next;
+    entry->next->prev = entry->prev;
 
-    if (list->tail) {
-        list->tail->next = entry;
-    }
-
-    list->tail = entry;
-
-    if (!list->head) {
-        list->head  = entry;
-        entry->prev = NULL;
-    }
+    // Ensure the removed entry to still be circular
+    entry->next = entry->prev = entry;
 }
 
-void list_remove(struct list* list, struct list_entry* entry)
+/* Append new_entry to entry within the list, new_entry may itself be a head of circular list */
+void list_entry_append(struct list_entry* entry, struct list_entry* new_entry)
 {
-    if (entry->prev) {
-        entry->prev->next = entry->next;
-    } else {
-        list->head = entry->next;
+    // Adjust the circle to include the new nodes
+    entry->next->prev     = new_entry->prev;
+    new_entry->prev->next = entry->next;
+
+    // Create link entry <--> new_entry
+    entry->next     = new_entry;
+    new_entry->prev = entry;
+}
+
+/*
+    Specialization of list_entry_append, if one knows that new_entry is a single element (i.e next
+   and prev points to itself), we can save some memory lookups.
+*/
+void list_entry_append_single_element(struct list_entry* entry, struct list_entry* new_entry)
+{
+    // new_entry->prev == new_entry simply the circle inclusion operations
+    entry->next->prev = new_entry;
+    new_entry->next   = entry->next;
+
+    // Create link entry <--> new_entry
+    entry->next     = new_entry;
+    new_entry->prev = entry;
+}
+
+/* Add entry to the start of the list */
+void list_add_first(struct list* list, struct list_entry* entry)
+{
+    list_entry_append_single_element(&list->head, entry);
+}
+
+/* Add item to end of list */
+void list_add_last(struct list* list, struct list_entry* entry)
+{
+    list_entry_append_single_element(list->head.prev, entry);
+}
+
+/* Remove first item from list, returns NULL if empty */
+struct list_entry* list_remove_first(struct list* list)
+{
+    struct list_entry* e;
+
+    if (LIST_EMPTY(list)) {
+        return NULL;
     }
 
-    if (entry->next) {
-        entry->next->prev = entry->prev;
-    } else {
-        list->tail = entry->prev;
+    e = list->head.next;
+    list_entry_remove(e);
+    return e;
+}
+
+/* Remove last item from list, returns NULL if empty */
+struct list_entry* list_remove_last(struct list* list)
+{
+    struct list_entry* e;
+
+    if (LIST_EMPTY(list)) {
+        return NULL;
     }
+
+    e = list->head.prev;
+    list_entry_remove(e);
+    return e;
 }
