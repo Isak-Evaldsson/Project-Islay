@@ -121,6 +121,31 @@ static void switch_task(task_t *new_task)
     kernel_thread_switch(&new_task->regs, &old_task->regs);
 }
 
+void scheduler_disable_preemption()
+{
+    if (!scheduler_initialised) {
+        return;
+    }
+    postpone_task_switch_counter++;
+}
+
+void scheduler_enable_preemption()
+{
+    if (!scheduler_initialised) {
+        return;
+    }
+    postpone_task_switch_counter--;
+
+    // Are there any more task that require task switching to be postponed
+    if (postpone_task_switch_counter == 0) {
+        // No, do have we have task switches waiting?
+        if (task_switch_postponed) {
+            task_switch_postponed = false;
+            schedule();
+        }
+    }
+}
+
 /* Lock scheduler, blocks the task switching process from becoming disturbed by interrupts */
 void scheduler_lock(uint32_t *interrupt_flags)
 {

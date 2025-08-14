@@ -20,6 +20,9 @@
 /* Initialise a staticly allocated mutex */
 #define MUTEX_DEFINE(name) mutex_t name = MUTEX_INIT(name)
 
+#define SPINLOCK_INIT()       {.flag = 0}
+#define SPINLOCK_DEFINE(name) struct spinlock name = SPINLOCK_INIT()
+
 /* Semaphore lock */
 typedef struct semaphore semaphore_t;
 
@@ -35,6 +38,16 @@ typedef struct mutex mutex_t;
 
 struct mutex {
     semaphore_t sem;  // internal implemented as a semaphore of count 1
+};
+
+/*
+ * Classic spinlock, ensures mutual exclusion and non-preemption, works in both
+ * irq and thread context.
+ *
+ * To be used for protecting critical, but fast, sections.
+ */
+struct spinlock {
+    unsigned int flag;
 };
 
 /* Allocate and initialise a semaphore */
@@ -54,5 +67,11 @@ void mutex_lock(mutex_t *mutex);
 
 /* Unlock mutex */
 void mutex_unlock(mutex_t *mutex);
+
+/* Lock spinlock */
+void spinlock_lock(struct spinlock *spinlock, uint32_t *irqflags);
+
+/* Unlock spinlock */
+void spinlock_unlock(struct spinlock *spinlock, uint32_t irqflags);
 
 #endif /* TASK_LOCKING_H */

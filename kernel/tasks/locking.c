@@ -110,3 +110,33 @@ void mutex_unlock(mutex_t *mutex)
 {
     semaphore_release(&mutex->sem);
 }
+
+/* Lock spinlock */
+void spinlock_lock(struct spinlock *spinlock, uint32_t *irqflags)
+{
+#ifndef SMP
+    *irqflags = get_register_and_disable_interrupts();
+    scheduler_disable_preemption();
+
+    /*
+        In UMP, there's not parallel threads that can try to take the flag,
+        so if it's already taken, there's bug where a thread tries to acquire
+        the same lock twice.
+    */
+    kassert(!spinlock->flag);
+    spinlock->flag++;
+#else
+#error Spinlock not defined for SMP
+#endif
+}
+/* Unlock spinlock */
+void spinlock_unlock(struct spinlock *spinlock, uint32_t irqflags)
+{
+#ifndef SMP
+    spinlock->flag--;
+    restore_interrupt_register(irqflags);
+    scheduler_enable_preemption();
+#else
+#error Spinlock not defined for SMP
+#endif
+}
