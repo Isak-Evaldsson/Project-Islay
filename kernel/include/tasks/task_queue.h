@@ -7,16 +7,17 @@
 #ifndef TASK_TASK_QUEUE_H
 #define TASK_TASK_QUEUE_H
 #include <list.h>
+#include <tasks/spinlock.h>
 #include <tasks/task.h>
 
 /* A generic task queue, with an API to ensure that task are safely queued. To simply scheduling, a
  * task can only be in one queue at the time. */
 typedef struct task_queue {
-    // TODO: Add lock
-    struct list list;
+    struct spinlock lock;
+    struct list     list;
 } task_queue_t;
 
-#define QUEUE_INIT(name) {.list = LIST_INIT((name).list)}
+#define QUEUE_INIT(name) {.lock = SPINLOCK_INIT(), .list = LIST_INIT((name).list)}
 
 /* Initialise an empty task queue */
 #define EMPTY_QUEUE(name) task_queue_t name = QUEUE_INIT(name)
