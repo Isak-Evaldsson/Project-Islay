@@ -27,21 +27,16 @@ semaphore_t *semaphore_create(int max_count)
     return semaphore;
 }
 
-/* Acquire semaphore */
-void semaphore_acquire(semaphore_t *semaphore)
+static void check_non_interrupt(void *ptr, const char *name)
 {
-    // Before scheduler is initialised we can grantee mutual exclusion by disable interrupts since
-    // we're running in a single threaded context
-    if (!scheduler_initialised) {
-        disable_interrupts();
-        return;
-    }
-
     if (current_task->status & TASK_STATUS_INTERRUPT) {
-        kpanic("Thread %x is trying to acquire semaphore/mutex %x within an interrupt",
-               current_task, semaphore);
+        kpanic("Thread %x is trying to acquire %s %x within an interrupt", current_task, name, ptr);
     }
+}
 
+/* Acquire semaphore */
+void __semaphore_acquire(semaphore_t *semaphore)
+{
     critical_section_start(&semaphore->interrupt_flags);
 
     if (semaphore->current_count < semaphore->max_count) {
@@ -57,21 +52,9 @@ void semaphore_acquire(semaphore_t *semaphore)
 }
 
 /* Release semaphore */
-void semaphore_release(semaphore_t *semaphore)
+void __semaphore_release(semaphore_t *semaphore)
 {
     task_t *task;
-
-    // Before scheduler is initialised we can grantee mutual exclusion by disable interrupts since
-    // we're running in a single threaded context
-    if (!scheduler_initialised) {
-        enable_interrupts();
-        return;
-    }
-
-    if (current_task->status & TASK_STATUS_INTERRUPT) {
-        kpanic("Thread %x is trying to release semaphore/mutex %x within an interrupt",
-               current_task, semaphore);
-    }
 
     critical_section_start(&semaphore->interrupt_flags);
     LOG("%x released semaphore/mutex %x", current_task, semaphore);
@@ -88,6 +71,20 @@ void semaphore_release(semaphore_t *semaphore)
     critical_section_end(semaphore->interrupt_flags);
 }
 
+/* Acquire semaphore */
+void semaphore_acquire(semaphore_t *semaphore)
+{
+    check_non_interrupt(semaphore, "semaphore");
+    __semaphore_acquire(semaphore);
+}
+
+/* Release semaphore */
+void semaphore_release(semaphore_t *semaphore)
+{
+    check_non_interrupt(semaphore, "semaphore");
+    __semaphore_release(semaphore);
+}
+
 /* Allocate and initialise a mutex */
 mutex_t *mutex_create()
 {
@@ -102,13 +99,27 @@ mutex_t *mutex_create()
 /* Lock mutex */
 void mutex_lock(mutex_t *mutex)
 {
-    semaphore_acquire(&mutex->sem);
+    // Before scheduler is initialised we can grantee mutual exclusion by disable interrupts since
+    // we're running in a single threaded context
+    if (!scheduler_initialised) {
+        disable_interrupts();
+        return;
+    }
+    check_non_interrupt(mutex, "mutex");
+    __semaphore_acquire(&mutex->sem);
 }
 
 /* Unlock mutex */
 void mutex_unlock(mutex_t *mutex)
 {
-    semaphore_release(&mutex->sem);
+    // Before scheduler is initialised we can grantee mutual exclusion by disable interrupts since
+    // we're running in a single threaded context
+    if (!scheduler_initialised) {
+        enable_interrupts();
+        return;
+    }
+    check_non_interrupt(mutex, "mutex");
+    __semaphore_release(&mutex->sem);
 }
 
 /* Lock spinlock */
