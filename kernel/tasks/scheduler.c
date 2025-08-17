@@ -171,36 +171,6 @@ void scheduler_unlock(uint32_t interrupt_flags)
 #endif
 }
 
-// Marks the start of a critical region, during it's execution we can't perform task switches nor
-// interrupts
-void critical_section_start(uint32_t *interrupt_flags)
-{
-#ifndef SMP
-    scheduler_lock(interrupt_flags);
-    postpone_task_switch_counter++;
-#endif
-}
-
-// Marks the end of a critical region, during it's execution we can't perform task switches nor
-// interrupts
-void critical_section_end(uint32_t interrupt_flags)
-{
-#ifndef SMP
-    postpone_task_switch_counter--;
-
-    // Are there any more task that require task switching to be postponed
-    if (postpone_task_switch_counter == 0) {
-        // No, do have we have task switches waiting?
-        if (task_switch_postponed) {
-            task_switch_postponed = false;
-            schedule();
-        }
-    }
-
-    scheduler_unlock(interrupt_flags);
-#endif
-}
-
 void scheduler_block_task(unsigned int reason)
 {
     uint32_t flags;

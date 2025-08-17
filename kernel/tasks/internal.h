@@ -28,14 +28,6 @@ void scheduler_disable_preemption();
 /* Enabled preemption within the scheduler */
 void scheduler_enable_preemption();
 
-/* Marks the start of a critical section. All code between begin and end will run uninterrupted
- * by preemption or calls to schedule */
-void critical_section_start(uint32_t *interrupt_flags);
-
-/* Marks the end of a critical section. All code between begin and end will run uninterrupted
- * by preemption or calls to schedule */
-void critical_section_end(uint32_t interrupt_flags);
-
 // The caller is responsible for appropriately locking/unlocking the scheduler when calling it
 void schedule();
 
