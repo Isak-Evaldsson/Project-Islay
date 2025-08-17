@@ -6,11 +6,12 @@
 */
 #ifndef TASK_LOCKING_H
 #define TASK_LOCKING_H
+#include <atomics.h>
 #include <tasks/task_queue.h>
 
 /* Defines an empty semaphore struct */
-#define SEMAPHORE_INIT(name, count) \
-    {.current_count = 0, .max_count = (count), .waiting_tasks = QUEUE_INIT((name).waiting_tasks)}
+#define SEMAPHORE_INIT(name, initial_count) \
+    {.count = ATOMIC_INIT_VAL(initial_count), .waiting_tasks = QUEUE_INIT((name).waiting_tasks)}
 
 #define MUTEX_INIT(name) {.sem = SEMAPHORE_INIT((name).sem, 1)}
 
@@ -24,9 +25,7 @@
 typedef struct semaphore semaphore_t;
 
 struct semaphore {
-    int          max_count;
-    int          current_count;
-    uint32_t     interrupt_flags;
+    atomic_int_t count;
     task_queue_t waiting_tasks;
 };
 
@@ -38,13 +37,13 @@ struct mutex {
 };
 
 /* Allocate and initialise a semaphore */
-semaphore_t *semaphore_create(int max_count);
+semaphore_t *semaphore_create(int count);
 
-/* Acquire semaphore */
-void semaphore_acquire(semaphore_t *semaphore);
+/* Increments the semaphore and wakes up potential waiters */
+void semaphore_signal(semaphore_t *semaphore);
 
-/* Release semaphore */
-void semaphore_release(semaphore_t *semaphore);
+/* Decrements the semaphore if possible, otherwise wait */
+void semaphore_wait(semaphore_t *semaphore);
 
 /* Allocate and initialise a mutex */
 mutex_t *mutex_create();

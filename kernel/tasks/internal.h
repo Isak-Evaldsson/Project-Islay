@@ -22,13 +22,11 @@ void free_task(task_t *task);
 /* Function handling creation of the root task */
 task_t *create_root_task();
 
-/* Marks the start of a critical section. All code between begin and end will run uninterrupted
- * by preemption or calls to schedule */
-void critical_section_start(uint32_t *interrupt_flags);
+/* Disables preemption within the scheduler */
+void scheduler_disable_preemption();
 
-/* Marks the end of a critical section. All code between begin and end will run uninterrupted
- * by preemption or calls to schedule */
-void critical_section_end(uint32_t interrupt_flags);
+/* Enabled preemption within the scheduler */
+void scheduler_enable_preemption();
 
 // The caller is responsible for appropriately locking/unlocking the scheduler when calling it
 void schedule();

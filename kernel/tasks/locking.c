@@ -17,75 +17,67 @@
 #define LOG(fmt, ...) __LOG(LOG_LOCKING, "[LOCKING]", fmt, ##__VA_ARGS__)
 
 /* Allocate and initialise a semaphore */
-semaphore_t *semaphore_create(int max_count)
+semaphore_t *semaphore_create(int count)
 {
     semaphore_t *semaphore = kalloc(sizeof(semaphore_t));
     if (semaphore != NULL) {
-        *semaphore = (semaphore_t)SEMAPHORE_INIT(*semaphore, max_count);
+        *semaphore = (semaphore_t)SEMAPHORE_INIT(*semaphore, count);
     }
 
     return semaphore;
 }
 
-/* Acquire semaphore */
-void semaphore_acquire(semaphore_t *semaphore)
+static void check_non_interrupt(void *ptr, const char *name)
 {
-    // Before scheduler is initialised we can grantee mutual exclusion by disable interrupts since
-    // we're running in a single threaded context
-    if (!scheduler_initialised) {
-        disable_interrupts();
-        return;
-    }
-
     if (current_task->status & TASK_STATUS_INTERRUPT) {
-        kpanic("Thread %x is trying to acquire semaphore/mutex %x within an interrupt",
-               current_task, semaphore);
+        kpanic("Thread %x is trying to acquire %s %x within an interrupt", current_task, name, ptr);
     }
-
-    critical_section_start(&semaphore->interrupt_flags);
-
-    if (semaphore->current_count < semaphore->max_count) {
-        semaphore->current_count++;
-        LOG("%x successfully acquired semaphore/mutex %x", current_task, semaphore);
-
-    } else {
-        LOG("%x failed to  acquired semaphore/mutex %x", current_task, semaphore);
-        task_queue_enqueue(&semaphore->waiting_tasks, current_task);
-        scheduler_block_task(WAITING_FOR_LOCK);
-    }
-    critical_section_end(semaphore->interrupt_flags);
 }
 
-/* Release semaphore */
-void semaphore_release(semaphore_t *semaphore)
+static void __semaphore_signal(semaphore_t *semaphore)
 {
     task_t *task;
+    atomic_add_fetch(&semaphore->count, 1);
 
-    // Before scheduler is initialised we can grantee mutual exclusion by disable interrupts since
-    // we're running in a single threaded context
-    if (!scheduler_initialised) {
-        enable_interrupts();
-        return;
-    }
-
-    if (current_task->status & TASK_STATUS_INTERRUPT) {
-        kpanic("Thread %x is trying to release semaphore/mutex %x within an interrupt",
-               current_task, semaphore);
-    }
-
-    critical_section_start(&semaphore->interrupt_flags);
-    LOG("%x released semaphore/mutex %x", current_task, semaphore);
-
-    if (!TASK_QUEUE_EMPTY(&semaphore->waiting_tasks)) {
-        // pick the first waiting task
-        task = task_queue_dequeue(&semaphore->waiting_tasks);
+    // pick the first waiting task if available
+    scheduler_disable_preemption();
+    task = task_queue_dequeue(&semaphore->waiting_tasks);
+    if (task) {
         scheduler_unblock_task(task);
-    } else {
-        // else indicate that we have a free resource
-        semaphore->current_count--;
     }
+    scheduler_enable_preemption();
+}
 
-    critical_section_end(semaphore->interrupt_flags);
+static void __semaphore_wait(semaphore_t *semaphore)
+{
+    int current;
+
+    current = atomic_load(&semaphore->count);
+    do {
+        while (!current) {
+            LOG("%x failed to acquire semaphore/mutex %x", current_task, semaphore);
+            scheduler_disable_preemption();
+            task_queue_enqueue(&semaphore->waiting_tasks, current_task);
+            scheduler_block_task(WAITING_FOR_LOCK);
+            scheduler_enable_preemption();
+            current = atomic_load(&semaphore->count);
+        }
+    } while (!atomic_compare_exchange(&semaphore->count, &current, current - 1));
+    LOG("%x successfully acquired semaphore/mutex %x", current_task, semaphore);
+}
+
+/* Increments the semaphore and wakes up potential waiters */
+void semaphore_signal(semaphore_t *semaphore)
+{
+    check_non_interrupt(semaphore, "semaphore");
+    __semaphore_signal(semaphore);
+}
+
+/* Decrements the semaphore if possible, otherwise wait */
+void semaphore_wait(semaphore_t *semaphore)
+{
+    check_non_interrupt(semaphore, "semaphore");
+    __semaphore_wait(semaphore);
 }
 
 /* Allocate and initialise a mutex */
@@ -102,11 +94,55 @@ mutex_t *mutex_create()
 /* Lock mutex */
 void mutex_lock(mutex_t *mutex)
 {
-    semaphore_acquire(&mutex->sem);
+    // Before scheduler is initialised we can grantee mutual exclusion by disable interrupts since
+    // we're running in a single threaded context
+    if (!scheduler_initialised) {
+        disable_interrupts();
+        return;
+    }
+    check_non_interrupt(mutex, "mutex");
+    __semaphore_wait(&mutex->sem);
 }
 
 /* Unlock mutex */
 void mutex_unlock(mutex_t *mutex)
 {
-    semaphore_release(&mutex->sem);
+    // Before scheduler is initialised we can grantee mutual exclusion by disable interrupts since
+    // we're running in a single threaded context
+    if (!scheduler_initialised) {
+        enable_interrupts();
+        return;
+    }
+    check_non_interrupt(mutex, "mutex");
+    __semaphore_signal(&mutex->sem);
+}
+
+/* Lock spinlock */
+void spinlock_lock(struct spinlock *spinlock, uint32_t *irqflags)
+{
+#ifndef SMP
+    *irqflags = get_register_and_disable_interrupts();
+    scheduler_disable_preemption();
+
+    /*
+        In UMP, there's not parallel threads that can try to take the flag,
+        so if it's already taken, there's bug where a thread tries to acquire
+        the same lock twice.
+    */
+    kassert(!spinlock->flag);
+    spinlock->flag++;
+#else
+#error Spinlock not defined for SMP
+#endif
+}
+/* Unlock spinlock */
+void spinlock_unlock(struct spinlock *spinlock, uint32_t irqflags)
+{
+#ifndef SMP
+    spinlock->flag--;
+    restore_interrupt_register(irqflags);
+    scheduler_enable_preemption();
+#else
+#error Spinlock not defined for SMP
+#endif
 }

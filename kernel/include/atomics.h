@@ -43,7 +43,8 @@ typedef struct {
     uint64_t __atomic;
 } atomic_uint64_t;
 
-#define ATOMIC_INIT() {.__atomic = 0}
+#define ATOMIC_INIT_VAL(n) {.__atomic = (n)}
+#define ATOMIC_INIT()      ATOMIC_INIT_VAL(0)
 
 /* Atomically loads value */
 #define atomic_load(atomic_ptr) __atomic_load_n(&(atomic_ptr)->__atomic, __ATOMIC_SEQ_CST)
@@ -92,13 +93,13 @@ typedef struct {
 
 /* Checks if the atomic contains the expected value, if true val is written to the atomic, if false,
  * the value of the atomic is read into expected. Returns weather or not it succeeded */
-#define atomic_compare_exchange(atomic_ptr, expected_ptr, val)                           \
-    ({                                                                                   \
-        /* Type check expected and val */                                                \
-        typeof((*atomic_ptr).__atomic) *__expected = (expected_ptr);                     \
-        typeof((*atomic_ptr).__atomic)  __val      = (val);                              \
+#define atomic_compare_exchange(atomic_ptr, expected_ptr, val)                         \
+    ({                                                                                 \
+        /* Type check expected and val */                                              \
+        typeof((*atomic_ptr).__atomic) *__expected = (expected_ptr);                   \
+        typeof((*atomic_ptr).__atomic)  __val      = (val);                            \
         __atomic_compare_exchange_n(&(atomic_ptr)->__atomic, __expected, __val, false, \
-                                      __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);               \
+                                    __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);               \
     })
 
 /*

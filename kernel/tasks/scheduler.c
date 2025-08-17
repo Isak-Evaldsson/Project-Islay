@@ -11,6 +11,7 @@
 #include <memory/vmem_manager.h>
 #include <tasks/locking.h>
 #include <tasks/scheduler.h>
+#include <tasks/spinlock.h>
 #include <tasks/task_queue.h>
 #include <utils.h>
 
@@ -44,6 +45,9 @@ static EMPTY_QUEUE(sleep_queue);
  */
 static DEFINE_LIST(termination_queue);
 
+/* Protects the termination queue */
+static SPINLOCK_DEFINE(termination_lock);
+
 // Counter variables keeping track of the time consumption of each task
 static uint64_t last_count    = 0;
 static uint64_t current_count = 0;
@@ -67,6 +71,9 @@ bool         task_switch_postponed = false;     // Any tries to task switch duri
 /* Variable storing the earliest wakeup time (in ns since boot) for any sleeping task. Allows
  * clock drivers check if it's necessary to call the 'scheduler_check_sleep_queue' */
 uint64_t scheduler_earliest_wakeup = UINT64_MAX;
+
+/* Protects sleep related data */
+static SPINLOCK_DEFINE(sleep_lock);
 
 /* Task responsible of freeing up space for task within the termination queue */
 static task_t *cleanup_task = NULL;
@@ -121,6 +128,31 @@ static void switch_task(task_t *new_task)
     kernel_thread_switch(&new_task->regs, &old_task->regs);
 }
 
+void scheduler_disable_preemption()
+{
+    if (!scheduler_initialised) {
+        return;
+    }
+    postpone_task_switch_counter++;
+}
+
+void scheduler_enable_preemption()
+{
+    if (!scheduler_initialised) {
+        return;
+    }
+    postpone_task_switch_counter--;
+
+    // Are there any more task that require task switching to be postponed
+    if (postpone_task_switch_counter == 0) {
+        // No, do have we have task switches waiting?
+        if (task_switch_postponed) {
+            task_switch_postponed = false;
+            schedule();
+        }
+    }
+}
+
 /* Lock scheduler, blocks the task switching process from becoming disturbed by interrupts */
 void scheduler_lock(uint32_t *interrupt_flags)
 {
@@ -136,36 +168,6 @@ void scheduler_unlock(uint32_t interrupt_flags)
 #ifndef SMP
     // Restore interrupt flags before locking
     restore_interrupt_register(interrupt_flags);
-#endif
-}
-
-// Marks the start of a critical region, during it's execution we can't perform task switches nor
-// interrupts
-void critical_section_start(uint32_t *interrupt_flags)
-{
-#ifndef SMP
-    scheduler_lock(interrupt_flags);
-    postpone_task_switch_counter++;
-#endif
-}
-
-// Marks the end of a critical region, during it's execution we can't perform task switches nor
-// interrupts
-void critical_section_end(uint32_t interrupt_flags)
-{
-#ifndef SMP
-    postpone_task_switch_counter--;
-
-    // Are there any more task that require task switching to be postponed
-    if (postpone_task_switch_counter == 0) {
-        // No, do have we have task switches waiting?
-        if (task_switch_postponed) {
-            task_switch_postponed = false;
-            schedule();
-        }
-    }
-
-    scheduler_unlock(interrupt_flags);
 #endif
 }
 
@@ -287,10 +289,13 @@ void schedule()
 static void sleep_expiry_callback(uint64_t time_since_boot_ns, uint64_t timestamp_ns)
 {
     // NOTE: No need to lock scheduler since function will be called within the timer ISR
+
+    uint32_t           flags;
     task_t            *task;
     struct list_entry *entry;
 
     (void)timestamp_ns;  // silence unused warning
+    spinlock_lock(&sleep_lock, &flags);
 
     // Reset first wakeup flag
     scheduler_earliest_wakeup = UINT64_MAX;
@@ -314,6 +319,7 @@ static void sleep_expiry_callback(uint64_t time_since_boot_ns, uint64_t timestam
     if (scheduler_earliest_wakeup < UINT64_MAX) {
         timer_register_timed_event(scheduler_earliest_wakeup, sleep_expiry_callback);
     }
+    spinlock_unlock(&sleep_lock, flags);
 }
 
 /*
@@ -355,15 +361,14 @@ static void preemption_callback(uint64_t time_since_boot_ns, uint64_t timestamp_
 void scheduler_nano_sleep_until(uint64_t when)
 {
     uint32_t flags;
-    critical_section_start(&flags);
     LOG("Put task %x to sleep until %u", current_task, when);
 
     // No need to sleep if when has already occurred
     if (when <= timer_get_time_since_boot()) {
-        critical_section_end(flags);
         return;
     }
 
+    spinlock_lock(&sleep_lock, &flags);
     current_task->sleep_expiry = when;
 
     // Add task to sleep queue
@@ -376,8 +381,7 @@ void scheduler_nano_sleep_until(uint64_t when)
         // Only register time event if this task needs to wakeup before the previous ones
         timer_register_timed_event(when, sleep_expiry_callback);
     }
-
-    critical_section_end(flags);
+    spinlock_unlock(&sleep_lock, flags);
     scheduler_block_task(SLEEPING);
 }
 
@@ -431,10 +435,11 @@ void scheduler_terminate_task()
     // there's none of that yet
 
     uint32_t flags;
-    critical_section_start(&flags);
-
     // Insert task in termination queue
+
+    spinlock_lock(&termination_lock, &flags);
     list_add_last(&termination_queue, &current_task->task_queue_entry);
+    spinlock_unlock(&termination_lock, flags);
 
     // block task, so that a task switch occur once the lock is released
     scheduler_block_task(TERMINATED);
@@ -443,8 +448,6 @@ void scheduler_terminate_task()
     scheduler_unblock_task(cleanup_task);
 
     LOG("Adding %x to termination queue", current_task);
-
-    critical_section_end(flags);
 }
 
 static void cleanup_thread()
@@ -452,13 +455,13 @@ static void cleanup_thread()
     uint32_t           flags;
     task_t            *task;
     struct list_entry *entry;
+    bool               empty;
 
     // TODO: Re-write to handle refcount...
 
     while (true) {
         LOG("wakeup");
-        critical_section_start(&flags);
-
+        spinlock_lock(&termination_lock, &flags);
         LIST_ITER_SAFE_REMOVAL(&termination_queue, entry)
         {
             task = GET_STRUCT(task_t, task_queue_entry, entry);
@@ -473,17 +476,17 @@ static void cleanup_thread()
                 LOG("Terminated thread still in use %x", task);
             }
         }
+        empty = LIST_EMPTY(&termination_queue);
+        spinlock_unlock(&termination_lock, flags);
 
-        if (!LIST_EMPTY(&termination_queue)) {
+        if (!empty) {
             // There tasks left to kill, hopefully they can be free'd the next time this thread
             // runs
-            schedule();
+            scheduler_yield();
         } else {
             // The work is done, but to sleep until there's more work to do
-        scheduler_block_task(PAUSED);
+            scheduler_block_task(PAUSED);
         }
-
-        critical_section_end(flags);
     }
 }
 
