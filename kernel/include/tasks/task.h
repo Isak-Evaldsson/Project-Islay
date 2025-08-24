@@ -14,8 +14,8 @@
 #include <stdint.h>
 #include <utils.h>
 
-/* If set to 1, indicates that the task is to be preempted */
-#define TASK_STATUS_PREEMPT (1 << 0)
+/* If set, indicates the task is to be re-scheduled for later */
+#define TASK_STATUS_RESCHEDULE (1 << 0)
 
 /* If set to 1, indicates that the task is currently running an ISR */
 #define TASK_STATUS_INTERRUPT (1 << 1)
@@ -25,6 +25,7 @@ typedef enum {
     READY_TO_RUN,
     RUNNING,
     BLOCKED,
+    BLOCKED_IDLING,
     TERMINATED,
 } task_state_t;
 
@@ -75,6 +76,19 @@ struct task {
 
 /* Asset offset to ensure asm compatiblity */
 assert_offset(struct task, regs, 0);
+
+// Or should this be functions?
+#define WAITING_FOR_RESCHEDULE(task)                     \
+    ({                                                   \
+        task_t* __t = task;                              \
+        READ_ONCE(__t->status) & TASK_STATUS_RESCHEDULE; \
+    })
+
+#define MARK_FOR_RESCHEDULE(task)              \
+    {                                          \
+        task_t* __t = task;                    \
+        __t->status |= TASK_STATUS_RESCHEDULE; \
+    }
 
 /* Creates a new task executing the code at the address ip */
 tid_t create_task(void* ip);

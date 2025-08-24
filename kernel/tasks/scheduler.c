@@ -58,6 +58,10 @@ static uint64_t idle_time_ns = 0;
 // Pointer to the currently running task
 task_t *current_task;
 
+// The next task to run, set by the scheduler, but the context switch itself is
+// handled by interrupt logic and is architecture dependent
+task_t *next_task;
+
 /* Stores at which timestamp the currently running task shall be preempted, if set to zero indicate
  * to never preempt */
 static uint64_t preemption_timestamp_ns = 0;
@@ -65,8 +69,12 @@ static uint64_t preemption_timestamp_ns = 0;
 // Variables handling if the scheduler needs to postpone task switches. Necessary if you want to
 // unblock multiple tasks within without running the risk of the first unblocked task preempting the
 // task the unblocks the rest of the task.
-unsigned int postpone_task_switch_counter = 0;  // If above 0 we're in a postpone state
-bool         task_switch_postponed = false;     // Any tries to task switch during postpone state?
+
+/*
+ * Disables preemption if non-zero. Note, the process can still re-schedule itself;
+ * so, the next time the process runs, the counter will be reset.
+ */
+unsigned int preemption_counter;
 
 /* Variable storing the earliest wakeup time (in ns since boot) for any sleeping task. Allows
  * clock drivers check if it's necessary to call the 'scheduler_check_sleep_queue' */
@@ -81,76 +89,29 @@ static task_t *cleanup_task = NULL;
 /* Flag indicating if the scheduler has been initialised */
 bool scheduler_initialised = false;
 
-// Performs a context switch by switching the current running one to a new task
-static void switch_task(task_t *new_task)
-{
-    task_t *old_task;
-
-    // Done we need to postpone the task switch?
-    if (postpone_task_switch_counter > 0) {
-        task_switch_postponed = true;  // tell scheduler that we have postponed a task switch
-
-        // Add our task first in queue, so it get's switched to once we're ready to call schedule
-        // again
-        LOG("Postponing switch to %x, added first in ready queue", new_task);
-        task_queue_add_first(&ready_queue, new_task);
-        return;
-    }
-
-    // TODO: Handle calls to switch task when in sleep mode, i.e. current_task == NULL
-    kassert(current_task != NULL);
-    // Re-add current task to list if it's still in running state
-    if (current_task->state == RUNNING) {
-        current_task->state = READY_TO_RUN;
-        task_queue_enqueue(&ready_queue, current_task);
-    }
-
-    if (current_task == NULL) {
-        // Task unblocked and stopped us being idle, so only one task can be running
-        preemption_timestamp_ns = 0;
-    } else if (TASK_QUEUE_EMPTY(&ready_queue) && (current_task->state != RUNNING)) {
-        // Currently running task blocked and the task we're switching to is the only task left
-        preemption_timestamp_ns = 0;
-    } else {
-        // More than one task wants the CPU, so set a time slice length
-        preemption_timestamp_ns = timer_get_time_since_boot() + TIME_SLICE_NS;
-    }
-
-    // Switch state for our new task
-    new_task->state = RUNNING;
-
-    // Switch current task
-    old_task     = current_task;
-    current_task = new_task;
-
-    LOG("Swich task from %x to %x, preemption timestamp %u", old_task, new_task,
-        preemption_timestamp_ns);
-    kernel_thread_switch(&new_task->regs, &old_task->regs);
-}
+/* Perform voluntary task switch, the caller is responsible for correct locking */
+static void schedule();
 
 void scheduler_disable_preemption()
 {
+    unsigned int old;
+
     if (!scheduler_initialised) {
         return;
     }
-    postpone_task_switch_counter++;
+    old = preemption_counter++;
+    kassert(preemption_counter > old);
 }
 
 void scheduler_enable_preemption()
 {
+    unsigned int old;
+
     if (!scheduler_initialised) {
         return;
     }
-    postpone_task_switch_counter--;
-
-    // Are there any more task that require task switching to be postponed
-    if (postpone_task_switch_counter == 0) {
-        // No, do have we have task switches waiting?
-        if (task_switch_postponed) {
-            task_switch_postponed = false;
-            schedule();
-        }
-    }
+    old = preemption_counter--;
+    kassert(preemption_counter < old);
 }
 
 /* Lock scheduler, blocks the task switching process from becoming disturbed by interrupts */
@@ -159,6 +120,7 @@ void scheduler_lock(uint32_t *interrupt_flags)
 #ifndef SMP
     // Disable interrupts and save the previous state
     *interrupt_flags = get_register_and_disable_interrupts();
+    scheduler_disable_preemption();
 #endif
 }
 
@@ -168,20 +130,25 @@ void scheduler_unlock(uint32_t interrupt_flags)
 #ifndef SMP
     // Restore interrupt flags before locking
     restore_interrupt_register(interrupt_flags);
+    scheduler_enable_preemption();
 #endif
+}
+
+static void mark_task_blocked(block_reason_t reason)
+{
+    uint32_t flags;
+
+    scheduler_lock(&flags);
+    LOG("Block task %x, reason %u", current_task, reason);
+    current_task->state        = BLOCKED;
+    current_task->block_reason = reason;
+    scheduler_unlock(flags);
 }
 
 void scheduler_block_task(block_reason_t reason)
 {
-    uint32_t flags;
-    scheduler_lock(&flags);
-
-    LOG("Block task %x, reason %u", current_task, reason);
-    current_task->state        = BLOCKED;
-    current_task->block_reason = reason;
+    mark_task_blocked(reason);
     schedule();
-
-    scheduler_unlock(flags);
 }
 
 void scheduler_unblock_task(task_t *task)
@@ -190,24 +157,22 @@ void scheduler_unblock_task(task_t *task)
     scheduler_lock(&flags);
     LOG("Unblock task %x", task);
 
-    // Only enqueue if the task isn't already in the queue
-    if (task->state != READY_TO_RUN) {
+    if (task->state == BLOCKED || task->state == BLOCKED_IDLING) {
+        if (task == current_task) {
+            LOG("Unblock current, rescheduling it");
+            kassert(MARK_FOR_RESCHEDULE(task));
+            task->state = RUNNING;
+        } else {
+            LOG("put %x in ready_queue", task);
         task->state = READY_TO_RUN;
-
-        // Never preempt, always append to end of queue
-        LOG("Unblock: put %x in ready_queue", task);
         task_queue_enqueue(&ready_queue, task);
-    }
 
-    // Ensure that the currently running thread is preempted, maybe do something smarter like having
-    // a better time remaining system
-
-    // If the current task is running and not idle, and it's never preempted (timestamp == 0) make
-    // sure it's preempted so the new process is allowed to run
-    if (current_task != NULL && preemption_timestamp_ns == 0) {
+            // Make sure the current_task gets preempted
+            if (!preemption_timestamp_ns) {
         preemption_timestamp_ns = timer_get_time_since_boot() + TIME_SLICE_NS;
+            }
+        }
     }
-
     scheduler_unlock(flags);
 }
 
@@ -217,70 +182,88 @@ static void update_time_used()
     uint64_t elapsed = current_count - last_count;
     last_count       = current_count;
 
-    if (current_task == NULL) {
+    if (current_task->status == BLOCKED_IDLING) {
         idle_time_ns += elapsed;
     } else {
         current_task->time_used += elapsed;
     }
 }
 
-// Note, is the caller to schedule that is responsible for correct locking of the scheduler
-void schedule()
+static void schedule()
 {
-    task_t *task;
-    update_time_used();
+    struct task *task = current_task;
 
-    // Done we need to postpone the task switch?
-    if (postpone_task_switch_counter > 0) {
-        task_switch_postponed = true;  // tell scheduler that we have postponed a call to schedule()
+    // Schedule should never be called within an interrupt or when preemption
+    // is disabled
+    kassert(!(task->status & TASK_STATUS_INTERRUPT));
+
+    if (preemption_counter) {
+        LOG("%x voluntarily re-schedules while preemption is disabled %x", task);
+    }
+
+    /*
+     * Since context switches occurs within interrupts we simply set the
+     * rescheduling status flags and waits for the next interrupt to do the work.
+     * Since there might not be any other task to schedule, this thread might
+     * need to act as the idle thread, hence the loop.
+     */
+    MARK_FOR_RESCHEDULE(task);
+    do {
+        kassert(interrupts_enabled());
+        wait_for_interrupt();
+    } while (WAITING_FOR_RESCHEDULE(task));
+}
+
+/*
+ * The core of the scheduler, set the next_task to be executed at the next
+ * context switch.
+ *
+ * Note, is up to the caller to ensure that function is called in thread safe manner
+ */
+void do_schedule()
+{
+    struct task *task;
+
+    update_time_used();
+    kassert(WAITING_FOR_RESCHEDULE(current_task));
+
+    // If a process voluntary re-schedules itself, it implicitly tells the system
+    // that it's no longer needs to be run in a non-preemption context
+    if (preemption_counter) {
+        LOG("Reseting preemption counter");
+        preemption_counter = 0;
+    }
+
+    task = task_queue_dequeue(&ready_queue);
+    if (!task) {
+        // No need to preempt when there's no other tasks asking for cpu time
+        preemption_timestamp_ns = 0;
+
+        if (current_task->state == RUNNING) {
+            LOG("No new task in queue, let the task continue");
+            current_task->status &= ~TASK_STATUS_RESCHEDULE;
+        } else {
+            LOG("No new task in queue, but current is blocked, idle");
+            current_task->state = BLOCKED_IDLING;
+        }
         return;
     }
+    // current_task cannot be queued to run while running, there must be a scheduler bug
+    kassert(task != current_task);
 
-    // Are there any new tasks to schedule
-    task = task_queue_dequeue(&ready_queue);
-    if (task != NULL) {
-        switch_task(task);  // Perform the context switch
-    } else if (current_task->state == RUNNING) {
-        // Otherwise, if the task is in running state, let it continue
-    } else {
-        // The current running task is block and there's no other task to be run
-        task                    = current_task;
-        current_task            = NULL;  // mark that CPU currently sleeps
-        preemption_timestamp_ns = 0;     // disable preemption checking
+    LOG("Re-schedule to %x", task);
+    next_task        = task;
+    next_task->state = RUNNING;
+    current_task->status &= ~TASK_STATUS_RESCHEDULE;
 
-        LOG("Enter sleep state");
-
-        kassert(TASK_QUEUE_EMPTY(&ready_queue));
-
-        // Do nothing while waiting for a task to unblock and become "ready to run".  The only
-        // thing that is going to update the ready queue is going to be from a timer IRQ
-        // (with a single processor anyway), but interrupts are disabled. The timer must be
-        // allowed to fire, but do not allow any task changes to take place.  The
-        // task_switches_postponed_flag must remain set to force the timer to return to this
-        // loop.
-
-        do {
-            enable_interrupts();   // enable interrupts to allow the timer to fire
-            wait_for_interrupt();  // halt and wait for the timer to fire
-            disable_interrupts();  // disable interrupts again to see if there is something to
-        } while (TASK_QUEUE_EMPTY(&ready_queue));
-
-        // Set the blocked task to running again
-        current_task = task;
-        LOG("Exit sleep state");
-
-        // Switch to the task that unblocked (unless the task that unblocked happens to be the
-        // task we borrowed)
-        task = task_queue_dequeue(&ready_queue);
-        if (task != current_task) {
-            switch_task(task);
-        } else {
-            // If no task switch is needed, set current task to a running state
-            current_task->state = RUNNING;
-        }
+    // Requeue current_task if possible
+    if (current_task->state == RUNNING) {
+        current_task->state = READY_TO_RUN;
+        task_queue_enqueue(&ready_queue, current_task);
     }
 
-    kassert(current_task != NULL);
+    preemption_timestamp_ns =
+        !TASK_QUEUE_EMPTY(&ready_queue) ? timer_get_time_since_boot() + TIME_SLICE_NS : 0;
 }
 
 /*
@@ -342,11 +325,14 @@ static void preemption_callback(uint64_t time_since_boot_ns, uint64_t timestamp_
         /* Should currently running task be preempted?  */
         if (preemption_timestamp_ns == time_since_boot_ns) {
             /*
-                Mark the currently running task ready for preemption, allowing the interrupt system
-                to perform preemption when it is safe to do so. This avoids bugs such as interrupt
-                controllers not being properly ACK:ed due to a schedule call causing a task switch
+               Mark the currently running task ready for rescheduling, allowing the interrupt
+               system to reschedule when it is safe to do so.
             */
-            current_task->status |= TASK_STATUS_PREEMPT;
+            if (!preemption_counter) {
+            MARK_FOR_RESCHEDULE(current_task);
+            } else {
+                LOG("Preemption disabled, skip rescheduling");
+            }
         } else {
             /* No, adjust next_preemption timestamp so that the next callback fire when it's time */
             LOG("No need to preempt %x at %u", current_task, time_since_boot_ns);
@@ -382,30 +368,23 @@ void scheduler_nano_sleep_until(uint64_t when)
         // Only register time event if this task needs to wakeup before the previous ones
         timer_register_timed_event(when, sleep_expiry_callback);
     }
+
+    // Must be within a non-irq context to prevent the sleep expiry callback
+    // from firing, potential trying to unblock the task before blocking it,
+    // if we block afterwards, it will never wake up
+    mark_task_blocked(BLOCK_REASON_SLEEP);
     spinlock_unlock(&sleep_lock, flags);
-    scheduler_block_task(BLOCK_REASON_SLEEP);
+    schedule();
 }
 
 /* Called by the interrupt handler allowing notifying the scheduler that the interrupt handler is
  * done executing allowing the scheduler to perform save preemption */
 void scheduler_end_of_interrupt()
 {
-    // Preempt current task if necessary
-    if (current_task != NULL && current_task->status & TASK_STATUS_PREEMPT) {
-        // clear preemption flag
-        current_task->status &= ~TASK_STATUS_PREEMPT;
-
-        // If preempting an non-running task schedule might start sleeping which leads to unexpected
-        // interrupt behaviors
-        kassert(current_task->state == RUNNING);
-
-        /* perform task switch */
-        schedule();
-    }
-
     if (current_task != NULL) {
-        // clear interrupt flag, done after possible schedule() calls since once it gets running
-        // again it will still not have called iret
+        if (WAITING_FOR_RESCHEDULE(current_task)) {
+            do_schedule();
+        }
         current_task->status &= ~TASK_STATUS_INTERRUPT;
     }
 }
@@ -442,13 +421,12 @@ void scheduler_terminate_task()
     list_add_last(&termination_queue, &current_task->task_queue_entry);
     spinlock_unlock(&termination_lock, flags);
 
-    current_task->state = TERMINATED;
-    schedule();
-
     // make sure our task is not blocked
     scheduler_unblock_task(cleanup_task);
 
     LOG("Adding %x to termination queue", current_task);
+    current_task->state = TERMINATED;
+    schedule();
 }
 
 static void cleanup_thread()
@@ -493,11 +471,15 @@ static void cleanup_thread()
 
 void scheduler_init()
 {
+    uint32_t flags;
+
+    scheduler_lock(&flags);
     current_task = create_root_task();
     if (current_task == NULL) {
         kpanic("Failed to allocate memory for initial task");
     }
 
+    next_task               = current_task;
     last_count              = timer_get_time_since_boot();
     preemption_timestamp_ns = timer_get_time_since_boot() + TIME_SLICE_NS;
 
@@ -509,6 +491,7 @@ void scheduler_init()
 
     // Start task cleaning up terminated task
     cleanup_task = get_task(create_task(cleanup_thread));
+    scheduler_unlock(flags);
 }
 
 /* Gets a pointer to the currently executing task */
