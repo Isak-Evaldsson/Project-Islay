@@ -94,12 +94,7 @@ mutex_t *mutex_create()
 /* Lock mutex */
 void mutex_lock(mutex_t *mutex)
 {
-    // Before scheduler is initialised we can grantee mutual exclusion by disable interrupts since
-    // we're running in a single threaded context
-    if (!scheduler_initialised) {
-        disable_interrupts();
-        return;
-    }
+    kassert(scheduler_initialised);
     check_non_interrupt(mutex, "mutex");
     __semaphore_wait(&mutex->sem);
 }
@@ -107,12 +102,7 @@ void mutex_lock(mutex_t *mutex)
 /* Unlock mutex */
 void mutex_unlock(mutex_t *mutex)
 {
-    // Before scheduler is initialised we can grantee mutual exclusion by disable interrupts since
-    // we're running in a single threaded context
-    if (!scheduler_initialised) {
-        enable_interrupts();
-        return;
-    }
+    kassert(scheduler_initialised);
     check_non_interrupt(mutex, "mutex");
     __semaphore_signal(&mutex->sem);
 }
@@ -121,6 +111,7 @@ void mutex_unlock(mutex_t *mutex)
 void spinlock_lock(struct spinlock *spinlock, uint32_t *irqflags)
 {
 #ifndef SMP
+    LOG("lock %x", spinlock);
     *irqflags = get_register_and_disable_interrupts();
     scheduler_disable_preemption();
 
@@ -139,6 +130,7 @@ void spinlock_lock(struct spinlock *spinlock, uint32_t *irqflags)
 void spinlock_unlock(struct spinlock *spinlock, uint32_t irqflags)
 {
 #ifndef SMP
+    LOG("unlock %x", spinlock);
     spinlock->flag--;
     restore_interrupt_register(irqflags);
     scheduler_enable_preemption();
