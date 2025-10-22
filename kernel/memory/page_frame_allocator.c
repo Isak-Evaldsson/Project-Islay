@@ -27,7 +27,7 @@ static unsigned char memory_bitmap[65536];
 static uint32_t first_available_frame_idx = 0;
 
 // global lock for the page frame allocator
-static MUTEX_DEFINE(page_alloc_lock);
+static SPINLOCK_DEFINE(page_alloc_lock);
 
 // Allows some basic memory usage statistic
 static size_t n_available_frames = 0;
@@ -263,19 +263,21 @@ void page_frame_manger_memory_stats(memory_stats_t *stats)
 // Returns physical address to the page that was allocated, 0 marks failure
 physaddr_t page_frame_alloc_page(uint8_t options)
 {
+    uint32_t irqflags;
+
     // parse options
     if (MASK_BIT(options, 0)) {
         kpanic("High memory not yet implemented");
     }
 
-    mutex_lock(&page_alloc_lock);
+    spinlock_lock(&page_alloc_lock, &irqflags);
     uint32_t page_num = find_available_page();
     if (page_num == 0) {
         return 0;
     }
 
     mark_page(page_num, false);
-    mutex_unlock(&page_alloc_lock);
+    spinlock_unlock(&page_alloc_lock, irqflags);
     return page_num * PAGE_SIZE;
 }
 
@@ -283,6 +285,8 @@ physaddr_t page_frame_alloc_page(uint8_t options)
 // failure
 physaddr_t page_frame_alloc_pages(uint8_t options, unsigned int n)
 {
+    uint32_t irqflags;
+
     // parse options
     if (MASK_BIT(options, 0)) {
         kpanic("High memory not yet implemented");
@@ -291,14 +295,14 @@ physaddr_t page_frame_alloc_pages(uint8_t options, unsigned int n)
     if (n == 0)
         return 0;
 
-    mutex_lock(&page_alloc_lock);
+    spinlock_lock(&page_alloc_lock, &irqflags);
     uint32_t page_num = find_available_8n_pages(n);
     if (page_num == 0) {
         return 0;
     }
 
     mark_8n_pages(page_num, n, false);
-    mutex_unlock(&page_alloc_lock);
+    spinlock_unlock(&page_alloc_lock, irqflags);
     return page_num * PAGE_SIZE;
 }
 
@@ -306,10 +310,11 @@ physaddr_t page_frame_alloc_pages(uint8_t options, unsigned int n)
 // set n = 0.
 void page_frame_free(physaddr_t addr, unsigned int n)
 {
+    uint32_t irqflags;
     // Ensure that address in aligned correctly
     kassert(addr % PAGE_SIZE == 0);
 
-    mutex_lock(&page_alloc_lock);
+    spinlock_lock(&page_alloc_lock, &irqflags);
     uint32_t page_num = FRAME_NUMBER(addr);
     if (check_page_available(page_num)) {
         kpanic("page_frame_free(): Double free at address 0x%x", addr);
@@ -320,5 +325,5 @@ void page_frame_free(physaddr_t addr, unsigned int n)
     } else {
         mark_8n_pages(page_num, n, true);
     }
-    mutex_unlock(&page_alloc_lock);
+    spinlock_unlock(&page_alloc_lock, irqflags);
 }
