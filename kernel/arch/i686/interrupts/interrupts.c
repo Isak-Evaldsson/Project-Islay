@@ -259,14 +259,26 @@ void disable_interrupts()
     asm volatile("cli");
 }
 
+/* To catch errors with nested enabled/disable calls */
+static unsigned int irq_disable_counter;
+
 uint32_t get_register_and_disable_interrupts()
 {
-    unsigned flags;
+    unsigned int flags, prev;
+
+    mem_barrier_full();
+    prev = irq_disable_counter++;
+    kassert(prev < irq_disable_counter);  // Too many nested calls
     asm volatile("pushfl; cli; popl %0" : "=r"(flags)::"memory");
     return flags;
 }
 
 void restore_interrupt_register(uint32_t flags)
 {
+    unsigned int prev;
+
+    mem_barrier_full();
+    prev = irq_disable_counter--;
+    kassert(prev > irq_disable_counter);  // Bug on more calls to restore than disable
     asm("pushl %0; popfl" ::"r"(flags) : "memory", "cc");
 }
