@@ -173,9 +173,8 @@ void scheduler_yield()
 {
     struct task *task = current_task;
 
-    // Schedule should never be called within an interrupt or when preemption
-    // is disabled
-    kassert(!(task->status & TASK_STATUS_INTERRUPT));
+    // Should never try reschedule while in atomic context
+    kassert(interrupts_enabled() && !(task->status & TASK_STATUS_INTERRUPT));
 
     if (preemption_counter) {
         LOG("%x voluntarily re-schedules while preemption is disabled %x", task);
@@ -189,7 +188,6 @@ void scheduler_yield()
      */
     MARK_FOR_RESCHEDULE(task);
     do {
-        kassert(interrupts_enabled());
         wait_for_interrupt();
     } while (WAITING_FOR_RESCHEDULE(task));
 }
