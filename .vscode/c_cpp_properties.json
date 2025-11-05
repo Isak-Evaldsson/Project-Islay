@@ -1,16 +1,16 @@
 {
     "configurations": [
         {
-            "name": "Islay OS i386 (Linux)",
+            "name": "Islay OS i686 (Linux)",
             "includePath": [
                 "${workspaceFolder}/kernel/include/**",
-                "/usr/lib/gcc/i386-elf/**"
+                "${workspaceFolder}/toolchain/bin/cross/lib/gcc/i686-elf/**"
             ],
             "defines": [
                 "__STDC_HOSTED__=0",
             ],
-            "compilerPath": "/usr/bin/i386-elf-gcc ",
-            "cStandard": "c17",
+            "compilerPath": "${workspaceFolder}/toolchain/bin/cross/bin/i686-elf-gcc",
+            "cStandard": "c23",
             "cppStandard": "c++14",
             "intelliSenseMode": "gcc-x86",
         },
