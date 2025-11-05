@@ -28,15 +28,12 @@ void scheduler_disable_preemption();
 /* Enabled preemption within the scheduler */
 void scheduler_enable_preemption();
 
-// The caller is responsible for appropriately locking/unlocking the scheduler when calling it
-void schedule();
-
 /* Called by the interrupt handler allowing notifying the scheduler that an interrupt has been
  * called */
 void scheduler_start_of_interrupt();
 
 /* Called by the interrupt handler allowing notifying the scheduler that the interrupt handler is
- * done executing allowing the scheduler to perform save preemption */
+ * done executing allowing the scheduler to perform safe preemption */
 void scheduler_end_of_interrupt();
 
 #endif /* TASKS_INTERNAL_H */

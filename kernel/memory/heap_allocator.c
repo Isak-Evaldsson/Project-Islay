@@ -152,7 +152,7 @@ free_list_t* free_list = NULL;
 heap_segment_t* segments = NULL;
 
 /* Global heat allocator lock */
-static MUTEX_DEFINE(global_heap_lock);
+static SPINLOCK_DEFINE(global_heap_lock);
 
 #if DEBUG_HEAP_ALLOCATOR
 #define VERIFY_FREE_LIST() verify_free_list(__FILE__, __FUNCTION__, __LINE__)
@@ -352,11 +352,12 @@ static heap_segment_t* alloc_heap_segment(size_t size)
 
 static void* internal_alloc(size_t size)
 {
+    uint32_t irqflags;
     if (size == 0) {
         return NULL;
     }
 
-    mutex_lock(&global_heap_lock);
+    spinlock_lock(&global_heap_lock, &irqflags);
 
     // The total size need to have space for tags and be able to fit a freelist entry between them.
     // It also need to be mutiple of alignment so the object after it starts at an aligned address.
@@ -366,7 +367,7 @@ static void* internal_alloc(size_t size)
     if (segments == NULL) {
         segments = alloc_heap_segment(total);
         if (segments == NULL) {
-            mutex_unlock(&global_heap_lock);
+            spinlock_unlock(&global_heap_lock, irqflags);
             return NULL;  // out of memory
         }
 
@@ -434,7 +435,7 @@ search_free_list:
             // Allows us to detect correct pointers
             start->magic = MAGIC;
 #endif
-            mutex_unlock(&global_heap_lock);
+            spinlock_unlock(&global_heap_lock, irqflags);
             LOG("Successfully allocated %u (requested %u) at %x", total, size, entry);
             return entry;
         }
@@ -443,7 +444,7 @@ search_free_list:
     // No free block of suitable since available, lets request a new one
     heap_segment_t* new_seg = alloc_heap_segment(total);
     if (new_seg == NULL) {
-        mutex_unlock(&global_heap_lock);
+        spinlock_unlock(&global_heap_lock, irqflags);
         LOG("Failed to allocate %u (requested %u): failed to alloc heap segment", size, total);
         return NULL;  // failed to request more memory
     }
@@ -472,13 +473,14 @@ search_free_list:
 
 void kfree(void* ptr)
 {
+    uint32_t irqflags;
     LOG("freeing %x", ptr);
 
     if (ptr == NULL) {
         return;
     }
 
-    mutex_lock(&global_heap_lock);
+    spinlock_lock(&global_heap_lock, &irqflags);
 
     // Compute tags
     start_tag_t* start = GET_START_TAG(ptr);
@@ -576,7 +578,7 @@ void kfree(void* ptr)
 
     // ensure a correctly built free-list
     VERIFY_FREE_LIST();
-    mutex_unlock(&global_heap_lock);
+    spinlock_unlock(&global_heap_lock, irqflags);
 }
 
 void* kalloc(size_t size)

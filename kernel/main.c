@@ -25,6 +25,7 @@ void kernel_main(struct boot_data* boot_data)
 
     init_gdt();
     init_interrupts();
+    scheduler_init();
     if (arch_initialise_static_devices() < 0) {
         kpanic("Failed to initialise static devices");
     }
@@ -37,8 +38,6 @@ void kernel_main(struct boot_data* boot_data)
     if (ret < 0) {
         kpanic("boot failure, failed to initialise vfs %i", ret);
     }
-    scheduler_init();
-
 #ifdef RUN_TESTS
     run_post_boot_tests();
 #endif

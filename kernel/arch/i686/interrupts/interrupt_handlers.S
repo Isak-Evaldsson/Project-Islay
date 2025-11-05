@@ -4,9 +4,20 @@
 
    Copyright (C) 2024 Isak Evaldsson
 */
+#define ASM_FILE
+#include <arch/i686/thread.h>
+
+#define TSS_ESPO_OFFSET 4
 
 # Generic Interrupt Handler
 .extern interrupt_handler
+
+# External scheduler variables
+.extern current_task
+.extern next_task
+
+# External tss struct
+.extern kernel_tss
 
 .macro no_error_code_interrupt_handler num
 .global interrupt_handler_\num
@@ -37,6 +48,31 @@ common_interrupt_handler:               # the common parts of the generic interr
 
     # call the C function
     call generic_interrupt_handler
+
+	# perform context switch if needed, i.e. current_task != next_task
+	movl current_task, %eax
+	movl next_task, %ebx
+	cmp %eax, %ebx
+	je context_switch_done
+
+	# Swap the stack pointer
+	movl %esp, THREAD_REGS_ESP_OFFSET(%eax) # save current_task's sp
+	movl THREAD_REGS_ESP_OFFSET(%ebx), %esp # load next_task's sp
+
+	# Adjust the ESP0 field in the TSS (used by CPU for for CPL=3 -> CPL=0 privilege level changes)
+	movl THREAD_REGS_ESP0_OFFSET(%ebx), %ecx
+	movl %ecx, kernel_tss + TSS_ESPO_OFFSET
+
+	# next_task = current_task
+	movl %ebx, current_task
+
+	# Compare and change page tables if necesary
+	movl THREAD_REGS_CR3_OFFSET(%ebx),  %ecx
+	mov %cr3, %edx # Needed?
+	cmp %edx, %ecx
+	je context_switch_done
+	movl %ecx, %cr3
+context_switch_done:
 
     # restore the registers
 	pop	%edi

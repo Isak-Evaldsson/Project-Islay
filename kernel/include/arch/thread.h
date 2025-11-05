@@ -17,10 +17,6 @@
 #error "Unkown architecture"
 #endif
 
-/* asm routine that switches between kernel threads, by saving old_threads state and loading
- * new_threads state  */
-void kernel_thread_switch(struct thread_regs* new_thread, struct thread_regs* old_thread);
-
 /* Initialises a set of thread registers for a kernel thread, and sets up the stack with the
  * supplied instruction pointer and argument such that ip(arg) is called once the task is started */
 void init_thread_regs_with_stack(struct thread_regs* regs, void* stack_top, void (*ip)(void*),

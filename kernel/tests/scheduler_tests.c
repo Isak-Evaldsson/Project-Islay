@@ -21,16 +21,17 @@ static void wait(unsigned int seconds)
         ;
 }
 
-static task_state_t get_task_state(tid_t tid)
+static block_reason_t get_block_reason(tid_t tid)
 {
-    task_state_t state;
-    task_t      *t = get_task(tid);
-    if (!t) {
-        return TASK_STATE_MAX;
+    block_reason_t reason;
+    task_t        *t = get_task(tid);
+    if (!t || t->state != BLOCKED) {
+        return BLOCK_REASON_MAX;
     }
-    state = t->state;
+
+    reason = t->block_reason;
     put_task(t);
-    return state;
+    return reason;
 }
 
 /* Sleeper test */
@@ -107,8 +108,8 @@ static int mutex_test()
     scheduler_yield();
 
     // Ensure that they are blocked
-    TEST_RETURN_IF_FALSE(get_task_state(t1) == WAITING_FOR_LOCK);
-    TEST_RETURN_IF_FALSE(get_task_state(t2) == WAITING_FOR_LOCK);
+    TEST_RETURN_IF_FALSE(get_block_reason(t1) == BLOCK_REASON_LOCK_WAIT);
+    TEST_RETURN_IF_FALSE(get_block_reason(t2) == BLOCK_REASON_LOCK_WAIT);
 
     main_done = true;
     mutex_unlock(&test_mutex);
@@ -134,7 +135,7 @@ static int cleanup_test()
     // Let the empty thread execute (and die)
     scheduler_yield();
 
-    if (t->state != TERMINATED) {
+    if (IS_TERMINATED(t)) {
         TEST_LOG("thread %x not terminated, in state %u", t->state);
         ret = -1;
     }

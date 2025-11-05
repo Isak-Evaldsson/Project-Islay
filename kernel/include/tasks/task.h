@@ -14,8 +14,8 @@
 #include <stdint.h>
 #include <utils.h>
 
-/* If set to 1, indicates that the task is to be preempted */
-#define TASK_STATUS_PREEMPT (1 << 0)
+/* If set, indicates the task is to be re-scheduled for later */
+#define TASK_STATUS_RESCHEDULE (1 << 0)
 
 /* If set to 1, indicates that the task is currently running an ISR */
 #define TASK_STATUS_INTERRUPT (1 << 1)
@@ -25,13 +25,18 @@ typedef enum {
     READY_TO_RUN,
     RUNNING,
     BLOCKED,
-    SLEEPING,
-    PAUSED,
-    TERMINATED,
-    WAITING_FOR_LOCK,
-    WAITING_FOR_IO,
-    TASK_STATE_MAX,
+    BLOCKED_IDLING,
 } task_state_t;
+
+/* Reason for a task to be in a blocked state */
+typedef enum {
+    BLOCK_REASON_SLEEP,
+    BLOCK_REASON_PAUSED,
+    BLOCK_REASON_LOCK_WAIT,
+    BLOCK_REASON_IO_WAIT,
+    BLOCK_REASON_TERMINATED,
+    BLOCK_REASON_MAX,
+} block_reason_t;
 
 // Temporary solution? I see two options 1: Merge headers, 2: Forward reference
 typedef struct task_queue task_queue_t;
@@ -59,10 +64,11 @@ struct task {
     uintptr_t kstack_bottom;
     size_t    kstack_size;
 
-    task_state_t state;         // The state of the task
-    uint64_t     sleep_expiry;  // Until when shall the task sleep
-    uint64_t     time_used;     // Allows us to have time statistics
-    uint8_t      status;        // Task status flags
+    task_state_t   state;         // The state of the task
+    block_reason_t block_reason;  // Why the task is in a blocked state
+    uint64_t       sleep_expiry;  // Until when shall the task sleep
+    uint64_t       time_used;     // Allows us to have time statistics
+    uint8_t        status;        // Task status flags
 
     // File system related data
     struct task_fs_data fs_data;
@@ -70,6 +76,22 @@ struct task {
 
 /* Asset offset to ensure asm compatiblity */
 assert_offset(struct task, regs, 0);
+
+// Or should this be functions?
+#define WAITING_FOR_RESCHEDULE(task)                     \
+    ({                                                   \
+        task_t* __t = task;                              \
+        READ_ONCE(__t->status) & TASK_STATUS_RESCHEDULE; \
+    })
+
+#define MARK_FOR_RESCHEDULE(task)              \
+    {                                          \
+        task_t* __t = task;                    \
+        __t->status |= TASK_STATUS_RESCHEDULE; \
+    }
+
+#define IS_TERMINATED(task) \
+    (task->state == BLOCKED && task->block_reason == BLOCK_REASON_TERMINATED)
 
 /* Creates a new task executing the code at the address ip */
 tid_t create_task(void* ip);

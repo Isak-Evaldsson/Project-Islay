@@ -9,7 +9,12 @@ This contains various features/improvements for the kernel that will hopefully b
 
 ## Task/Scheduler
 * See todo list in scheduler.c
-* Fil the task struct with more data such as task name, tid, parent thread etc.
+* Fill the task struct with more data such as task name, tid, parent thread etc.
+* Scheduler:
+    * Double-check so that the time counting works correctly
+    * Better algorithm than round robin
+    * Optimize preemption callbacks. Don't create new ones if preemption_timestamp_ns == 0,
+      register new ones when it's set again
 
 ## Klib
 * make formatted writer support 64-bit integers

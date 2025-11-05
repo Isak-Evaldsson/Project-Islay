@@ -59,4 +59,6 @@ void restore_interrupt_register(uint32_t);
 
 int verify_valid_interrupt(unsigned int index);
 
+bool interrupts_enabled();
+
 #endif /* ARCH_INTERRUPT_H */

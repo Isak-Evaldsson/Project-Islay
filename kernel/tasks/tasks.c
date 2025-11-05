@@ -43,8 +43,7 @@ static void new_task_wrapper(void* ip)
 /* Creates a new task executing the code at the address ip */
 tid_t create_task(void* ip)
 {
-    uint32_t flags;
-    task_t*  task = kalloc(sizeof(task_t));
+    task_t *task = kalloc(sizeof(task_t));
     if (task == NULL) {
         return 0;
     }
@@ -120,7 +119,7 @@ task_t* get_task(tid_t tid)
         task = GET_STRUCT(task_t, task_list_entry, entry);
         if (task->tid == tid) {
             // Only return non-killed tasks
-            if (task->state != TERMINATED) {
+            if (!IS_TERMINATED(task)) {
                 atomic_add_fetch(&task->ref_count, 1);
                 return task;
             }
@@ -146,7 +145,7 @@ void free_task(task_t* task)
     kassert(atomic_load(&task->ref_count) == 0);
 
     // Free'ing a task in a non-terminated state could be very dangerous
-    kassert(task->state == TERMINATED);
+    kassert(IS_TERMINATED(task));
 
     list_entry_remove(&task->task_list_entry);
     vmem_free_page(task->kstack_bottom);
