@@ -471,9 +471,13 @@ static void cleanup_thread()
 
 void scheduler_init()
 {
-    uint32_t flags;
+    /*
+     * Can't take the scheduler lock since scheduler_initialised is set mid function,
+     * this will break the preemption logic, since the preemption_counter will never be
+     * able to reach one. Disabling interrupts should suffice.
+     */
+    uint32_t flags = get_register_and_disable_interrupts();
 
-    scheduler_lock(&flags);
     current_task = create_root_task();
     if (current_task == NULL) {
         kpanic("Failed to allocate memory for initial task");
@@ -491,7 +495,8 @@ void scheduler_init()
 
     // Start task cleaning up terminated task
     cleanup_task = get_task(create_task(cleanup_thread));
-    scheduler_unlock(flags);
+
+    restore_interrupt_register(flags);
 }
 
 /* Gets a pointer to the currently executing task */
