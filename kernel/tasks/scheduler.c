@@ -25,12 +25,6 @@
     Scheduler state
 */
 
-/*
-   TODO:
-   1. Double-check so that the time counting works correctly
-   2. Better algorithm than round robin
- */
-
 // The ready-to-run task queue
 static EMPTY_QUEUE(ready_queue);
 
@@ -136,12 +130,12 @@ void scheduler_unblock_task_locked(task_t *task)
             task->state = RUNNING;
         } else {
             LOG("put %x in ready_queue", task);
-        task->state = READY_TO_RUN;
-        task_queue_enqueue(&ready_queue, task);
+            task->state = READY_TO_RUN;
+            task_queue_enqueue(&ready_queue, task);
 
             // Make sure the current_task gets preempted
             if (!preemption_timestamp_ns) {
-        preemption_timestamp_ns = timer_get_time_since_boot() + TIME_SLICE_NS;
+                preemption_timestamp_ns = timer_get_time_since_boot() + TIME_SLICE_NS;
             }
         }
     }
@@ -309,7 +303,7 @@ static void preemption_callback(uint64_t time_since_boot_ns, uint64_t timestamp_
                system to reschedule when it is safe to do so.
             */
             if (!preemption_counter) {
-            MARK_FOR_RESCHEDULE(current_task);
+                MARK_FOR_RESCHEDULE(current_task);
             } else {
                 LOG("Preemption disabled, skip rescheduling");
             }
