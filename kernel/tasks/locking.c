@@ -131,8 +131,8 @@ void spinlock_unlock(struct spinlock *spinlock, uint32_t irqflags)
 #ifndef SMP
     LOG("unlock %x", spinlock);
     spinlock->flag--;
-    restore_interrupt_register(irqflags);
     scheduler_enable_preemption();
+    restore_interrupt_register(irqflags);
 #else
 #error Spinlock not defined for SMP
 #endif
