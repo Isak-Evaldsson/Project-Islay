@@ -26,7 +26,6 @@ typedef enum {
     RUNNING,
     BLOCKED,
     BLOCKED_IDLING,
-    TERMINATED,
 } task_state_t;
 
 /* Reason for a task to be in a blocked state */
@@ -35,6 +34,7 @@ typedef enum {
     BLOCK_REASON_PAUSED,
     BLOCK_REASON_LOCK_WAIT,
     BLOCK_REASON_IO_WAIT,
+    BLOCK_REASON_TERMINATED,
     BLOCK_REASON_MAX,
 } block_reason_t;
 
@@ -89,6 +89,9 @@ assert_offset(struct task, regs, 0);
         task_t* __t = task;                    \
         __t->status |= TASK_STATUS_RESCHEDULE; \
     }
+
+#define IS_TERMINATED(task) \
+    (task->state == BLOCKED && task->block_reason == BLOCK_REASON_TERMINATED)
 
 /* Creates a new task executing the code at the address ip */
 tid_t create_task(void* ip);

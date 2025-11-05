@@ -220,9 +220,11 @@ void do_schedule()
         if (current_task->state == RUNNING) {
             LOG("No new task in queue, let the task continue");
             current_task->status &= ~TASK_STATUS_RESCHEDULE;
-        } else {
+        } else if (current_task->state == BLOCKED) {
             LOG("No new task in queue, but current is blocked, idle");
             current_task->state = BLOCKED_IDLING;
+        } else {
+            kassert(false);
         }
         return;
     }
@@ -393,7 +395,7 @@ void scheduler_terminate_task()
     scheduler_unblock_task_locked(cleanup_task);
 
     LOG("Adding %x to termination queue", current_task);
-    current_task->state = TERMINATED;
+    mark_task_blocked_locked(BLOCK_REASON_TERMINATED);
     spinlock_unlock(&scheduler_lock, flags);
     scheduler_yield();
 }
@@ -414,7 +416,7 @@ static void cleanup_thread()
         {
             task = GET_STRUCT(task_t, task_queue_entry, entry);
 
-            kassert(task->state == TERMINATED && !task->current_task_queue);
+            kassert(IS_TERMINATED(task) && !task->current_task_queue);
             if (atomic_load(&task->ref_count) == 0) {
                 LOG("Cleanup terminated task %x", task);
 

@@ -12,7 +12,7 @@
 /* The common operations whenever inserting a task into a task_queue */
 static void prepare_insert(task_queue_t* queue, task_t* task)
 {
-    kassert(task->state != TERMINATED);         // We should never try to enqueue dead tasks
+    kassert(!IS_TERMINATED(task));              // We should never try to enqueue dead tasks
     kassert(task->current_task_queue == NULL);  // A task can only belong to a single task queue
 
     // By incrementing the refcount, the cleanup thread is prevented from free'ing the task object
