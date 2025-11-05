@@ -45,8 +45,8 @@ static EMPTY_QUEUE(sleep_queue);
  */
 static DEFINE_LIST(termination_queue);
 
-/* Protects the termination queue */
-static SPINLOCK_DEFINE(termination_lock);
+/* Protects the whole scheduler */
+static SPINLOCK_DEFINE(scheduler_lock);
 
 // Counter variables keeping track of the time consumption of each task
 static uint64_t last_count    = 0;
@@ -80,17 +80,11 @@ unsigned int preemption_counter;
  * clock drivers check if it's necessary to call the 'scheduler_check_sleep_queue' */
 uint64_t scheduler_earliest_wakeup = UINT64_MAX;
 
-/* Protects sleep related data */
-static SPINLOCK_DEFINE(sleep_lock);
-
 /* Task responsible of freeing up space for task within the termination queue */
 static task_t *cleanup_task = NULL;
 
 /* Flag indicating if the scheduler has been initialised */
 bool scheduler_initialised = false;
-
-/* Perform voluntary task switch, the caller is responsible for correct locking */
-static void schedule();
 
 void scheduler_disable_preemption()
 {
@@ -114,47 +108,25 @@ void scheduler_enable_preemption()
     kassert(preemption_counter < old);
 }
 
-/* Lock scheduler, blocks the task switching process from becoming disturbed by interrupts */
-void scheduler_lock(uint32_t *interrupt_flags)
+static void mark_task_blocked_locked(block_reason_t reason)
 {
-#ifndef SMP
-    // Disable interrupts and save the previous state
-    *interrupt_flags = get_register_and_disable_interrupts();
-    scheduler_disable_preemption();
-#endif
-}
-
-/* Unlock scheduler, allows interrupts */
-void scheduler_unlock(uint32_t interrupt_flags)
-{
-#ifndef SMP
-    // Restore interrupt flags before locking
-    restore_interrupt_register(interrupt_flags);
-    scheduler_enable_preemption();
-#endif
-}
-
-static void mark_task_blocked(block_reason_t reason)
-{
-    uint32_t flags;
-
-    scheduler_lock(&flags);
     LOG("Block task %x, reason %u", current_task, reason);
     current_task->state        = BLOCKED;
     current_task->block_reason = reason;
-    scheduler_unlock(flags);
 }
 
 void scheduler_block_task(block_reason_t reason)
 {
-    mark_task_blocked(reason);
-    schedule();
+    uint32_t flags;
+
+    spinlock_lock(&scheduler_lock, &flags);
+    mark_task_blocked_locked(reason);
+    spinlock_unlock(&scheduler_lock, flags);
+    scheduler_yield();
 }
 
-void scheduler_unblock_task(task_t *task)
+void scheduler_unblock_task_locked(task_t *task)
 {
-    uint32_t flags;
-    scheduler_lock(&flags);
     LOG("Unblock task %x", task);
 
     if (task->state == BLOCKED || task->state == BLOCKED_IDLING) {
@@ -173,7 +145,15 @@ void scheduler_unblock_task(task_t *task)
             }
         }
     }
-    scheduler_unlock(flags);
+}
+
+void scheduler_unblock_task(task_t *task)
+{
+    uint32_t flags;
+
+    spinlock_lock(&scheduler_lock, &flags);
+    scheduler_unblock_task_locked(task);
+    spinlock_unlock(&scheduler_lock, flags);
 }
 
 static void update_time_used()
@@ -189,7 +169,7 @@ static void update_time_used()
     }
 }
 
-static void schedule()
+void scheduler_yield()
 {
     struct task *task = current_task;
 
@@ -279,7 +259,7 @@ static void sleep_expiry_callback(uint64_t time_since_boot_ns, uint64_t timestam
     struct list_entry *entry;
 
     (void)timestamp_ns;  // silence unused warning
-    spinlock_lock(&sleep_lock, &flags);
+    spinlock_lock(&scheduler_lock, &flags);
 
     // Reset first wakeup flag
     scheduler_earliest_wakeup = UINT64_MAX;
@@ -290,7 +270,7 @@ static void sleep_expiry_callback(uint64_t time_since_boot_ns, uint64_t timestam
         if (task->sleep_expiry <= time_since_boot_ns) {
             LOG("Wake-up task %x from sleep at %u", task, time_since_boot_ns);
             task_remove_from_current_task_queue(task);
-            scheduler_unblock_task(task);
+            scheduler_unblock_task_locked(task);
         } else {
             // Decrement first wakeup flag if necessary
             if (task->sleep_expiry < scheduler_earliest_wakeup) {
@@ -303,7 +283,7 @@ static void sleep_expiry_callback(uint64_t time_since_boot_ns, uint64_t timestam
     if (scheduler_earliest_wakeup < UINT64_MAX) {
         timer_register_timed_event(scheduler_earliest_wakeup, sleep_expiry_callback);
     }
-    spinlock_unlock(&sleep_lock, flags);
+    spinlock_unlock(&scheduler_lock, flags);
 }
 
 /*
@@ -355,7 +335,7 @@ void scheduler_nano_sleep_until(uint64_t when)
         return;
     }
 
-    spinlock_lock(&sleep_lock, &flags);
+    spinlock_lock(&scheduler_lock, &flags);
     current_task->sleep_expiry = when;
 
     // Add task to sleep queue
@@ -372,9 +352,9 @@ void scheduler_nano_sleep_until(uint64_t when)
     // Must be within a non-irq context to prevent the sleep expiry callback
     // from firing, potential trying to unblock the task before blocking it,
     // if we block afterwards, it will never wake up
-    mark_task_blocked(BLOCK_REASON_SLEEP);
-    spinlock_unlock(&sleep_lock, flags);
-    schedule();
+    mark_task_blocked_locked(BLOCK_REASON_SLEEP);
+    spinlock_unlock(&scheduler_lock, flags);
+    scheduler_yield();
 }
 
 /* Called by the interrupt handler allowing notifying the scheduler that the interrupt handler is
@@ -398,35 +378,26 @@ void scheduler_start_of_interrupt()
     }
 }
 
-/* Allows the currently running task to voluntarily stop execution */
-void scheduler_yield()
-{
-    uint32_t flags;
-
-    scheduler_lock(&flags);
-    schedule();
-    scheduler_unlock(flags);
-}
-
 /* Terminates the currently running task */
 void scheduler_terminate_task()
 {
     // Note: Can do any harmless stuff here (close files, free memory in user-space, ...) but
     // there's none of that yet
-
     uint32_t flags;
-    // Insert task in termination queue
 
-    spinlock_lock(&termination_lock, &flags);
+    spinlock_lock(&scheduler_lock, &flags);
+    if (current_task->current_task_queue) {
+        task_remove_from_current_task_queue(current_task);
+    }
     list_add_last(&termination_queue, &current_task->task_queue_entry);
-    spinlock_unlock(&termination_lock, flags);
 
     // make sure our task is not blocked
-    scheduler_unblock_task(cleanup_task);
+    scheduler_unblock_task_locked(cleanup_task);
 
     LOG("Adding %x to termination queue", current_task);
     current_task->state = TERMINATED;
-    schedule();
+    spinlock_unlock(&scheduler_lock, flags);
+    scheduler_yield();
 }
 
 static void cleanup_thread()
@@ -440,7 +411,7 @@ static void cleanup_thread()
 
     while (true) {
         LOG("wakeup");
-        spinlock_lock(&termination_lock, &flags);
+        spinlock_lock(&scheduler_lock, &flags);
         LIST_ITER_SAFE_REMOVAL(&termination_queue, entry)
         {
             task = GET_STRUCT(task_t, task_queue_entry, entry);
@@ -456,7 +427,7 @@ static void cleanup_thread()
             }
         }
         empty = LIST_EMPTY(&termination_queue);
-        spinlock_unlock(&termination_lock, flags);
+        spinlock_unlock(&scheduler_lock, flags);
 
         if (!empty) {
             // There tasks left to kill, hopefully they can be free'd the next time this thread
