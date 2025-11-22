@@ -54,6 +54,7 @@ tests/list_tests.o \
 tests/post_boot_tests.o \
 tests/scheduler_tests.o \
 utils/endianness.o \
+utils/initobj.o \
 utils/kpanic.o \
 utils/kprintf.o \
 utils/libc.o \
