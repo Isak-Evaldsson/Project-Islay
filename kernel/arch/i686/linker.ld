@@ -61,7 +61,12 @@ SECTIONS
 		_wdata_end = .;
 		_data_end = .;
 	}
-
+	.initobjs ALIGN (4K) : AT (ADDR (.initobjs) - _higher_half_addr)
+	{
+		_initobjs_start = .;
+		*(.initobjs)
+		_initobjs_end = .;
+	}
 	/* Add a symbol that indicates the end address of the kernel. */
 	_kernel_end = .;
 }

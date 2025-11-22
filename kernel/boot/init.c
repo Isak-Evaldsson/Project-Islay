@@ -10,6 +10,7 @@
 #include <arch/tty.h>
 #include <boot/multiboot.h>
 #include <devices/keyboard/ps2_keyboard.h>
+#include <initobj.h>
 #include <memory/page_frame_manager.h>
 #include <stdint.h>
 #include <utils.h>
@@ -85,6 +86,9 @@ void kernel_init(multiboot_info_t *mbd, uint32_t magic)
                 (memory_segment_t){.addr = entry->addr, .length = entry->len};
         }
     }
+
+    // TODO: Adjust initrd location so we can overwite the init section once done with it
+    parse_init_section();
 
     if (mbd->mods_count < 1) {
         kpanic("Boot failure: missing initrd");
