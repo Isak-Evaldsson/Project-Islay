@@ -7,6 +7,7 @@
 #ifndef ARCH_BOOT_H
 #define ARCH_BOOT_H
 #include <arch/arch.h>
+#include <arch/sections.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -17,16 +18,9 @@ void unmap_identity_mapping();
 /*
     Kernel linker script is required to expose a start and end address for the kernel
 */
-extern uint32_t _kernel_start[];     /* start symbol, assumed to be physical address */
-extern uint32_t _kernel_end[];       /* end symbol, virtual address since higher half kernel */
-extern uint32_t _higher_half_addr[]; /* indicating the start of higher half area */
-
-/*
-    Macros correctly typecasting the symbols to integer, allowing
-*/
-#define KERNEL_START     ((uint32_t)_kernel_start)
-#define KERNEL_END       ((uint32_t)_kernel_end)
-#define HIGHER_HALF_ADDR ((uint32_t)_higher_half_addr)
+#define KERNEL_START     GET_LINKER_SYMBOL(_kernel_start)       /* start symbol, assumed to be physical address */
+#define KERNEL_END       GET_LINKER_SYMBOL(_kernel_end)         /* end symbol, virtual address since higher half kernel */
+#define HIGHER_HALF_ADDR GET_LINKER_SYMBOL(_higher_half_addr)   /* indicating the start of higher half area */
 
 #define MEMMAP_SEGMENT_MAX 10
 

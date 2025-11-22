@@ -38,10 +38,13 @@ SECTIONS
 	/* Defining our binary sections, includig symbols marking the start/end of the writable data sections */
 	.text ALIGN (4K) : AT (ADDR (.text) - _higher_half_addr)
 	{
+		_text_start = .;
 		*(.text)
+		_text_end = .;
 	}
 	.rodata ALIGN (4K) : AT (ADDR (.rodata) - _higher_half_addr)
 	{
+		_data_start = .;
 		*(.rodata)
 	}
 	.data ALIGN (4K) : AT (ADDR (.data) - _higher_half_addr)
@@ -56,6 +59,7 @@ SECTIONS
 		*(.bss)
 		*(.bootstrap_stack)
 		_wdata_end = .;
+		_data_end = .;
 	}
 
 	/* Add a symbol that indicates the end address of the kernel. */
