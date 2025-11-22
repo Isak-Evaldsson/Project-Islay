@@ -95,7 +95,7 @@ function config() {
 
     # Configure the cross-compiler to use the desired system root.
     export SYSROOT="$PREFIX/lib/gcc/$TARGET/15.2.0"
-    export CC="$CC --sysroot=$SYSROOT"
+    export CC="$CC --sysroot=$SYSROOT -isystem =/plugin/include"
 }
 
 function build_iso() {
