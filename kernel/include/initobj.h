@@ -11,6 +11,7 @@
 
 enum {
    INITOBJ_TYPE_TEST,
+   INITOBJ_TYPE_FS,
    INITOBJ_TYPE_COUNT
 };
 

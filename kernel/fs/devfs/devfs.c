@@ -1,6 +1,6 @@
 #include <devices/device.h>
 
-#include "devfs.h"
+#include "../fs-internals.h"
 
 static struct pseudo_file root = {.inode   = (ino_t)&root,
                                   .mode    = S_IFDIR,
@@ -61,7 +61,7 @@ static struct fs_ops devfs_ops = {
     .open        = devfs_open,
 };
 
-DEFINE_FS(devfs, DEVFS_FS_NAME, &devfs_ops, 0);
+DEFINE_FS(devfs, &devfs_ops, 0);
 
 /*
     Devfs API
