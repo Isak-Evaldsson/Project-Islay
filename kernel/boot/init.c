@@ -6,6 +6,7 @@
 */
 #include <arch/boot.h>
 #include <arch/paging.h>
+#include <arch/sections.h>
 #include <arch/serial.h>
 #include <arch/tty.h>
 #include <boot/multiboot.h>
@@ -14,6 +15,9 @@
 #include <memory/page_frame_manager.h>
 #include <stdint.h>
 #include <utils.h>
+
+#define INIT_SECTION_START  GET_LINKER_SYMBOL(_initobjs_start)
+#define INIT_SECTION_END    GET_LINKER_SYMBOL(_initobjs_end)
 
 /* The kernel main function */
 extern void kernel_main(struct boot_data *boot_data);
@@ -87,8 +91,18 @@ void kernel_init(multiboot_info_t *mbd, uint32_t magic)
         }
     }
 
-    // TODO: Adjust initrd location so we can overwite the init section once done with it
-    parse_init_section();
+    kassert(KERNEL_END == INIT_SECTION_END);
+    parse_init_section((struct init_object **)INIT_SECTION_START,
+            (struct init_object **)INIT_SECTION_END);  
+    /*
+     * Unmap init section since it's no longer needed, will be overwritten by initrd allocation.
+     * If initrd size < init section size, there will be pages from the init section that is still
+     * mapped. To avoid this, just umap all pages before initrd rellocation.
+     */
+    size_t init_page_count =  ALIGN_BY_PAGE_SIZE(INIT_SECTION_END - INIT_SECTION_START) / PAGE_SIZE;
+    for (size_t i = 0; i < init_page_count; i++) {
+        unmap_page(INIT_SECTION_START + i);
+    }
 
     if (mbd->mods_count < 1) {
         kpanic("Boot failure: missing initrd");
@@ -96,9 +110,9 @@ void kernel_init(multiboot_info_t *mbd, uint32_t magic)
 
     multiboot_module_t *initrd_mod = (multiboot_module_t *)mbd->mods_addr;
 
-    // Relocate initrd to the first available page after the kernel bss
+    // Relocate initrd to the first available page after the kernel bss, i.e start of init section
     size_t     initrd_size  = initrd_mod->mod_end - initrd_mod->mod_start;
-    physaddr_t initrd_start = ALIGN_BY_PAGE_SIZE(KERNEL_END - HIGHER_HALF_ADDR);
+    physaddr_t initrd_start = ALIGN_BY_PAGE_SIZE(INIT_SECTION_START - HIGHER_HALF_ADDR);
     initrd_relocation(initrd_mod->mod_start, initrd_start, initrd_size);
 
     boot_data.initrd_size  = initrd_size;

@@ -57,6 +57,6 @@ typedef void (*init_fn)(void);
  */
 void call_init_objects(unsigned int type);
 
-void parse_init_section();
+void parse_init_section(struct init_object **init_start, struct init_object **init_end);
 
 #endif /* INITOBJ_H */

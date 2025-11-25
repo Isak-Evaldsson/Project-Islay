@@ -4,18 +4,14 @@
 
    Copyright (C) 2025 Isak Evaldsson
 */
-#include <arch/sections.h>
 #include <initobj.h>
 #include <utils.h>
-
-#define INIT_SECTION_START  ((struct init_object **)GET_LINKER_SYMBOL(_initobjs_start))
-#define INIT_SECTION_END    ((struct init_object **)GET_LINKER_SYMBOL(_initobjs_end))
 
 #define LOG(fmt, ...) __LOG(1, "[INITOBJ]", fmt, ##__VA_ARGS__)
 
 static struct list init_objs[INITOBJ_TYPE_COUNT];
 
-void parse_init_section()
+void parse_init_section(struct init_object **init_start, struct init_object **init_end)
 {
     struct init_object **ptr, *obj;
     
@@ -23,7 +19,7 @@ void parse_init_section()
         init_objs[i] = LIST_INIT(init_objs[i]);
     }
 
-    for (ptr = INIT_SECTION_START; ptr < INIT_SECTION_END; ptr++) {
+    for (ptr = init_start; ptr < init_end; ptr++) {
         obj = *ptr;
         if (!IS_DATA_PTR(obj)) {
             kpanic("init section contaning non-data pointer %x\n", obj);
