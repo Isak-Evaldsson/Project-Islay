@@ -7,6 +7,7 @@
 #ifndef FS_INTERNALS_H
 #define FS_INTERNALS_H
 #include <fs.h>
+#include <initobj.h>
 #include <uapi/errno.h>
 #include <utils.h>
 
@@ -16,13 +17,17 @@
 
 #define FS_NAME_MAXLEN (127)
 
-#define DEFINE_FS(_var, _name, _ops, _sflags) \
-    struct fs _var = {                        \
-        .name         = (_name),              \
+
+void _register_fs(void *arg);
+
+#define DEFINE_FS(_name, _ops, _sflags) \
+    static volatile struct fs fs_##_name = {  \
+        .name         = #_name,               \
         .ops          = (_ops),               \
         .static_flags = (_sflags),            \
         .next         = NULL,                 \
-    }
+    };                                        \
+    DEFINE_INITOBJ(INITOBJ_TYPE_FS, _name, _register_fs, (struct fs*)&fs_##_name)
 
 /*  The primary data structure for all file-system objects */
 struct inode {
@@ -142,15 +147,8 @@ int free_fd(struct task_fs_data* task_data, int fd);
 /* Find the superblock which is mounted upon the supplied inode, returns NULL on failure. */
 struct superblock* find_superblock(const struct inode* mounted);
 
-/**
- * Registers a file system for future mounting. The name of each registered file system is
- * required to be unique and at least 3 characters.
- * @param fs static file system data such as name, opts etc.
- * @param static_flags mountflags that's always applied when mounting this particular fs, see
- * mount_flags
- * @return 0 on success, -EEXIST if there's already exists a file system with the same.
- */
-int register_fs(struct fs* fs);
+/* Checks if a fs with the supplied name is present */
+bool is_registered_fs(const char *name);
 
 /* Specially mount function handling mounting of the root fs, retruns 0 on success and -ERRNO on
  * failure*/

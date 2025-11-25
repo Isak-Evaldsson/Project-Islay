@@ -13,11 +13,6 @@
 
 #include "../fs-internals.h"
 
-#define KINFO_FS_NAME "kinfo"
-
-/* Exposing the fs struct so it can be registered */
-extern struct fs kinfo;
-
 /*
     Kinfo API
 */

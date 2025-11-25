@@ -59,7 +59,15 @@ static int check_required_fs_ops(const struct fs_ops* ops, unsigned int static_f
     return 0;
 }
 
-int register_fs(struct fs* fs)
+/**
+ * Registers a file system for future mounting. The name of each registered file system is
+ * required to be unique and at least 3 characters.
+ * @param fs static file system data such as name, opts etc.
+ * @param static_flags mountflags that's always applied when mounting this particular fs, see
+ * mount_flags
+ * @return 0 on success, -EEXIST if there's already exists a file system with the same.
+ */
+static int register_fs(struct fs* fs)
 {
     size_t     len;
     struct fs *prev, *next;
@@ -93,6 +101,28 @@ int register_fs(struct fs* fs)
     prev->next = fs;
     return 0;
 };
+
+void _register_fs(void* arg)
+{
+    int ret;
+    struct fs *fs = arg;
+
+    ret = register_fs(fs);
+    if (ret) {
+        LOG("Failed to register '%s': %i", fs->name, ret);
+    } else {
+        LOG("Succesfully registered '%s", fs->name);
+    }
+}
+
+bool is_registered_fs(const char *name)
+{
+    for (struct fs* fs = fs_list; fs != NULL; fs = fs->next) {
+        if (strncmp(fs->name, name, FS_NAME_MAXLEN) == 0)
+            return true;
+    }
+    return false;
+}
 
 /* Helper function for the mounting procedure that allocates a superblock for the fs specfied in by
  * fs_name. Returns a superblock on success, on failure returns NULL and sets errno. */

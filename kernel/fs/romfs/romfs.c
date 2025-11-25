@@ -342,4 +342,4 @@ static struct fs_ops romfs_ops = {
     .fetch_inode = romfs_fetch_inode,
 };
 
-DEFINE_FS(romfs, ROMFS_FS_NAME, &romfs_ops, MOUNT_READONLY);
+DEFINE_FS(romfs, &romfs_ops, MOUNT_READONLY);

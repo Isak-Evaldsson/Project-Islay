@@ -49,31 +49,14 @@ static struct fs_ops test_fs_ops = {.mount       = test_fs_mount,
                                     .read        = test_fs_read,
                                     .fetch_inode = test_fs_fetch_inode,
                                     .readdir     = test_fs_readdir};
-static DEFINE_FS(test_fs, "test_fs", &test_fs_ops, 0);
-static DEFINE_FS(test_fs2, "test_fs2", &test_fs_ops, 0);
+DEFINE_FS(test_fs, &test_fs_ops, MOUNT_READONLY);
+DEFINE_FS(test_fs2, &test_fs_ops, MOUNT_READONLY);
 
 static int register_fs_test()
 {
-    /* TODO: Break into sub-tests*/
-    int ret;
+    TEST_RETURN_IF_FALSE(!is_registered_fs("test_fs"));
+    TEST_RETURN_IF_FALSE(!is_registered_fs("test_fs2"));
 
-    ret = register_fs(&test_fs);
-    if (ret) {
-        TEST_LOG("Failed to register test_fs (%i)", ret);
-        return ret;
-    }
-
-    ret = register_fs(&test_fs);
-    if (ret != -EEXIST) {
-        TEST_LOG("Registering the same filesystem twice should yield an error (%i)", ret);
-        return ret;
-    }
-
-    ret = register_fs(&test_fs2);
-    if (ret) {
-        TEST_LOG("Failed to register test_fs2 (%i)", ret);
-        return ret;
-    }
     return 0;
 }
 
