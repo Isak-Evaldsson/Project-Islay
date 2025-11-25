@@ -27,7 +27,7 @@ case $OSTYPE in
         if ! command -v "apt" 2>&1 >/dev/null; then
             echo "Not a debain based distro, you need to handle depencies own your own"
         else
-            sudo apt install "qemu-system-$ARCH" build-essential libmpfr-dev libgmp3-dev libmpc-dev xorriso mtools grub-pc-bin -y
+            sudo apt install "qemu-system-i386" build-essential libmpfr-dev libgmp3-dev libmpc-dev xorriso mtools grub-pc-bin -y
         fi
         ;;
 esac
