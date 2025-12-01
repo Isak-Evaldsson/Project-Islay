@@ -4,6 +4,7 @@
 
    Copyright (C) 2025 Isak Evaldsson
 */
+#include <arch/sections.h>
 #include <initobj.h>
 #include <utils.h>
 
