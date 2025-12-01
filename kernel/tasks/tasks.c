@@ -7,9 +7,20 @@
 #include <arch/paging.h>
 #include <memory/vmem_manager.h>
 #include <tasks/scheduler.h>
+#include <uapi/errno.h>
+
+struct task_handler {
+    int mask;
+    task_event_handler fn;   
+};
 
 /* Global list of all tasks */
 static DEFINE_LIST(task_list);
+
+/* The number of handlers will be rather limited, so a static array will be good enough */
+#define HANDLER_COUNT 1 /*FS*/ 
+
+static struct task_handler task_handlers[HANDLER_COUNT];
 
 static tid_t alloc_tid()
 {
@@ -38,6 +49,17 @@ static void new_task_wrapper(void* ip)
     scheduler_terminate_task();
 
     kassert(false);  // unreachable
+}
+
+static void send_task_event(int event, struct task *task)
+{
+    struct task_handler *handler;
+    
+    for (int i = 0; i < HANDLER_COUNT; i++) {
+        handler = task_handlers + i;
+        if (handler->fn && handler->mask & event)
+            handler->fn(event, task);
+    }
 }
 
 /* Creates a new task executing the code at the address ip */
@@ -70,6 +92,7 @@ tid_t create_task(void* ip)
 
     // Add to global task list
     list_add_last(&task_list, &task->task_list_entry);
+    send_task_event(TASK_EVENT_CREATED, task);
 
     // Make the scheduler aware of the new task
     scheduler_unblock_task(task);
@@ -100,6 +123,7 @@ task_t* create_root_task()
 
     // Add to global task list
     list_add_last(&task_list, &task->task_list_entry);
+    send_task_event(TASK_EVENT_CREATED, task);
     return task;
 }
 
@@ -135,6 +159,12 @@ void put_task(task_t* task)
     atomic_sub_fetch(&task->ref_count, 1);
 }
 
+/* Notify other subsystems that a task is to be terminated */
+void send_task_termination_event(task_t *task)
+{
+    send_task_event(TASK_EVENT_TERMIANTED, task);
+}
+
 /* Frees the memory of the task object */
 void free_task(task_t* task)
 {
@@ -150,4 +180,43 @@ void free_task(task_t* task)
     list_entry_remove(&task->task_list_entry);
     vmem_free_page(task->kstack_bottom);
     kfree(task);
+}
+
+int register_task_event_handler(task_event_handler handler, int mask)
+{
+    int i;
+    task_t *task;
+    struct list_entry *entry;
+
+    for (i = 0; i < HANDLER_COUNT; i++) {
+        if (!task_handlers[i].fn)
+            break;
+    }
+
+    if (i == HANDLER_COUNT) {
+        return -ENOMEM;
+    }
+
+    task_handlers[i].fn = handler;
+    task_handlers[i].mask = mask;
+
+    if (mask & TASK_EVENT_CREATED) {
+        LIST_ITER(&task_list, entry) {
+            task = GET_STRUCT(task_t, task_list_entry, entry);
+            if (!IS_TERMINATED(task))
+                handler(TASK_EVENT_CREATED, task);
+        }
+    }
+    return 0;
+}
+
+int remove_task_event_handler(task_event_handler handler)
+{
+    for (int i = 0; i < HANDLER_COUNT; i++) {
+        if (task_handlers[i].fn == handler) {
+            task_handlers[i].fn = NULL;
+            return 0;
+        }
+    }
+    return -ENOENT;
 }
