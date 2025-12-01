@@ -5,6 +5,7 @@
    Copyright (C) 2024 Isak Evaldsson
 */
 #include <arch/paging.h>
+#include <tasks/task.h>
 
 #include "fs-internals.h"
 #include "kinfo/kinfo.h"
@@ -19,6 +20,15 @@ static struct kinfo_file* kinfo_fs_dir;
 static struct kinfo_file* kinfo_inodes;
 static struct kinfo_file* kinfo_open_files;
 static struct kinfo_file* kinfo_vfs;
+
+static void fs_task_event_handler(int event, struct task *task)
+{
+    struct task_fs_data *fs_data = &task->fs_data;
+
+    if (event == TASK_EVENT_CREATED) {
+        task_data_init(fs_data);
+    }
+}
 
 int fs_init(struct boot_data* boot_data)
 {
@@ -72,6 +82,12 @@ int fs_init(struct boot_data* boot_data)
     ret = mount("/dev", "devfs", 0, NULL);
     if (ret < 0) {
         LOG("Failed to mount devfs %i", ret);
+        return ret;
+    }
+   
+    ret = register_task_event_handler(fs_task_event_handler, TASK_EVENT_CREATED);
+    if (ret < 0) {
+        LOG("Failed to install task event handler: %i\n", ret);
         return ret;
     }
 

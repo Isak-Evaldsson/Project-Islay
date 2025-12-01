@@ -179,4 +179,7 @@ int pseudo_fetch_inode(const struct superblock* super, ino_t id, struct inode* i
         (struct pseudo_file*)_ptr->inode->id;     \
     })
 
+/* To ensure that the per task fs data struct is properly initialised */
+void task_data_init(struct task_fs_data* task_data);
+
 #endif /* FS_INTERNALS_H */
