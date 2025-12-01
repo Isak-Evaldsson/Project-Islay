@@ -103,4 +103,17 @@ task_t* get_task(tid_t tid);
 /* Mark the supplied task control block as no longer used */
 void put_task(task_t* task);
 
+/*
+ * Allows other subsystems, such as the fs, to install event hooks on
+ * important events in the task lifecycle.
+ */
+#define TASK_EVENT_CREATED      0x01 
+#define TASK_EVENT_TERMIANTED   0x02
+
+typedef void (*task_event_handler)(int event, struct task *task);
+
+/* Registers/deregisters task event handlers, returns 0 on success, otherwise -ERRNO */
+int register_task_event_handler(task_event_handler handler, int mask);
+int remove_task_event_handler(task_event_handler handler);
+
 #endif /* TASK_TASK_H */

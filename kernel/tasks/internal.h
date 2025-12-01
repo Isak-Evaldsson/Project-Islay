@@ -16,6 +16,9 @@ extern task_t *current_task;
  * on single threaded */
 extern bool scheduler_initialised;
 
+/* Notify other subsystems that a task is to be terminated */
+void send_task_termination_event(task_t *task);
+
 /* Frees the memory of the task object */
 void free_task(task_t *task);
 

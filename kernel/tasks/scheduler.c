@@ -387,6 +387,7 @@ void scheduler_terminate_task()
 
     // make sure our task is not blocked
     scheduler_unblock_task_locked(cleanup_task);
+    send_task_termination_event(current_task);
 
     LOG("Adding %x to termination queue", current_task);
     mark_task_blocked_locked(BLOCK_REASON_TERMINATED);
