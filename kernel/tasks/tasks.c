@@ -87,7 +87,6 @@ tid_t create_task(void* ip)
     task->time_used = 0;
     task->state     = BLOCKED;  // initially blocked, since the scheduler doesn't know about it yet
     task->status    = 0;
-    task_data_init(&task->fs_data);
     atomic_store(&task->ref_count, 0);
 
     // Add to global task list
@@ -118,7 +117,6 @@ task_t* create_root_task()
     task->time_used = 0;
     task->state     = RUNNING;
     task->status    = 0;
-    task_data_init(&task->fs_data);
     atomic_store(&task->ref_count, 0);
 
     // Add to global task list
