@@ -52,7 +52,7 @@ static void kshell_print(const char *restrict format, ...)
     vsnprintf(str, sizeof(str), format, args);
     va_end(args);
 
-    write(&scheduler_get_current_task()->fs_data, tty_fd, str, sizeof(str));
+    write(tty_fd, str, sizeof(str));
 }
 
 static void kshell_readline(char *buff, size_t size)
@@ -60,7 +60,7 @@ static void kshell_readline(char *buff, size_t size)
     int ret;
     kassert(tty_fd >= 0);
 
-    ret = read(&scheduler_get_current_task()->fs_data, tty_fd, buff, size);
+    ret = read(tty_fd, buff, size);
     if (ret < 0) {
         return;
     }
@@ -101,7 +101,7 @@ static void list_cmd(char *arg)
     char path[100];
 
     snprintf(path, sizeof(path), "/%s", arg);
-    int fd = open(&scheduler_get_current_task()->fs_data, path, O_DIRECTORY);
+    int fd = open(path, O_DIRECTORY);
     if (fd < 0) {
         kshell_print("failed to open %s, errno -%u\n", path, -fd);
         return;
@@ -110,7 +110,7 @@ static void list_cmd(char *arg)
     struct dirent dirs[10];
     int           count = COUNT_ARRAY_ELEMS(dirs);
     do {
-        ret = readdirents(&scheduler_get_current_task()->fs_data, fd, dirs, count);
+        ret = readdirents(fd, dirs, count);
         if (ret < 0) {
             kshell_print("readdirents failed: errno -%u\n", -ret);
             goto end;
@@ -122,7 +122,7 @@ static void list_cmd(char *arg)
     } while (ret == count);
 
 end:
-    int res = close(&scheduler_get_current_task()->fs_data, fd);
+    int res = close(fd);
     if (res < 0) {
         kshell_print("failed to close fd: %u, errno -%u", fd, -res);
     }
@@ -133,13 +133,13 @@ static void read_cmd(char *arg)
     char path[100];
 
     snprintf(path, sizeof(path), "/dev/%s", arg);
-    int fd = open(&scheduler_get_current_task()->fs_data, path, O_RDONLY);
+    int fd = open(path, O_RDONLY);
     if (fd < 0) {
         kshell_print("failed to open %s, errno %i\n", path, fd);
         return;
     }
 
-    ssize_t nbytes = read(&scheduler_get_current_task()->fs_data, fd, buf, PAGE_SIZE - 1);
+    ssize_t nbytes = read(fd, buf, PAGE_SIZE - 1);
     if (nbytes < 0) {
         kshell_print("Failed to read fd %u, errno %i\n", fd, nbytes);
         goto end;
@@ -150,7 +150,7 @@ static void read_cmd(char *arg)
     kshell_print("%s\n", buf);
 
 end:
-    int res = close(&scheduler_get_current_task()->fs_data, fd);
+    int res = close(fd);
     if (res < 0) {
         kshell_print("failed to close fd: %u, errno -%u", fd, -res);
     }
@@ -179,7 +179,7 @@ void kshell()
 {
     char cmd[200];
 
-    tty_fd = open(&scheduler_get_current_task()->fs_data, "/dev/tty1", O_RDWR);
+    tty_fd = open("/dev/tty1", O_RDWR);
     if (tty_fd < 0) {
         kshell_print("Failed to open tty1\n");
         return;

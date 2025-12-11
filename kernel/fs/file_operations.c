@@ -4,13 +4,24 @@
 
    Copyright (C) 2024 Isak Evaldsson
 */
+#include <tasks/scheduler.h>
+
 #include "fs-internals.h"
 
-int open(struct task_fs_data* task_data, const char* path, int oflag)
+static struct task_fs_data *get_fs_data() 
+{
+    struct task *task = scheduler_get_current_task();
+
+    kassert(!(task->status & TASK_STATUS_INTERRUPT));
+    return &task->fs_data;
+}
+
+int open(const char* path, int oflag)
 {
     int               fd, ret;
     struct open_file* file;
     struct inode*     inode;
+    struct task_fs_data* task_data = get_fs_data();
 
     if (!oflag) {
         return -EPERM;
@@ -55,11 +66,11 @@ int open(struct task_fs_data* task_data, const char* path, int oflag)
     return fd;
 }
 
-int close(struct task_fs_data* task_data, int fd)
+int close(int fd)
 {
     int ret;
 
-    ret = free_fd(task_data, fd);
+    ret = free_fd(get_fs_data(), fd);
     if (ret < 0) {
         return ret;
     }
@@ -67,8 +78,8 @@ int close(struct task_fs_data* task_data, int fd)
     return 0;
 }
 
-static ssize_t rw_helper(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte,
-                         off_t offset, bool use_file_offset, bool write)
+static ssize_t rw_helper(int fd, void* buf, size_t nbyte, off_t offset, bool use_file_offset,
+                         bool write)
 {
     int               rw_bytes;
     off_t             rw_offset;
@@ -78,7 +89,7 @@ static ssize_t rw_helper(struct task_fs_data* task_data, int fd, void* buf, size
         return -EBADF;
     }
 
-    file = task_data->file_table[fd];
+    file = get_fs_data()->file_table[fd];
     if (!file) {
         return -EBADF;
     }
@@ -122,27 +133,27 @@ static ssize_t rw_helper(struct task_fs_data* task_data, int fd, void* buf, size
     return rw_bytes;
 }
 
-ssize_t pwrite(struct task_fs_data* task_data, int fd, const void* buf, size_t count, off_t offset)
+ssize_t pwrite(int fd, const void* buf, size_t count, off_t offset)
 {
-    return rw_helper(task_data, fd, buf, count, offset, false, true);
+    return rw_helper(fd, buf, count, offset, false, true);
 }
 
-ssize_t write(struct task_fs_data* task_data, int fd, const void* buf, size_t count)
+ssize_t write(int fd, const void* buf, size_t count)
 {
-    return rw_helper(task_data, fd, buf, count, 0, true, true);
+    return rw_helper(fd, buf, count, 0, true, true);
 }
 
-ssize_t pread(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte, off_t offset)
+ssize_t pread(int fd, void* buf, size_t nbyte, off_t offset)
 {
-    return rw_helper(task_data, fd, buf, nbyte, offset, false, false);
+    return rw_helper(fd, buf, nbyte, offset, false, false);
 }
 
-ssize_t read(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte)
+ssize_t read(int fd, void* buf, size_t nbyte)
 {
-    return rw_helper(task_data, fd, buf, nbyte, 0, true, false);
+    return rw_helper(fd, buf, nbyte, 0, true, false);
 }
 
-int readdirents(struct task_fs_data* task_data, int fd, struct dirent* buf, int buf_count)
+int readdirents(int fd, struct dirent* buf, int buf_count)
 {
     off_t             offset;
     int               count;
@@ -153,7 +164,7 @@ int readdirents(struct task_fs_data* task_data, int fd, struct dirent* buf, int 
         return -EBADF;
     }
 
-    file = task_data->file_table[fd];
+    file = get_fs_data()->file_table[fd];
     if (!file) {
         return -EBADF;
     }

@@ -65,22 +65,22 @@ int fs_init(struct boot_data* boot_data);
 int mount(const char* path, const char* name, unsigned int flags, void* data);
 
 /* Open file */
-int open(struct task_fs_data* task_data, const char* path, int oflag);
+int open(const char* path, int oflag);
 
 /* Close file */
-int close(struct task_fs_data* task_data, int fd);
+int close(int fd);
 
 /* Write to file at fixed offset */
-ssize_t pwrite(struct task_fs_data* task_data, int fd, const void* buf, size_t count, off_t offset);
+ssize_t pwrite(int fd, const void* buf, size_t count, off_t offset);
 
 /* Write to file continuously */
-ssize_t write(struct task_fs_data* task_data, int fd, const void* buf, size_t count);
+ssize_t write(int fd, const void* buf, size_t count);
 
 /* Read file continuously */
-ssize_t read(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte);
+ssize_t read(int fd, void* buf, size_t nbyte);
 
 /* Read file at fixed offset */
-ssize_t pread(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte, off_t offset);
+ssize_t pread(int fd, void* buf, size_t nbyte, off_t offset);
 
 /*
     Reads from at certain fd into the supplied buffer and returns the number of dirents written to
@@ -89,7 +89,7 @@ ssize_t pread(struct task_fs_data* task_data, int fd, void* buf, size_t nbyte, o
     Similar to read it automatically increments the read offset. If the return value is 0 or less
     than buf_count we have reach the end of the dir.
 */
-int readdirents(struct task_fs_data* task_data, int fd, struct dirent* buf, int buf_count);
+int readdirents(int fd, struct dirent* buf, int buf_count);
 
 /*
     Devfs API - the fs side of minimal glue required to connect the device and fs subsystems
