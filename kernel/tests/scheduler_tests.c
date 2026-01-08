@@ -135,8 +135,7 @@ static int cleanup_test()
     // Let the empty thread execute (and die)
     scheduler_yield();
 
-    if (IS_TERMINATED(t)) {
-        TEST_LOG("thread %x not terminated, in state %u", t->state);
+    if (!IS_TERMINATED(t)) {
         ret = -1;
     }
 
