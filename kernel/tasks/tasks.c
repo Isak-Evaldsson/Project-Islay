@@ -6,6 +6,7 @@
 */
 #include <arch/paging.h>
 #include <memory/vmem_manager.h>
+#include <tasks/spinlock.h>
 #include <tasks/scheduler.h>
 #include <uapi/errno.h>
 
@@ -16,6 +17,8 @@ struct task_handler {
 
 /* Global list of all tasks */
 static DEFINE_LIST(task_list);
+
+static SPINLOCK_DEFINE(task_lock);
 
 /* The number of handlers will be rather limited, so a static array will be good enough */
 #define HANDLER_COUNT 1 /*FS*/ 
@@ -65,6 +68,7 @@ static void send_task_event(int event, struct task *task)
 /* Creates a new task executing the code at the address ip */
 tid_t create_task(void* ip)
 {
+    uint32_t flags;
     task_t *task = kalloc(sizeof(task_t));
     if (task == NULL) {
         return 0;
@@ -72,7 +76,7 @@ tid_t create_task(void* ip)
 
     // Allocate stack
     task->kstack_bottom = vmem_request_free_page(0);
-    if (task->kstack_bottom == NULL) {
+    if ((void*)task->kstack_bottom == NULL) {
         return 0;
     }
 
@@ -81,6 +85,7 @@ tid_t create_task(void* ip)
 
     // Setup thread registers
     init_thread_regs_with_stack(&task->regs, (void*)stack_top, new_task_wrapper, ip);
+    spinlock_lock(&task_lock, &flags);
 
     // Initialise fields
     task->tid       = alloc_tid();
@@ -92,6 +97,7 @@ tid_t create_task(void* ip)
     // Add to global task list
     list_add_last(&task_list, &task->task_list_entry);
     send_task_event(TASK_EVENT_CREATED, task);
+    spinlock_unlock(&task_lock, flags);
 
     // Make the scheduler aware of the new task
     scheduler_unblock_task(task);
@@ -104,6 +110,7 @@ task_t* create_root_task()
 {
     // The root task is a special case compared to regular, since it's already running and it's
     // stack was allocated during boot
+    uint32_t flags;
     task_t* task = kalloc(sizeof(task_t));
     if (task == NULL) {
         return NULL;
@@ -111,6 +118,7 @@ task_t* create_root_task()
 
     // Setup thread registers
     init_initial_thread_regs(&task->regs);
+    spinlock_lock(&task_lock, &flags);
 
     // Initialise fields
     task->tid       = alloc_tid();
@@ -122,6 +130,7 @@ task_t* create_root_task()
     // Add to global task list
     list_add_last(&task_list, &task->task_list_entry);
     send_task_event(TASK_EVENT_CREATED, task);
+    spinlock_unlock(&task_lock, flags);
     return task;
 }
 
@@ -131,11 +140,13 @@ task_t* get_task(tid_t tid)
 {
     task_t*            task;
     struct list_entry* entry;
+    uint32_t flags;
 
     if (tid == 0) {
         return NULL;
     }
 
+    spinlock_lock(&task_lock, &flags);
     LIST_ITER(&task_list, entry)
     {
         task = GET_STRUCT(task_t, task_list_entry, entry);
@@ -143,12 +154,16 @@ task_t* get_task(tid_t tid)
             // Only return non-killed tasks
             if (!IS_TERMINATED(task)) {
                 atomic_add_fetch(&task->ref_count, 1);
-                return task;
+                goto unlock;
             }
-            return NULL;
+            task = NULL;
+            goto unlock;
         }
     }
-    return NULL;
+    task = NULL;
+unlock:
+    spinlock_unlock(&task_lock, flags);
+    return task;
 }
 
 /* Mark the supplied task control block as no longer used */
@@ -160,12 +175,18 @@ void put_task(task_t* task)
 /* Notify other subsystems that a task is to be terminated */
 void send_task_termination_event(task_t *task)
 {
+    uint32_t flags;
+
+    spinlock_lock(&task_lock, &flags);
     send_task_event(TASK_EVENT_TERMIANTED, task);
+    spinlock_unlock(&task_lock, flags);
 }
 
 /* Frees the memory of the task object */
 void free_task(task_t* task)
 {
+    uint32_t flags;
+
     // Can't free the root task since it's created differently compared to other tasks
     kassert(task->tid != 0);
 
@@ -175,24 +196,29 @@ void free_task(task_t* task)
     // Free'ing a task in a non-terminated state could be very dangerous
     kassert(IS_TERMINATED(task));
 
+    spinlock_lock(&task_lock, &flags);
     list_entry_remove(&task->task_list_entry);
+    spinlock_unlock(&task_lock, flags);
     vmem_free_page(task->kstack_bottom);
     kfree(task);
 }
 
 int register_task_event_handler(task_event_handler handler, int mask)
 {
-    int i;
+    int i, ret = 0;
     task_t *task;
     struct list_entry *entry;
-
+    uint32_t flags;
+       
+    spinlock_lock(&task_lock, &flags);
     for (i = 0; i < HANDLER_COUNT; i++) {
         if (!task_handlers[i].fn)
             break;
     }
 
     if (i == HANDLER_COUNT) {
-        return -ENOMEM;
+        ret = -ENOMEM;
+        goto unlock;
     }
 
     task_handlers[i].fn = handler;
@@ -205,16 +231,25 @@ int register_task_event_handler(task_event_handler handler, int mask)
                 handler(TASK_EVENT_CREATED, task);
         }
     }
-    return 0;
+unlock:
+    spinlock_unlock(&task_lock, flags);
+    return ret;
 }
 
 int remove_task_event_handler(task_event_handler handler)
 {
+    int ret = 0;
+    uint32_t flags;
+
+    spinlock_lock(&task_lock, &flags);
     for (int i = 0; i < HANDLER_COUNT; i++) {
         if (task_handlers[i].fn == handler) {
             task_handlers[i].fn = NULL;
-            return 0;
+            goto unlock;
         }
     }
-    return -ENOENT;
+    ret = -ENOENT;
+unlock:
+    spinlock_unlock(&task_lock, flags);
+    return ret;
 }
