@@ -132,7 +132,7 @@ static void read_cmd(char *arg)
 {
     char path[100];
 
-    snprintf(path, sizeof(path), "/dev/%s", arg);
+    snprintf(path, sizeof(path), "/%s", arg);
     int fd = open(path, O_RDONLY);
     if (fd < 0) {
         kshell_print("failed to open %s, errno %i\n", path, fd);
