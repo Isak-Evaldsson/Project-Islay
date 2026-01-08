@@ -54,8 +54,8 @@ DEFINE_FS(test_fs2, &test_fs_ops, MOUNT_READONLY);
 
 static int register_fs_test()
 {
-    TEST_RETURN_IF_FALSE(!is_registered_fs("test_fs"));
-    TEST_RETURN_IF_FALSE(!is_registered_fs("test_fs2"));
+    TEST_RETURN_IF_FALSE(is_registered_fs("test_fs"));
+    TEST_RETURN_IF_FALSE(is_registered_fs("test_fs2"));
 
     return 0;
 }
