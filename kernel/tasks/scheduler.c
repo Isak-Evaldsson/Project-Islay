@@ -133,6 +133,11 @@ void scheduler_unblock_task_locked(task_t *task)
             task->state = READY_TO_RUN;
             task_queue_enqueue(&ready_queue, task);
 
+            // Remove current from idle state so do_schedule() can run on next irq
+            if (current_task->state == BLOCKED_IDLING) {
+                current_task->state = BLOCKED;
+            }
+
             // Make sure the current_task gets preempted
             if (!preemption_timestamp_ns) {
                 preemption_timestamp_ns = timer_get_time_since_boot() + TIME_SLICE_NS;
@@ -304,6 +309,9 @@ static void preemption_callback(uint64_t time_since_boot_ns, uint64_t timestamp_
             */
             if (!preemption_counter) {
                 MARK_FOR_RESCHEDULE(current_task);
+
+                // Preemption should de disabled while idling
+                kassert(current_task->state != BLOCKED_IDLING);
             } else {
                 LOG("Preemption disabled, skip rescheduling");
             }
@@ -356,7 +364,7 @@ void scheduler_nano_sleep_until(uint64_t when)
 void scheduler_end_of_interrupt()
 {
     if (current_task != NULL) {
-        if (WAITING_FOR_RESCHEDULE(current_task)) {
+        if (WAITING_FOR_RESCHEDULE(current_task) && current_task->state != BLOCKED_IDLING) {
             do_schedule();
         }
         current_task->status &= ~TASK_STATUS_INTERRUPT;
