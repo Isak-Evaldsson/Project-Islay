@@ -230,7 +230,7 @@ void init_interrupts()
 
     // Register exception handlers
     for (size_t i = 0; i < N_EXCEPTIONS; i++) {
-        register_interrupt_handler(i, exception_handler, NULL);
+        ret = register_interrupt_handler(i, exception_handler, NULL);
         if (ret < 0) {
             kpanic("x86: Failed to register exception handler number: %u, error: %i", i, ret);
         }
