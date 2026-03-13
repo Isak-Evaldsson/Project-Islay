@@ -315,7 +315,7 @@ static int tty_init(size_t index)
         return ret;
     }
 
-    ret = create_device_file(NULL, &tty_dev->device, true);
+    ret = create_device_file(&tty_dev->device, true);
     if (ret < 0) {
         return ret;
     }

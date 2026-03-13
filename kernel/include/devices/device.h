@@ -12,11 +12,17 @@
 #include <stddef.h>
 #include <uapi/sys/types.h>
 
+#define MAJOR_MAX 255
+#define MINOR_MAX 255
+
+#define GET_DEV_NUM(major, minor) ((((major) & 0xff) << 8) | ((minor) & 0xff))
+#define GET_MINOR(dev_no)         ((dev_no) & 0xff)
+#define GET_MAJOR(dev_no)         (((dev_no) >> 8) & 0xff)
+
 /* Struct representing a single device instance belonging to a particular driver */
 struct device {
     unsigned int       minor;
     struct driver*     driver;
-    struct pseudo_file file;
     void*              data;
     struct list_entry  list;
 };
@@ -46,19 +52,12 @@ struct driver {
 /* Initialise the device/driver subsystem */
 void drivers_init();
 
-/*
-    Creates a device file within devfs for the specified device, creates it at the root dir of devfs
-    unless a directory is supplied. Returns 0 on success, or -ERRNO on failure.
-*/
-int create_device_file(struct pseudo_file* dir, struct device* dev, bool cdev);
+/* Device lookup based on dev_no, returns null if no devices exsit */
+struct device* device_get(dev_t dev_no);
 
 /*
-    FS interaction API - the device side of minimal glue required to connect the device and fs
-    subsystems with each others.
+    Creates a device file within devfs for the specified device. Returns 0 on success, or -ERRNO on failure.
 */
-ssize_t dev_read(dev_t dev_no, char* buf, size_t size, off_t offset);
-ssize_t dev_write(dev_t dev_no, const char* buf, size_t size, off_t offset);
-int     dev_open(dev_t dev_no, struct open_file* file, int oflag);
-int     dev_close(dev_t dev_no, struct open_file* file);
+int create_device_file(struct device* dev, bool cdev);
 
 #endif /* DEVICES_DEVICE_H */
