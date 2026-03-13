@@ -97,9 +97,8 @@ int readdirents(int fd, struct dirent* buf, int buf_count);
 */
 
 /*
-    Adds the supplied device object to devfs  relative to the specified directory
-    (or within fs root if NULL). Returns 0 on success, and -ERRNO on failure.
+    Adds device file within the devfs root dir assoiocated to the supplied device.
+    Returns 0 on success, and -ERRNO on failure.
 */
-int devfs_add_dev(struct pseudo_file* dir, struct pseudo_file* file, dev_t dev_no, char* name,
-                  bool cdev);
+int devfs_create_file(const char *name, dev_t dev_no, bool cdev);
 #endif /* FS_H */

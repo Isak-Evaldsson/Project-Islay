@@ -2,6 +2,14 @@
 
 #include "../fs-internals.h"
 
+struct devfs_file {
+    struct pseudo_file file;
+    struct device *dev;
+    dev_t dev_no;
+};
+
+#define GET_DEV_FILE(file_ptr) GET_STRUCT(struct devfs_file, file, GET_PSEUDO_FILE(file_ptr))
+
 static struct pseudo_file root = {.inode   = (ino_t)&root,
                                   .mode    = S_IFDIR,
                                   .name    = "",
@@ -11,36 +19,56 @@ static struct pseudo_file root = {.inode   = (ino_t)&root,
 
 int devfs_open(struct open_file* file, int oflag)
 {
-    struct pseudo_file* pseudo_file = GET_PSEUDO_FILE(file);
+    int ret;
+    struct devfs_file *dev_file = GET_DEV_FILE(file);
+    struct driver *driver;
 
-    if (S_ISBLK(pseudo_file->mode) || S_ISCHR(pseudo_file->mode)) {
-        return dev_open((dev_t)pseudo_file->data, file, oflag);
+    if (S_ISDIR(dev_file->file.mode))
+        return 0;
+
+    driver = dev_file->dev->driver;
+    if (oflag & O_RDONLY || oflag & O_RDWR) {
+        if (!driver->device_read)
+            return -ENOTSUP;
+    }
+
+    if (oflag & O_WRONLY || oflag & O_RDWR) {
+        if (!driver->device_write)
+            return -ENOTSUP;
+    }
+
+    if (driver->device_open) {
+        ret = driver->device_open(dev_file->dev, file, oflag);
+        if (ret)
+            return ret;
     }
     return 0;
 }
 
 int devfs_close(struct open_file* file)
 {
-    struct pseudo_file* pseudo_file = GET_PSEUDO_FILE(file);
+    int ret = 0;
+    struct devfs_file *dev_file = GET_DEV_FILE(file);
+    struct driver *driver = dev_file->dev->driver;
 
-    if (S_ISBLK(pseudo_file->mode) || S_ISCHR(pseudo_file->mode)) {
-        return dev_close((dev_t)pseudo_file->data, file);
-    }
-    return 0;
+    if (driver->device_close)
+        ret = driver->device_close(dev_file->dev, file);
+
+    return ret;
 }
 
 static ssize_t devfs_read(char* buf, size_t size, off_t offset, struct open_file* file)
 {
-    struct pseudo_file* pseudo_file = GET_PSEUDO_FILE(file);
+    struct devfs_file *dev_file = GET_DEV_FILE(file);
 
-    return dev_read((dev_t)pseudo_file->data, buf, size, offset);
+    return dev_file->dev->driver->device_read(dev_file->dev, buf, size, offset);
 }
 
 static ssize_t devfs_write(const char* buf, size_t size, off_t offset, struct open_file* file)
 {
-    struct pseudo_file* pseudo_file = GET_PSEUDO_FILE(file);
+    struct devfs_file *dev_file = GET_DEV_FILE(file);
 
-    return dev_write((dev_t)pseudo_file->data, buf, size, offset);
+    return dev_file->dev->driver->device_write(dev_file->dev, buf, size, offset);
 }
 
 static int devfs_mount(struct superblock* super, void* data, ino_t* root_ptr)
@@ -68,26 +96,37 @@ DEFINE_FS(devfs, &devfs_ops, 0);
 */
 
 /*
-    Adds the supplied device object to devfs  relative to the specified directory
-    (or within fs root if NULL). Returns 0 on success, and -ERRNO on failure.
+    Adds device file within the devfs root dir assoiocated to the supplied device.
+    Returns 0 on success, and -ERRNO on failure.
 */
-int devfs_add_dev(struct pseudo_file* dir, struct pseudo_file* file, dev_t dev_no, char* name,
-                  bool cdev)
+int devfs_create_file(const char *name, dev_t dev_no, bool cdev)
 {
     int ret;
-    // struct pseudo_file* file = &dev->file;
+    struct pseudo_file *node;
+    struct devfs_file *file;
+    struct device *dev;
 
-    if (!dir) {
-        dir = &root;
+    for (node = root.child; node; node = node->sibling) {
+        if (!strcmp(node->name, name))
+            return -EEXIST;
     }
 
-    init_pseudo_file(file, (cdev) ? S_IFCHR : S_IFBLK, name);
+    dev = device_get(dev_no);
+    if (!dev)
+        return -ENODEV;
 
-    ret = add_pseudo_file(dir, file);
+    file = kalloc(sizeof(*file));
+    if (!file)
+        return -ENOMEM;
+
+    init_pseudo_file(&file->file, (cdev) ? S_IFCHR : S_IFBLK, name);
+    file->dev_no = GET_DEV_NUM(dev->driver->major, dev->driver->next_minor);
+    file->dev = dev;
+
+    ret = add_pseudo_file(&root, &file->file);
     if (ret < 0) {
         return ret;
     }
 
-    file->data = (void*)dev_no;
     return 0;
 }

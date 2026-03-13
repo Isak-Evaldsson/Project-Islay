@@ -11,13 +11,6 @@
 #include <uapi/errno.h>
 #include <utils.h>
 
-#define MAJOR_MAX 255
-#define MINOR_MAX 255
-
-#define GET_DEV_NUM(major, minor) ((((major) & 0xff) << 8) | ((minor) & 0xff))
-#define GET_MINOR(dev_no)         ((dev_no) & 0xff)
-#define GET_MAJOR(dev_no)         (((dev_no) >> 8) & 0xff)
-
 #define DRIVER_NAME_MAXLEN (50)
 
 int register_device(struct driver *driver, struct device *device);
