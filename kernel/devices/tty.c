@@ -80,6 +80,9 @@ static void tty_append_char(char c)
     bool buffer_full;
     text_mode_putc(current_tty->text_mode_dev, c);
 
+    if (!current_tty->opened)
+        return;
+
     if (current_tty->mode & TTY_MODE_CANONICAL) {
         buffer_full = (current_tty->char_buffer_write_idx + 1) % PAGE_SIZE ==
                       current_tty->char_buffer_read_idx;
