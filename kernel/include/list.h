@@ -79,6 +79,12 @@ struct list {
     High level list operations, designed to be easy to use and safe
  */
 
+/* Initallise an allocated list */
+static inline void list_init(struct list* list)
+{
+    list->head = (struct list_entry)LIST_ENTRY_INIT(list->head);
+}
+
 /* Add entry to the start of the list */
 void list_add_first(struct list* list, struct list_entry* entry);
 
