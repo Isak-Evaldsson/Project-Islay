@@ -17,7 +17,7 @@ void parse_init_section(struct init_object **init_start, struct init_object **in
     struct init_object **ptr, *obj;
     
     for (size_t i = 0; i < COUNT_ARRAY_ELEMS(init_objs); i++) {
-        init_objs[i] = LIST_INIT(init_objs[i]);
+        list_init(init_objs + i);
     }
 
     for (ptr = init_start; ptr < init_end; ptr++) {
