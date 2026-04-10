@@ -60,6 +60,8 @@
 
 #define EOF (-1) /* End of file */
 
+#define EMPTY_STR(str_ptr) (!(str_ptr) || *(str_ptr) == '\0')
+
 /* Statically assert the offset for struct/union member, useful to ensure compatibly when struct
  * fields are used by both generic c code and architecture specific asm. */
 #define assert_offset(type, field, offset) static_assert(offsetof(type, field) == offset)
