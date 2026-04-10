@@ -13,7 +13,6 @@
 #include <stddef.h>
 #include <utils.h>
 
-#include "../internals.h"
 #include "keyboard.h"
 
 #define LOG(fmt, ...) __LOG(1, "[ps2_keyboard]", fmt, ##__VA_ARGS__)

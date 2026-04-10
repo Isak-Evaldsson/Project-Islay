@@ -4,69 +4,67 @@
 
    Copyright (C) 2025 Isak Evaldsson
 */
-#include "internals.h"
+#include <libc.h>
+#include <utils.h>
+#include <devices/device.h>
+#include <uapi/errno.h>
 
 #define LOG(fmt, ...) __LOG(1, "[DEVICE]", fmt, ##__VA_ARGS__)
 
-struct device *get_device(struct driver *driver, unsigned int minor)
-{
-    struct device     *device;
+static unsigned int last_major;
+static struct {
+    struct list minor_devs;
+    unsigned int last_minor;
+} major_devs[MAJOR_MAX - 1];
 
-    LIST_ITER_STRUCT(&driver->devices, device, struct device, list)
-    {
-        if (device->minor == minor) {
-            return device;
-        }
+struct device *device_get(dev_t dev_no)
+{
+    struct device *dev;
+    unsigned int major = GET_MAJOR(dev_no);
+
+    if (major > last_major)
+        return NULL;
+
+    LIST_ITER_STRUCT(&major_devs[major - 1].minor_devs, dev, struct device, minor_list_entry) {
+        if (dev->dev_no == dev_no)
+            return dev;
     }
+
     return NULL;
 }
 
-int register_device(struct driver *driver, struct device *device)
+dev_t allocate_device_number(unsigned int *major_ptr)
 {
-    unsigned int major = driver->major;
+    unsigned int major, minor;
 
+    if (!major_ptr)
+        return 0;
+
+    major = *major_ptr;
     if (!major) {
-        LOG("driver %s is not registered", driver->name);
-        return -EINVAL;
+        if (last_major >= MAJOR_MAX)
+            return 0;
+
+        *major_ptr = major = ++last_major;
+        list_init(&major_devs[major - 1].minor_devs);
     }
 
-    if (driver->next_minor > MINOR_MAX) {
-        LOG("driver '%s' (%u) is out of minor numbers", driver->name, driver->major);
-        return -EINVAL;
-    }
+    if (major_devs[major - 1].last_minor >= MINOR_MAX)
+        return 0;
 
-    device->minor  = driver->next_minor++;
-    device->driver = driver;
-
-    list_add_last(&driver->devices, &device->list);
-    return 0;
+    minor = ++major_devs[major - 1].last_minor;
+    return GET_DEV_NUM(major, minor);
 }
 
-int create_device_file(struct device *dev, bool cdev)
+int create_device_file(struct device *dev, const char *name, bool cdev)
 {
-    dev_t dev_no;
-    char  buff[DRIVER_NAME_MAXLEN + 10];
+    char buf[NAME_MAX];
 
-    if (!dev->minor || !dev->driver || !dev->driver->major) {
-        LOG("Trying to create file for invalid device");
+    if (EMPTY_STR(name) || !dev || !dev->dev_no || !dev->ops)
         return -EINVAL;
-    }
 
-    dev_no = GET_DEV_NUM(dev->driver->major, dev->minor);
-    snprintf(buff, sizeof(buff), "%s%u", dev->driver->name, dev->minor);
-    return devfs_create_file(buff, dev_no, cdev);
-}
+    list_add_last(&major_devs[GET_MAJOR(dev->dev_no) - 1].minor_devs, &dev->minor_list_entry);
+    snprintf(buf, sizeof(buf), "%s%u", name, GET_MINOR(dev->dev_no));
 
-struct device* device_get(dev_t dev_no)
-{
-    struct driver *driver;
-    unsigned int major = GET_MAJOR(dev_no);
-    unsigned int minor = GET_MINOR(dev_no);
-
-    driver = get_driver(major);
-    if (driver == NULL) {
-        return NULL;
-    }
-
-    return get_device(driver, minor);
+    return devfs_create_file(buf, dev->dev_no, cdev);
 }

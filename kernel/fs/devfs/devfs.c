@@ -21,24 +21,25 @@ int devfs_open(struct open_file* file, int oflag)
 {
     int ret;
     struct devfs_file *dev_file = GET_DEV_FILE(file);
-    struct driver *driver;
+    struct device_fops *ops;
+
 
     if (S_ISDIR(dev_file->file.mode))
         return 0;
 
-    driver = dev_file->dev->driver;
+    ops = dev_file->dev->ops;
     if (oflag & O_RDONLY || oflag & O_RDWR) {
-        if (!driver->device_read)
+        if (!ops->read)
             return -ENOTSUP;
     }
 
     if (oflag & O_WRONLY || oflag & O_RDWR) {
-        if (!driver->device_write)
+        if (!ops->write)
             return -ENOTSUP;
     }
 
-    if (driver->device_open) {
-        ret = driver->device_open(dev_file->dev, file, oflag);
+    if (ops->open) {
+        ret = ops->open(dev_file->dev, file);
         if (ret)
             return ret;
     }
@@ -49,10 +50,10 @@ int devfs_close(struct open_file* file)
 {
     int ret = 0;
     struct devfs_file *dev_file = GET_DEV_FILE(file);
-    struct driver *driver = dev_file->dev->driver;
+    struct device_fops *ops = dev_file->dev->ops;
 
-    if (driver->device_close)
-        ret = driver->device_close(dev_file->dev, file);
+    if (ops->close)
+        ret = ops->close(dev_file->dev, file);
 
     return ret;
 }
@@ -61,14 +62,14 @@ static ssize_t devfs_read(char* buf, size_t size, off_t offset, struct open_file
 {
     struct devfs_file *dev_file = GET_DEV_FILE(file);
 
-    return dev_file->dev->driver->device_read(dev_file->dev, buf, size, offset);
+    return dev_file->dev->ops->read(dev_file->dev, buf, size, offset, file);
 }
 
 static ssize_t devfs_write(const char* buf, size_t size, off_t offset, struct open_file* file)
 {
     struct devfs_file *dev_file = GET_DEV_FILE(file);
 
-    return dev_file->dev->driver->device_write(dev_file->dev, buf, size, offset);
+    return dev_file->dev->ops->write(dev_file->dev, buf, size, offset, file);
 }
 
 static int devfs_mount(struct superblock* super, void* data, ino_t* root_ptr)
@@ -120,7 +121,7 @@ int devfs_create_file(const char *name, dev_t dev_no, bool cdev)
         return -ENOMEM;
 
     init_pseudo_file(&file->file, (cdev) ? S_IFCHR : S_IFBLK, name);
-    file->dev_no = GET_DEV_NUM(dev->driver->major, dev->driver->next_minor);
+    file->dev_no = dev_no;
     file->dev = dev;
 
     ret = add_pseudo_file(&root, &file->file);

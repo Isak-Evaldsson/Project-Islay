@@ -10,22 +10,25 @@
 #include <uapi/errno.h>
 #include <utils.h>
 
-#include "../internals.h"
 #include "keyboard.h"
 
 #define LOG(fmt, ...) __LOG(1, "[kbd]", fmt, ##__VA_ARGS__)
+
+static DEFINE_LIST(kbd_list);
+static unsigned int kbd_major;
 
 void set_keyboard_leds(unsigned char leds)
 {
     struct keyboard   *kbd;
     struct device     *dev;
 
-    LIST_ITER_STRUCT(&keyboard_driver.devices, dev, struct device, list)
+    LIST_ITER_STRUCT(&kbd_list, kbd, struct keyboard, kbd_list_entry)
     {
-        kbd = GET_STRUCT(struct keyboard, dev, dev);
         kbd->set_leds(leds);
     }
 }
+// TODO: Implment read and wirte
+DEFINE_DEVICE_TYPE(kbd, NULL, NULL, NULL, NULL)
 
 int keyboard_init(struct keyboard *kbd)
 {
@@ -35,15 +38,12 @@ int keyboard_init(struct keyboard *kbd)
         return -EINVAL;
     }
 
-    ret = register_device(&keyboard_driver, &kbd->dev);
+    ret = DEVICE_TYPE_BIND_AND_CREATE_FILE(kbd, &kbd->dev, true);
     if (ret < 0) {
         return ret;
     }
 
+    list_add_last(&kbd_list, &kbd->kbd_list_entry);
     input_manager_init();
     return 0;
 }
-
-struct driver keyboard_driver = {
-    .name = "keyboard",
-};
