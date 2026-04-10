@@ -51,21 +51,6 @@ struct superblock {
     struct superblock* next;  // Used by the per fs mounts list
 };
 
-/*
-    Information about an open file
-
-    Is needed to a separate object and not stored with the task specific filet_table in order to
-    allow a future fork implementation to create child processes that inherit the parents open
-    files.
- */
-struct open_file {
-    int            oflags;     // Under which permissions is this file open
-    unsigned int   ref_count;  // How many process are referring to this object with their fd table
-    off_t          offset;     // What position within the file are we currently at
-    struct inode*  inode;      // Which file does the object correspond to
-    struct fs_ops* file_ops;   // Copy of inode->vfs_node->fs->fs_ops to speed up file accesses
-};
-
 /* The different operations a file system can implement. */
 struct fs_ops {
     // Returns -ERRNO or 0 on success, as well as filling in the root_ptr with the id of the root

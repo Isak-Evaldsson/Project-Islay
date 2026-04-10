@@ -20,11 +20,26 @@ static_assert(MAX_OPEN_GLOBAL >= MAX_OPEN_PER_PROC, "MAX_OPEN_GLOBAL less than M
 /* The primary data structure for all file-system objects */
 struct inode;
 
-/*  Information about an open file */
-struct open_file;
+/* The different operations a file system can implement. */
+struct fs_ops;
 
 /* Mount flags, controls how a fs should be mounted */
 #define MOUNT_READONLY 0x01
+
+/*
+    Information about an open file
+
+    Is needed to a separate object and not stored with the task specific filet_table in order to
+    allow a future fork implementation to create child processes that inherit the parents open
+    files.
+ */
+struct open_file {
+    int            oflags;     // Under which permissions is this file open
+    unsigned int   ref_count;  // How many process are referring to this object with their fd table
+    off_t          offset;     // What position within the file are we currently at
+    struct inode*  inode;      // Which file does the object correspond to
+    struct fs_ops* file_ops;   // Copy of inode->vfs_node->fs->fs_ops to speed up file accesses
+};
 
 /*
    Object representing a pseudo file, it can be used to build arbitrary file graphs, allowing for
@@ -34,7 +49,6 @@ struct pseudo_file {
     char   name[NAME_MAX];
     ino_t  inode;
     mode_t mode;
-    void*  data;
 
     struct pseudo_file* parent;
     struct pseudo_file* child;
