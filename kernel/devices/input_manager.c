@@ -10,8 +10,6 @@
 #include <uapi/errno.h>
 #include <utils.h>
 
-#include "internals.h"
-
 #define LOG(fmt, ...) __LOG(1, "[INPUT_MANAGER]", fmt, ##__VA_ARGS__)
 
 // Stores all currently registered input event subscribers

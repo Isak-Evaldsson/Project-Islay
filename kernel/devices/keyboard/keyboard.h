@@ -10,11 +10,13 @@
 
 #include <devices/device.h>
 #include <devices/input_manager.h>
+#include <list.h>
 #include <stdint.h>
 
 /* Object to store common data and functions needed by all keyboard drivers  */
 struct keyboard {
     struct device dev;
+    struct list_entry kbd_list_entry;
 
     // Callback to change the keyboard leds, the different bits within corresponds to leds
     // defined in enum keycode_lock_keys

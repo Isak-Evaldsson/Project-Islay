@@ -9,6 +9,7 @@
 
 #include <fs.h>
 #include <list.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <uapi/sys/types.h>
 
@@ -19,41 +20,59 @@
 #define GET_MINOR(dev_no)         ((dev_no) & 0xff)
 #define GET_MAJOR(dev_no)         (((dev_no) >> 8) & 0xff)
 
-/* Struct representing a single device instance belonging to a particular driver */
+/* Struct representing a single device instance */
 struct device {
-    unsigned int       minor;
-    struct driver*     driver;
-    void*              data;
-    struct list_entry  list;
+    // devfs data
+    dev_t dev_no;
+    struct device_fops *ops;
+    struct list_entry minor_list_entry;
+};
+
+/* File operations for devfs devices */
+struct device_fops {
+    ssize_t (*read)(struct device *dev, char* buf, size_t size, off_t offset,
+            struct open_file* file);
+    ssize_t (*write)(struct device *dev, const char* buf, size_t size, off_t offset,
+            struct open_file* file);
+    int (*open)(struct device* dev, struct open_file* file);
+    int (*close)(struct device* dev, struct open_file* file);
 };
 
 /*
-    Per driver object, stores both statical data (such as driver functions) as well as share data
-    for all devices controlled by this driver.
+ * Devices a major number and device operations with the supplied name
 */
-struct driver {
-    const char*  name;
-    unsigned int major;
-    size_t       next_minor;
-
-    // Driver functions
-    ssize_t (*device_read)(struct device* dev, char* buf, size_t size, off_t offset);
-    ssize_t (*device_write)(struct device* dev, const char* buf, size_t size, off_t offset);
-    int (*device_open)(struct device* dev, struct open_file* file, int oflag);
-    int (*device_close)(struct device* dev, struct open_file* file);
-
-    struct list devices;  // TODO: Have an array as well to make indexing fast?
-};
-
-/* Initialise the device/driver subsystem */
-void drivers_init();
-
-/* Device lookup based on dev_no, returns null if no devices exsit */
-struct device* device_get(dev_t dev_no);
+#define DEFINE_DEVICE_TYPE(name, ...)           \
+    static unsigned int name##_major;           \
+    static struct device_fops name##_ops = {    \
+        __VA_OPT__() __VA_ARGS__                \
+    }; 
 
 /*
-    Creates a device file within devfs for the specified device. Returns 0 on success, or -ERRNO on failure.
+ * Helper macro to bind and create a file for the give device and device type
 */
-int create_device_file(struct device* dev, bool cdev);
+#define DEVICE_TYPE_BIND_AND_CREATE_FILE(name, dev, cdev)       \
+    ({                                                          \
+        struct device *_dev = dev;                              \
+        _dev->ops = &name##_ops;                                \
+        _dev->dev_no = allocate_device_number(&name##_major);   \
+        create_device_file(_dev, #name, cdev);                  \ 
+     })
+
+/*
+ * Allocates a new device number for the major number stored in the supplied ptr,
+ * if major is 0, allocate an new major number as well.
+ *
+ * If out of numbers, or the major pointer is null, returns 0
+ */
+dev_t allocate_device_number(unsigned int *major_ptr);
+
+/* Device lookup based on dev_no, returns null if no device exists */
+struct device *device_get(dev_t dev_no);
+
+/*
+ * Creates a charater or block device file in devfs for the supplied device with the
+ * supplied name
+ */
+int create_device_file(struct device *dev, const char *name, bool cdev);
 
 #endif /* DEVICES_DEVICE_H */

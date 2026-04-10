@@ -25,7 +25,6 @@
     Object representing a specific ext mode buffer/device
 */
 struct text_mode_device {
-    struct device                 dev;
     struct text_mode_display_ops* ops;
 
     // Current state
@@ -66,8 +65,8 @@ void   text_mode_clear(struct text_mode_device* dev);
 /* Switch to the text mode display */
 void text_mode_set_active_display(struct text_mode_device* dev);
 
-/* Get the text mode display with the specifed minor number, or null if it does exits */
-struct text_mode_device* text_mode_get_display(size_t minor);
+/* Get the text mode display with the specifed index number, or null if it does exits */
+struct text_mode_device* text_mode_get_display(unsigned int index);
 
 /* How many text mode buffers are available to the system */
 size_t text_get_number_of_displays();
@@ -76,8 +75,5 @@ size_t text_get_number_of_displays();
 /* Creates vga based text mode devices. Returns 0 on success, -ERRNO on failure */
 int create_vga_text_display();
 #endif
-
-/* For driver registration */
-extern struct driver text_mode_display_driver;
 
 #endif /* DEVICES_DISPLAY_TEXT_MODE_DISPLAY_H */

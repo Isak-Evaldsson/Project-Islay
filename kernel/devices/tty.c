@@ -11,8 +11,8 @@
 #include <devices/tty.h>
 #include <memory/vmem_manager.h>
 #include <tasks/scheduler.h>
+#include <uapi/errno.h>
 
-#include "internals.h"
 #include "keyboard/keyboard.h"
 #include "keyboard/keymaps.h"
 
@@ -195,8 +195,9 @@ static int on_events_received(input_event_t event)
     return 0;
 }
 
-static int tty_open(struct device* dev, struct open_file* file, int oflag)
+static int tty_open(struct device *dev, struct open_file *file)
 {
+    int oflag = file->oflags;
     struct tty* tty = GET_STRUCT(struct tty, device, dev);
 
     if (oflag & O_WRONLY) {
@@ -221,7 +222,7 @@ static int tty_open(struct device* dev, struct open_file* file, int oflag)
     return 0;
 }
 
-static int tty_close(struct device* dev, struct open_file* file)
+static int tty_close(struct device *dev, struct open_file *file)
 {
     struct tty* tty = GET_STRUCT(struct tty, device, dev);
     kassert(tty->opened == file);
@@ -241,7 +242,8 @@ static int tty_close(struct device* dev, struct open_file* file)
     return 0;
 }
 
-static ssize_t tty_read(struct device* dev, char* buf, size_t size, off_t offset)
+static ssize_t tty_read(struct device *dev, char* buf, size_t size, off_t offset,
+        struct open_file *file)
 {
     (void)offset;  // cdev, so ignore offset
     int         read = 0;
@@ -275,7 +277,8 @@ static ssize_t tty_read(struct device* dev, char* buf, size_t size, off_t offset
     return read;
 }
 
-static ssize_t tty_write(struct device* dev, const char* buf, size_t size, off_t offset)
+static ssize_t tty_write(struct device *dev, const char* buf, size_t size, off_t offset,
+        struct open_file *file)
 {
     (void)offset;  // cdev, so ignore offset
     char        c;
@@ -297,25 +300,26 @@ static ssize_t tty_write(struct device* dev, const char* buf, size_t size, off_t
     return ret;
 }
 
+DEFINE_DEVICE_TYPE(tty,
+.read =     tty_read,
+.write =     tty_write,
+.open =     tty_open,
+.close =     tty_close
+)
+
 static int tty_init(size_t index)
 {
     int         ret;
     char        str[10];
     struct tty* tty_dev = tty_table + index;
 
-    tty_dev->text_mode_dev = text_mode_get_display(index + 1);
+    tty_dev->text_mode_dev = text_mode_get_display(index);
     if (!tty_dev->text_mode_dev) {
         return -ENODEV;
     }
 
     tty_dev->subscriber.on_events_received = on_events_received;
-
-    ret = register_device(&tty_driver, &tty_dev->device);
-    if (ret < 0) {
-        return ret;
-    }
-
-    ret = create_device_file(&tty_dev->device, true);
+    ret = DEVICE_TYPE_BIND_AND_CREATE_FILE(tty, &tty_dev->device, true);
     if (ret < 0) {
         return ret;
     }
@@ -351,12 +355,3 @@ int make_tty_devs()
     tty_switch(0);
     return 0;
 }
-
-/* When do we call register on this object, at first access? statically? on init? */
-struct driver tty_driver = {
-    .name         = "tty",
-    .device_read  = tty_read,
-    .device_open  = tty_open,
-    .device_write = tty_write,
-    .device_close = tty_close,
-};

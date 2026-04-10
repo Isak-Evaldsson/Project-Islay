@@ -23,7 +23,6 @@ ssp.o \
 boot/init.o \
 devices/tty.o \
 devices/device.o \
-devices/drivers.o \
 devices/display/text_mode_display.o \
 devices/input_manager.o \
 devices/keyboard/keyboard.o\
