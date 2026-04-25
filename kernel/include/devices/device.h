@@ -26,6 +26,13 @@ struct device {
     dev_t dev_no;
     struct device_fops *ops;
     struct list_entry minor_list_entry;
+
+    // Bus/driver managment
+    struct device *parent;
+    struct driver *driver;
+    struct bus *bus;
+    struct list_entry driver_list;
+    void *drv_data;
 };
 
 /* File operations for devfs devices */
