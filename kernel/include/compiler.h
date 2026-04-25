@@ -17,5 +17,11 @@
 #define IS_CONSTEXPR(expr) (__builtin_constant_p(expr))
 #define IS_SAME_TYPE(expr1, expr2) (__builtin_types_compatible_p(typeof(expr1), typeof(expr2)))
 
+#define GET_TYPE_OF_FIELD(object, field) typeof(((object *)NULL)->field)
+
+#define HAS_FIELD_OF_TYPE_AT_OFFSET(object, field_name,  field_type, field_offset)   \
+   ((IS_SAME_TYPE(GET_TYPE_OF_FIELD(object, field_name), field_type) &&                 \
+   offsetof(object, field_name) == field_offset))
+
 #define SECTION(sec) [[gnu::section(sec)]]
 #endif /* COMPILER_H */
