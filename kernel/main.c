@@ -7,6 +7,7 @@
 #include <arch/gdt.h>
 #include <arch/interrupts.h>
 #include <arch/serial.h>
+#include <devices/bus.h>
 #include <devices/device.h>
 #include <devices/tty.h>
 #include <fs.h>
@@ -25,6 +26,7 @@ void kernel_main(struct boot_data* boot_data)
     init_gdt();
     init_interrupts();
     scheduler_init();
+    init_buses();
     if (arch_initialise_static_devices() < 0) {
         kpanic("Failed to initialise static devices");
     }

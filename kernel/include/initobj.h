@@ -13,7 +13,9 @@ enum {
    /* Object type, assigns data->obj */
    INITOBJ_TYPE_TEST,
    INITOBJ_TYPE_FS,
-   INITOBJ_LAST_OBJ_TYPE = INITOBJ_TYPE_FS,
+   INITOBJ_TYPE_BUS,
+   INITOBJ_TYPE_DRIVER,
+   INITOBJ_LAST_OBJ_TYPE = INITOBJ_TYPE_DRIVER,
 
    /* Functioon type, assings data->fn */
    INITOBJ_TYPE_COUNT
