@@ -17,9 +17,6 @@
 
 #define FS_NAME_MAXLEN (127)
 
-
-void _register_fs(void *arg);
-
 #define DEFINE_FS(_name, _ops, _sflags) \
     static volatile struct fs fs_##_name = {  \
         .name         = #_name,               \
@@ -27,7 +24,7 @@ void _register_fs(void *arg);
         .static_flags = (_sflags),            \
         .next         = NULL,                 \
     };                                        \
-    DEFINE_INITOBJ(INITOBJ_TYPE_FS, _name, _register_fs, (struct fs*)&fs_##_name)
+    DEFINE_INITOBJ(INITOBJ_TYPE_FS, _name, &fs_##_name)
 
 /*  The primary data structure for all file-system objects */
 struct inode {
@@ -115,6 +112,16 @@ struct fs {
     struct fs*         next;
     struct superblock* mounts;  // List's all superblock mounted to this fs
 };
+
+/**
+ * Registers a file system for future mounting. The name of each registered file system is
+ * required to be unique and at least 3 characters.
+ * @param fs static file system data such as name, opts etc.
+ * @param static_flags mountflags that's always applied when mounting this particular fs, see
+ * mount_flags
+ * @return 0 on success, -EEXIST if there's already exists a file system with the same.
+ */
+int register_fs(struct fs* fs);
 
 /* The root vfs root inode, i.e. the root_inode of the rootfs superblock */
 extern struct inode* vfs_root;

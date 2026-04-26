@@ -30,11 +30,23 @@ static void fs_task_event_handler(int event, struct task *task)
     }
 }
 
+int _register_fs(void* arg)
+{
+    int ret;
+    struct fs *fs = arg;
+
+    ret = register_fs(fs);
+    if (ret) {
+        LOG("Failed to register '%s': %i", fs->name, ret);
+    }
+    return ret;
+}
+
 int fs_init(struct boot_data* boot_data)
 {
     int ret;
 
-    call_init_objects(INITOBJ_TYPE_FS);
+    call_init_objects(INITOBJ_TYPE_FS, _register_fs);
 
     // Mount initrd
     struct romfs_mount_data intird_mnt_data = {

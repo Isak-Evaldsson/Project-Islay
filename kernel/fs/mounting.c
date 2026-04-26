@@ -67,7 +67,7 @@ static int check_required_fs_ops(const struct fs_ops* ops, unsigned int static_f
  * mount_flags
  * @return 0 on success, -EEXIST if there's already exists a file system with the same.
  */
-static int register_fs(struct fs* fs)
+int register_fs(struct fs* fs)
 {
     size_t     len;
     struct fs *prev, *next;
@@ -101,19 +101,6 @@ static int register_fs(struct fs* fs)
     prev->next = fs;
     return 0;
 };
-
-void _register_fs(void* arg)
-{
-    int ret;
-    struct fs *fs = arg;
-
-    ret = register_fs(fs);
-    if (ret) {
-        LOG("Failed to register '%s': %i", fs->name, ret);
-    } else {
-        LOG("Succesfully registered '%s", fs->name);
-    }
-}
 
 bool is_registered_fs(const char *name)
 {
