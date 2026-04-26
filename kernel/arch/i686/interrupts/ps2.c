@@ -36,8 +36,12 @@
     while ((inb(PS2_CMD_PORT) & 0x02) != 0) \
         ;
 
-/* Marks successful initiation */
-static bool initialised = false;
+static enum ps2_state {
+    PS2_INITIAL_STATE,
+    PS2_KBD_DETECTED,
+    PS2_KBD_INITIALIZED,
+} ps2_state;
+static struct builtin_device ps2_dev;
 
 /*
     Intermidiate buffer for scancode, in order to make the top half irq as small as possible, the
@@ -181,9 +185,8 @@ void ps2_top_irq(struct interrupt_stack_state *state, uint32_t interrupt_number)
 
     unsigned char scancode = inb(PS2_DATA_PORT);
 
-    if (scancode == 0xaa && !initialised) {
-        initialised = true;
-        ps2_keyboard_register("i8042", ps2_send_kbd_data);
+    if (scancode == 0xaa && ps2_state == PS2_INITIAL_STATE) {
+        ps2_state = PS2_KBD_DETECTED;
         return;
     }
 
@@ -203,7 +206,19 @@ void ps2_top_irq(struct interrupt_stack_state *state, uint32_t interrupt_number)
 void ps2_bottom_irq(uint32_t irq_no)
 {
     (void)irq_no;
+    int ret;
     unsigned char scancode;
+    struct ps2_builtin_parameters params = {
+        .fn = ps2_send_kbd_data,
+        .name = "i8042",
+    };
+
+    if (ps2_state == PS2_KBD_DETECTED) {
+        ps2_state = PS2_KBD_INITIALIZED;
+        ret = builtin_add_device(&ps2_dev, "ps2", &params, sizeof(params));
+        if (ret)
+            kprintf("Failed to create ps2 keyboard: %i\n", ret);
+    }
 
     while (read_idx != write_idx) {
         scancode = scancode_buffer[read_idx];
@@ -211,6 +226,6 @@ void ps2_bottom_irq(uint32_t irq_no)
                              // otherwise the producer may overwrite the value before its read
         read_idx = (read_idx + 1) % SCAN_CODE_BUFF_SIZE;
 
-        ps2_keyboard_send(scancode);
+        ps2_keyboard_send(&ps2_dev, scancode);
     }
 }

@@ -6,11 +6,13 @@
    Inspired by Sebastian Raase's "avrterm-kbd" code (no licence, used with his permission)
 */
 #include <atomics.h>
+#include <devices/builtin_bus.h>
 #include <devices/input_manager.h>
 #include <devices/keyboard/ps2_keyboard.h>
 #include <ring_buffer.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <uapi/errno.h>
 #include <utils.h>
 
 #include "keyboard.h"
@@ -30,6 +32,7 @@
 #define PS2_RESPONSE_ACK    0xFA
 
 struct ps2_keyboard {
+    struct builtin_device *dev;
     struct keyboard kbd;
     char*           name;
 
@@ -102,29 +105,28 @@ static const uint16_t set1_extended_to_keycode[] = {
     // clang-format on
 };
 
-/* TODO: Allow multiple keyboard support */
-static struct ps2_keyboard kbd;
-
-void ps2_send_command(unsigned char data)
+void ps2_send_command(struct ps2_keyboard *kbd, unsigned char data)
 {
-    if (ring_buff_full(kbd.cmd_buffer)) {
+    if (ring_buff_full(kbd->cmd_buffer)) {
         LOG("command buffer full, ignoring sent command (cmd: %u)", data);
         return;
     }
 
     // Store data in case we need to re-send
-    ring_buffer_push(kbd.cmd_buffer, data);
+    ring_buffer_push(kbd->cmd_buffer, data);
 
     // If there already was data in the queue there's no need to starting sending,
     // the data will be processed on the next ACK
-    if (ring_buff_size(kbd.cmd_buffer) == 1) {
-        kbd.send_cmd(data);
+    if (ring_buff_size(kbd->cmd_buffer) == 1) {
+        kbd->send_cmd(data);
     }
 }
 
-static void ps2_keyboard_set_leds(unsigned char leds)
+static void ps2_keyboard_set_leds(struct keyboard *kbd, unsigned char leds)
 {
     unsigned char led_bits = 0;
+
+    struct ps2_keyboard *ps2_kbd = GET_STRUCT(struct ps2_keyboard, kbd, kbd);
 
     if (leds & (1 << KEYCODE_CAPS_LOCK)) {
         SET_BIT(led_bits, 2);
@@ -138,56 +140,35 @@ static void ps2_keyboard_set_leds(unsigned char leds)
         SET_BIT(led_bits, 0);
     }
 
-    ps2_send_command(PS2_CMD_SET_LEDS);
-    ps2_send_command(led_bits);
+    ps2_send_command(ps2_kbd, PS2_CMD_SET_LEDS);
+    ps2_send_command(ps2_kbd, led_bits);
 }
 
-void ps2_keyboard_register(char* device_name, keyboard_send_cmd_t fn)
-{
-    kassert(fn != NULL);
-
-    // Check if trying to register multiple keyboards
-    if (kbd.send_cmd != NULL) {
-        kpanic(
-            "PS2 driver currently not supporting multiple ps2 keyboard devices\nRegistering "
-            "%s, "
-            "but %s previously registered",
-            device_name, kbd.name);
-    }
-
-    ring_buff_init(kbd.cmd_buffer);
-
-    kbd.send_cmd     = fn;
-    kbd.kbd.set_leds = ps2_keyboard_set_leds;
-    kassert(keyboard_init(&kbd.kbd) == 0);
-
-    kprintf("PS/2 keyboard driver: successfully registered %s\n", device_name);
-}
-
-void ps2_keyboard_send(unsigned char scancode)
+void ps2_keyboard_send(struct builtin_device *dev, unsigned char scancode)
 {
     uint8_t cmd;
+    struct ps2_keyboard *kbd = GET_DRV_DATA(dev);
 
     // Keyboard state machine
     // clang-format off
-    switch (kbd.state) {
+    switch (kbd->state) {
         case 0:  // Initial state, regular keys
             switch (scancode) {
-            case 0xE0: kbd.state = 1; break; // Extended keys and print screen
-            case 0xE1: kbd.state = 4; break; // Pause
+            case 0xE0: kbd->state = 1; break; // Extended keys and print screen
+            case 0xE1: kbd->state = 4; break; // Pause
 			case PS2_RESPONSE_ACK:
-                ring_buffer_pop(kbd.cmd_buffer, cmd);
+                ring_buffer_pop(kbd->cmd_buffer, cmd);
 
                 // Send next command if available
-                if(!ring_buff_empty(kbd.cmd_buffer)) {
-                    cmd = ring_buff_first(kbd.cmd_buffer);
-                    kbd.send_cmd(cmd);
+                if(!ring_buff_empty(kbd->cmd_buffer)) {
+                    cmd = ring_buff_first(kbd->cmd_buffer);
+                    kbd->send_cmd(cmd);
                 }
             break;
 			case PS2_RESPONSE_RESEND: 
-                if (!ring_buff_empty(kbd.cmd_buffer)) {
-                    cmd = ring_buff_first(kbd.cmd_buffer);
-                    kbd.send_cmd(cmd);
+                if (!ring_buff_empty(kbd->cmd_buffer)) {
+                    cmd = ring_buff_first(kbd->cmd_buffer);
+                    kbd->send_cmd(cmd);
                 }
             break;
             default: // Regular key
@@ -196,40 +177,77 @@ void ps2_keyboard_send(unsigned char scancode)
                 } else if (scancode >= 0x80 && scancode <= 0xD7) {
                     keyboard_send_key(set1_to_keycode[scancode - 0x80], true);
                 }
-                kbd.state = 0; break;
+                kbd->state = 0; break;
             }
             break;
         case 1: // Extended keys, media, apci, etc.
             switch (scancode) {
-            case 0x2A: kbd.state = 2; break; // Print screen pressed: 0xE0, 0x2A, 0xE0, 0x37
-            case 0xB7: kbd.state = 2; break; // Print screen released: 0xE0, 0xB7, 0xE0, 0xAA
+            case 0x2A: kbd->state = 2; break; // Print screen pressed: 0xE0, 0x2A, 0xE0, 0x37
+            case 0xB7: kbd->state = 2; break; // Print screen released: 0xE0, 0xB7, 0xE0, 0xAA
             default: 
                 if (scancode >= 0x10 && scancode <= 0x6D) {
                     keyboard_send_key(set1_extended_to_keycode[scancode - 0x10], false);
                 } else if (scancode >= 0x90 && scancode <= 0xED) {
                     keyboard_send_key(set1_extended_to_keycode[scancode - 0x90], true);
                 }
-                kbd.state = 0; break; 
+                kbd->state = 0; break;
             }
             break;
-        case 2: kbd.state = (scancode == 0xE0 ? 3 : 0); break;
+        case 2: kbd->state = (scancode == 0xE0 ? 3 : 0); break;
         case 3:
             if (scancode == 0x37 || scancode == 0xAA) {
                 keyboard_send_key(KEYCODE_RKEY(KEY_PRTSC), scancode == 0xAA);
             }
-            kbd.state = 0; break; 
+            kbd->state = 0; break;
         // Pause/Break pressed (has no pressed): 0xE1, 0x1D, 0x45, 0xE1, 0x9D, 0xC5 
-        case 4: kbd.state = (scancode == 0x1D ? 5 : 0); break;
-        case 5: kbd.state = (scancode == 0x45 ? 6 : 0); break;
-        case 6: kbd.state = (scancode == 0xE1 ? 7 : 0); break;
-        case 7: kbd.state = (scancode == 0x9D ? 8 : 0); break;
+        case 4: kbd->state = (scancode == 0x1D ? 5 : 0); break;
+        case 5: kbd->state = (scancode == 0x45 ? 6 : 0); break;
+        case 6: kbd->state = (scancode == 0xE1 ? 7 : 0); break;
+        case 7: kbd->state = (scancode == 0x9D ? 8 : 0); break;
         case 9:
             if (scancode == 0xC5) {
                 keyboard_send_key(KEYCODE_RKEY(KEY_PAUSE), true);
             }
-            kbd.state = 0; break;
+            kbd->state = 0; break;
         default:
-            kpanic("PS2 Driver reaching undefined state %u\n", kbd.state);
+            kpanic("PS2 Driver reaching undefined state %u\n", kbd->state);
     }
     // clang-format on
 }
+
+int ps2_keyboard_attach(struct builtin_device *dev)
+{
+    int ret;
+    struct ps2_keyboard *kbd;
+    struct ps2_builtin_parameters *params;
+
+    params = dev->data_ptr;
+    if (!params->fn || EMPTY_STR(params->name))
+        return -EINVAL;
+
+    kbd = GET_DRV_DATA(dev);
+
+    ring_buff_init(kbd->cmd_buffer);
+    kbd->send_cmd = params->fn;
+    kbd->kbd.set_leds = ps2_keyboard_set_leds;
+
+    ret = keyboard_init(&kbd->kbd, builtin_to_device(dev));
+    if (ret) {
+        kfree(kbd);
+        return ret;
+    }
+
+    LOG("successfully registered %s\n", params->name);
+    return 0;
+}
+
+int ps2_keyboard_remove(struct builtin_device *dev)
+{
+    struct ps2_keyboard *kbd = GET_DRV_DATA(dev);
+
+    keyboard_remove(&kbd->kbd);
+    return 0;
+}
+
+DEFINE_DRIVER(builtin, ps2, ps2_keyboard_attach, ps2_keyboard_remove,
+        sizeof(struct ps2_keyboard))

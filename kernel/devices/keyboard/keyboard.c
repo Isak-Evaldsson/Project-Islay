@@ -24,13 +24,13 @@ void set_keyboard_leds(unsigned char leds)
 
     LIST_ITER_STRUCT(&kbd_list, kbd, struct keyboard, kbd_list_entry)
     {
-        kbd->set_leds(leds);
+        kbd->set_leds(kbd, leds);
     }
 }
 // TODO: Implment read and wirte
 DEFINE_DEVICE_TYPE(kbd, NULL, NULL, NULL, NULL)
 
-int keyboard_init(struct keyboard *kbd)
+int keyboard_init(struct keyboard *kbd, struct device *dev)
 {
     int ret;
 
@@ -38,7 +38,7 @@ int keyboard_init(struct keyboard *kbd)
         return -EINVAL;
     }
 
-    ret = DEVICE_TYPE_BIND_AND_CREATE_FILE(kbd, &kbd->dev, true);
+    ret = DEVICE_TYPE_BIND_AND_CREATE_FILE(kbd, dev, true);
     if (ret < 0) {
         return ret;
     }
@@ -46,4 +46,10 @@ int keyboard_init(struct keyboard *kbd)
     list_add_last(&kbd_list, &kbd->kbd_list_entry);
     input_manager_init();
     return 0;
+}
+
+void keyboard_remove(struct keyboard *kbd)
+{
+    list_entry_remove(&kbd->kbd_list_entry);
+    kpanic("Handle device removal!\n");
 }
