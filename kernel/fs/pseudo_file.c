@@ -2,6 +2,8 @@
 
 #include "fs-internals.h"
 
+// TODO: Lock to serialize all pseudofile ops...
+
 /* Connects a file to its directory file. Returns 0 on success, else -ERRNO */
 int add_pseudo_file(struct pseudo_file* dir, struct pseudo_file* file)
 {
@@ -14,6 +16,8 @@ int add_pseudo_file(struct pseudo_file* dir, struct pseudo_file* file)
     dir->child    = file;
     return 0;
 }
+
+// TODO: removal...
 
 /* Ensure all the fields in the pseudo file to be properly initalized */
 void init_pseudo_file(struct pseudo_file* file, mode_t mode, const char* name)
