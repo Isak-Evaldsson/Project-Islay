@@ -15,16 +15,15 @@
 
 /* Object to store common data and functions needed by all keyboard drivers  */
 struct keyboard {
-    struct device dev;
     struct list_entry kbd_list_entry;
 
     // Callback to change the keyboard leds, the different bits within corresponds to leds
     // defined in enum keycode_lock_keys
-    void (*set_leds)(unsigned char);
+    void (*set_leds)(struct keyboard *kbd, unsigned char);
 };
 
 /* Send keycodes received by the keyboard and pass then further up the input stack */
-void inline keyboard_send_key(uint16_t keycode, bool released)
+inline void keyboard_send_key(uint16_t keycode, bool released)
 {
     input_event_t event;
     event.keycode = ((released & 0x01) << 15) | keycode;
@@ -32,7 +31,10 @@ void inline keyboard_send_key(uint16_t keycode, bool released)
 }
 
 /* Initialise the keyboard object. Return 0 on success and -ERRNO on failure */
-int keyboard_init(struct keyboard *kbd);
+int keyboard_init(struct keyboard *kbd, struct device *dev);
+
+/* Remove keyboard device */
+void keyboard_remove(struct keyboard *kbd);
 
 /* Set keyboard leds for all keyboards */
 void set_keyboard_leds(unsigned char leds);

@@ -6,6 +6,8 @@
 */
 #ifndef DEVICES_KEYBOARD_PS2_KEYBOARD_H
 #define DEVICES_KEYBOARD_PS2_KEYBOARD_H
+#include <devices/builtin_bus.h>
+
 /*
     Interface for a generic ps2 driver, allowing different device/arch specific implementations
 */
@@ -13,15 +15,15 @@
 // Callback for sending back data to the keyboard
 typedef void (*keyboard_send_cmd_t)(unsigned char);
 
-/*
-    Register a ps2 device, must provide a device and callback allowing the driver to send data back
-    to the keyboard.
-*/
-void ps2_keyboard_register(char *device_name, keyboard_send_cmd_t fn);
+/* Builtin parameters required when creating a ps2 device */
+struct ps2_builtin_parameters {
+    char* name;
+    keyboard_send_cmd_t fn;
+};
 
 /*
     Send data from ps2 device, assumes the sender to use scan code set 1
 */
-void ps2_keyboard_send(unsigned char scancode);
+void ps2_keyboard_send(struct builtin_device *dev, unsigned char scancode);
 
 #endif /* DEVICES_KEYBOARD_PS2_KEYBOARD_H */
