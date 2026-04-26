@@ -1,4 +1,5 @@
 #include <devices/bus.h>
+#include <devices/builtin_bus.h>
 #include <tasks/locking.h>
 #include <uapi/errno.h>
 #include <initobj.h>
@@ -165,4 +166,6 @@ void init_buses()
     kassert(!call_init_objects(INITOBJ_TYPE_BUS, register_bus));
     kassert(!call_init_objects(INITOBJ_TYPE_DRIVER, register_driver));
     atomic_store(&buses_initalised, true);
+
+    builtin_bus_init();
 }

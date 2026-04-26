@@ -21,6 +21,7 @@ main.o \
 kshell.o \
 ssp.o \
 boot/init.o \
+devices/builtin_bus.o \
 devices/bus.o \
 devices/tty.o \
 devices/device.o \
