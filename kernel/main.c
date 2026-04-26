@@ -9,7 +9,6 @@
 #include <arch/serial.h>
 #include <devices/bus.h>
 #include <devices/device.h>
-#include <devices/tty.h>
 #include <fs.h>
 #include <memory/page_frame_manager.h>
 #include <tasks/scheduler.h>
@@ -30,8 +29,6 @@ void kernel_main(struct boot_data* boot_data)
     if (arch_initialise_static_devices() < 0) {
         kpanic("Failed to initialise static devices");
     }
-
-    kprintf("make console: %i\n", make_tty_devs());
 
     kprintf("Kernel successfully booted at vaddr 0xE0100000 (3.5 GiB + 1 MiB)\n\n");
 

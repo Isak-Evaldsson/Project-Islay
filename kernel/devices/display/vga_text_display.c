@@ -5,6 +5,7 @@
    Copyright (C) 2025 Isak Evaldsson
 */
 #include <arch/i686/io.h>
+#include <devices/builtin_bus.h>
 #include <devices/display/text_mode_display.h>
 #include <utils.h>
 
@@ -27,7 +28,12 @@
 
 #define N_VGA_BUFFERS (8)
 
-static struct text_mode_device vga_devices[N_VGA_BUFFERS];
+struct vga_text_device {
+    struct text_mode_device text_mode_dev;
+    struct builtin_device dev;
+};
+
+static struct vga_text_device vga_devices[N_VGA_BUFFERS];
 
 static void write_crtc_reg(uint8_t index, uint16_t value)
 {
@@ -57,19 +63,22 @@ static struct text_mode_display_ops vga_text_ops = {
 int create_vga_text_display()
 {
     int                      ret;
-    struct text_mode_device *device;
-    log("%u", sizeof(vga_text_ops));
+    struct vga_text_device *device;
 
     for (size_t i = 0; i < N_VGA_BUFFERS; i++) {
         device = vga_devices + i;
+        device->text_mode_dev.buffer_start = i * TEXT_MODE_COLS * TEXT_MODE_ROWS;
+        device->text_mode_dev.buffer_addr  =
+                (uint16_t *)(VGA_BUFF_ADDR + device->text_mode_dev.buffer_start * 2);
 
-        device->buffer_start = i * TEXT_MODE_COLS * TEXT_MODE_ROWS;
-        device->buffer_addr  = (uint16_t *)(VGA_BUFF_ADDR + device->buffer_start * 2);
-
-        ret = init_text_mode_dev(&vga_text_ops, device);
+        ret = init_text_mode_dev(&vga_text_ops, &device->text_mode_dev);
         if (ret < 0) {
             return ret;
         }
+
+        ret = builtin_add_device(&device->dev, "tty", &device, sizeof(device));
+        if (ret)
+            return ret;
     }
     return 0;
 }

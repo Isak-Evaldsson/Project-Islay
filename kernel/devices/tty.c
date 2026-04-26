@@ -6,9 +6,9 @@
 */
 
 #include <arch/paging.h>
+#include <devices/builtin_bus.h>
 #include <devices/display/text_mode_display.h>
 #include <devices/input_manager.h>
-#include <devices/tty.h>
 #include <memory/vmem_manager.h>
 #include <tasks/scheduler.h>
 #include <uapi/errno.h>
@@ -21,7 +21,6 @@
 #define LOG(fmt, ...) __LOG(1, "[TTY]", fmt, ##__VA_ARGS__)
 
 struct tty {
-    struct device            device;
     struct text_mode_device* text_mode_dev;
     struct input_subscriber  subscriber;
     unsigned char            mode;
@@ -52,8 +51,11 @@ struct tty {
     uint8_t kbd_led_state;
 };
 
+#define DEVICE_TO_TTY(dev) GET_DRV_DATA((struct builtin_device *)dev)
+
+// TODO: Better to replace with a list, but how does do switching then?
 #define MAX_TTYS 8
-static struct tty  tty_table[MAX_TTYS];
+static struct tty*  tty_table[MAX_TTYS];
 static size_t      num_ttys;
 static struct tty* current_tty;
 
@@ -69,7 +71,7 @@ static void tty_switch(size_t index)
         input_manger_unsubscribe(&old->subscriber);
     }
 
-    current_tty = tty_table + index;
+    current_tty = tty_table[index];
     input_manger_subscribe(&current_tty->subscriber);  // TODO: Error check...
     set_keyboard_leds(current_tty->kbd_led_state);
     text_mode_set_active_display(current_tty->text_mode_dev);
@@ -198,7 +200,7 @@ static int on_events_received(input_event_t event)
 static int tty_open(struct device *dev, struct open_file *file)
 {
     int oflag = file->oflags;
-    struct tty* tty = GET_STRUCT(struct tty, device, dev);
+    struct tty* tty = DEVICE_TO_TTY(dev);
 
     if (oflag & O_WRONLY) {
         return 0;  // Allow multiple writers
@@ -224,7 +226,7 @@ static int tty_open(struct device *dev, struct open_file *file)
 
 static int tty_close(struct device *dev, struct open_file *file)
 {
-    struct tty* tty = GET_STRUCT(struct tty, device, dev);
+    struct tty* tty = DEVICE_TO_TTY(dev);
     kassert(tty->opened == file);
 
     if (tty->waiting_proc) {
@@ -247,7 +249,7 @@ static ssize_t tty_read(struct device *dev, char* buf, size_t size, off_t offset
 {
     (void)offset;  // cdev, so ignore offset
     int         read = 0;
-    struct tty* tty  = GET_STRUCT(struct tty, device, dev);
+    struct tty* tty  = DEVICE_TO_TTY(dev);
 
     // Only block in canonical mode
     if (tty->mode & TTY_MODE_CANONICAL) {
@@ -284,7 +286,7 @@ static ssize_t tty_write(struct device *dev, const char* buf, size_t size, off_t
     char        c;
     ssize_t     ret;
     size_t      line_len, line_idx;
-    struct tty* tty = GET_STRUCT(struct tty, device, dev);
+    struct tty* tty = DEVICE_TO_TTY(dev);
 
     // To ensure that the currently written line always closets to the cursor, we need to re-move
     // the echoing before wring the data, and the re-add again after the writing is done.
@@ -301,25 +303,27 @@ static ssize_t tty_write(struct device *dev, const char* buf, size_t size, off_t
 }
 
 DEFINE_DEVICE_TYPE(tty,
-.read =     tty_read,
-.write =     tty_write,
-.open =     tty_open,
-.close =     tty_close
+    .read = tty_read,
+    .write = tty_write,
+    .open = tty_open,
+    .close = tty_close
 )
 
-static int tty_init(size_t index)
+int tty_attach(struct builtin_device *dev)
 {
-    int         ret;
-    char        str[10];
-    struct tty* tty_dev = tty_table + index;
+    int ret;
+    struct tty *tty_dev = GET_DRV_DATA(dev);
 
-    tty_dev->text_mode_dev = text_mode_get_display(index);
+    if (num_ttys == MAX_TTYS)
+        return -ENOMEM;
+
+    tty_dev->text_mode_dev = *((struct text_mode_device**)dev->data_ptr);
     if (!tty_dev->text_mode_dev) {
         return -ENODEV;
     }
 
     tty_dev->subscriber.on_events_received = on_events_received;
-    ret = DEVICE_TYPE_BIND_AND_CREATE_FILE(tty, &tty_dev->device, true);
+    ret = DEVICE_TYPE_BIND_AND_CREATE_FILE(tty, builtin_to_device(dev), true);
     if (ret < 0) {
         return ret;
     }
@@ -331,27 +335,19 @@ static int tty_init(size_t index)
 
     // Run in canonical mode by default
     tty_dev->mode = TTY_MODE_CANONICAL;
+    tty_table[num_ttys++] = tty_dev;
+    if (num_ttys == 1)
+        tty_switch(0);
+
     return 0;
 }
 
-int make_tty_devs()
+int tty_remove(struct builtin_device *dev)
 {
-    int ret;
-
-    // TODO: Query for available keyboard...
-
-    num_ttys = MIN(text_get_number_of_displays(), MAX_TTYS);
-    if (!num_ttys) {
-        return -ENODEV;
-    }
-
-    for (size_t i = 0; i < num_ttys; i++) {
-        ret = tty_init(i);
-        if (ret < 0) {
-            return ret;
-        }
-    }
-
-    tty_switch(0);
+    // TODO...
+    (void)dev;
+    kpanic("Handle device removal!\n");
     return 0;
 }
+
+DEFINE_DRIVER(builtin, tty, tty_attach, tty_remove, sizeof(struct tty))

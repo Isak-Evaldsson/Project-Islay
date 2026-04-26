@@ -47,12 +47,12 @@ struct device_fops {
 
 /*
  * Devices a major number and device operations with the supplied name
-*/
+ */
 #define DEFINE_DEVICE_TYPE(name, ...)           \
     static unsigned int name##_major;           \
     static struct device_fops name##_ops = {    \
         __VA_OPT__() __VA_ARGS__                \
-    }; 
+    };
 
 /*
  * Helper macro to bind and create a file for the give device and device type
@@ -62,7 +62,7 @@ struct device_fops {
         struct device *_dev = dev;                              \
         _dev->ops = &name##_ops;                                \
         _dev->dev_no = allocate_device_number(&name##_major);   \
-        create_device_file(_dev, #name, cdev);                  \ 
+        create_device_file(_dev, #name, cdev);                  \
      })
 
 /*
