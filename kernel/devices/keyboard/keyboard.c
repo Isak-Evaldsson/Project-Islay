@@ -18,11 +18,11 @@
 void set_keyboard_leds(unsigned char leds)
 {
     struct keyboard   *kbd;
-    struct list_entry *entry;
+    struct device     *dev;
 
-    LIST_ITER(&keyboard_driver.devices, entry)
+    LIST_ITER_STRUCT(&keyboard_driver.devices, dev, struct device, list)
     {
-        kbd = GET_STRUCT(struct keyboard, dev, LIST_ENTRY_TO_DEV(entry));
+        kbd = GET_STRUCT(struct keyboard, dev, dev);
         kbd->set_leds(leds);
     }
 }

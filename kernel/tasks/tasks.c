@@ -139,7 +139,6 @@ task_t* create_root_task()
 task_t* get_task(tid_t tid)
 {
     task_t*            task;
-    struct list_entry* entry;
     uint32_t flags;
 
     if (tid == 0) {
@@ -147,9 +146,8 @@ task_t* get_task(tid_t tid)
     }
 
     spinlock_lock(&task_lock, &flags);
-    LIST_ITER(&task_list, entry)
+    LIST_ITER_STRUCT(&task_list, task, task_t, task_list_entry)
     {
-        task = GET_STRUCT(task_t, task_list_entry, entry);
         if (task->tid == tid) {
             // Only return non-killed tasks
             if (!IS_TERMINATED(task)) {
@@ -207,7 +205,6 @@ int register_task_event_handler(task_event_handler handler, int mask)
 {
     int i, ret = 0;
     task_t *task;
-    struct list_entry *entry;
     uint32_t flags;
        
     spinlock_lock(&task_lock, &flags);
@@ -225,8 +222,7 @@ int register_task_event_handler(task_event_handler handler, int mask)
     task_handlers[i].mask = mask;
 
     if (mask & TASK_EVENT_CREATED) {
-        LIST_ITER(&task_list, entry) {
-            task = GET_STRUCT(task_t, task_list_entry, entry);
+        LIST_ITER_STRUCT(&task_list, task, task_t, task_list_entry) {
             if (!IS_TERMINATED(task))
                 handler(TASK_EVENT_CREATED, task);
         }
