@@ -10,12 +10,10 @@
 
 struct device *get_device(struct driver *driver, unsigned int minor)
 {
-    struct list_entry *entry;
     struct device     *device;
 
-    LIST_ITER(&driver->devices, entry)
+    LIST_ITER_STRUCT(&driver->devices, device, struct device, list)
     {
-        device = LIST_ENTRY_TO_DEV(entry);
         if (device->minor == minor) {
             return device;
         }

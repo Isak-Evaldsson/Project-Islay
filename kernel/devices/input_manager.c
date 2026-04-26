@@ -30,7 +30,7 @@ void input_manager_init()
 /* Allows the input driver to send an input event */
 void input_manager_send_event(input_event_t event)
 {
-    struct list_entry* entry;
+    struct input_subscriber *subscriber;
     uint16_t           keycode = event.keycode;
     uint8_t            key     = KEYCODE_GET_KEY(event.keycode);
 
@@ -40,10 +40,8 @@ void input_manager_send_event(input_event_t event)
     }
 
     // TODO: fix clang format, curly bracket should be on the same line
-    LIST_ITER(&subscriber_queue, entry)
+    LIST_ITER_STRUCT(&subscriber_queue, subscriber, struct input_subscriber, list)
     {
-        struct input_subscriber* subscriber = GET_STRUCT(struct input_subscriber, list, entry);
-
         // How to handle errors?
         subscriber->on_events_received(event);
     }

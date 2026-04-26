@@ -255,7 +255,6 @@ static void sleep_expiry_callback(uint64_t time_since_boot_ns, uint64_t timestam
 
     uint32_t           flags;
     task_t            *task;
-    struct list_entry *entry;
 
     (void)timestamp_ns;  // silence unused warning
     spinlock_lock(&scheduler_lock, &flags);
@@ -263,9 +262,8 @@ static void sleep_expiry_callback(uint64_t time_since_boot_ns, uint64_t timestam
     // Reset first wakeup flag
     scheduler_earliest_wakeup = UINT64_MAX;
 
-    LIST_ITER_SAFE_REMOVAL(&sleep_queue.list, entry)
+    LIST_ITER_STRUCT_SAFE_REMOVAL(&sleep_queue.list, task, task_t, task_queue_entry)
     {
-        task = GET_STRUCT(task_t, task_queue_entry, entry);
         if (task->sleep_expiry <= time_since_boot_ns) {
             LOG("Wake-up task %x from sleep at %u", task, time_since_boot_ns);
             task_remove_from_current_task_queue(task);
@@ -407,7 +405,6 @@ static void cleanup_thread()
 {
     uint32_t           flags;
     task_t            *task;
-    struct list_entry *entry;
     bool               empty;
 
     // TODO: Re-write to handle refcount...
@@ -415,10 +412,8 @@ static void cleanup_thread()
     while (true) {
         LOG("wakeup");
         spinlock_lock(&scheduler_lock, &flags);
-        LIST_ITER_SAFE_REMOVAL(&termination_queue, entry)
+        LIST_ITER_STRUCT_SAFE_REMOVAL(&termination_queue, task, task_t, task_queue_entry)
         {
-            task = GET_STRUCT(task_t, task_queue_entry, entry);
-
             kassert(IS_TERMINATED(task) && !task->current_task_queue);
             if (atomic_load(&task->ref_count) == 0) {
                 LOG("Cleanup terminated task %x", task);

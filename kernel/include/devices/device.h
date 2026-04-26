@@ -45,10 +45,6 @@ struct driver {
     struct list devices;  // TODO: Have an array as well to make indexing fast?
 };
 
-/* Convert a pointer for a list entry embedded within a device to device object itself, useful when
- * iterating over the device list within a driver */
-#define LIST_ENTRY_TO_DEV(entry_ptr) GET_STRUCT(struct device, list, entry_ptr)
-
 /* Initialise the device/driver subsystem */
 void drivers_init();
 

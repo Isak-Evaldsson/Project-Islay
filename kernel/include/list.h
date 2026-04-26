@@ -75,6 +75,17 @@ struct list {
     for (struct list_entry* _next                  = (entry_ptr = (list_ptr)->head.next)->next; \
          entry_ptr != &(list_ptr)->head; entry_ptr = _next, _next = _next->next)
 
+/* List iteration macros for list entries embedded into structs */
+#define LIST_ITER_STRUCT(list_ptr, struct_ptr, type, field)             \
+    for (struct_ptr = GET_STRUCT(type, field, (list_ptr)->head.next);   \
+        &struct_ptr->field != &(list_ptr)->head;                        \
+        struct_ptr = GET_STRUCT(type, field, struct_ptr->field.next))
+
+#define LIST_ITER_STRUCT_SAFE_REMOVAL(list_ptr, struct_ptr, type, field)                    \
+    for (struct list_entry* _next =                                                         \
+                (struct_ptr = GET_STRUCT(type, field, (list_ptr)->head.next))->field.next;  \
+        &struct_ptr->field != &(list_ptr)->head;                                            \
+        struct_ptr = GET_STRUCT(type, field, _next), _next = _next->next)
 /*
     High level list operations, designed to be easy to use and safe
  */
