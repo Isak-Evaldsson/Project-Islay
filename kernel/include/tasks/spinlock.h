@@ -20,6 +20,12 @@ struct spinlock {
     unsigned int flag;
 };
 
+/* Initialise spinlock */
+static inline void spinlock_init(struct spinlock *spinlock)
+{
+	*spinlock = (struct spinlock)SPINLOCK_INIT();
+}
+
 /* Lock spinlock */
 void spinlock_lock(struct spinlock *spinlock, uint32_t *irqflags);
 
