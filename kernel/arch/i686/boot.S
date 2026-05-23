@@ -131,33 +131,16 @@ end:
 	lea kernel_start, %ecx
 	jmp *%ecx
 
-
-# Implementing function defined in arch/boot.h
+# Setup and launch kernel C code
 .section .text
-.global unmap_identity_mapping
-unmap_identity_mapping:
-	
-	# Loop removing the < 1 MiB section from boot_page_table1
-	movl $boot_page_table1, %edi # Table start address (no need to remove higher-half addr since paging is now enabled)
-loop:
-	movl $0, (%edi)  # clear table entry
-	addl $4, %edi    # Increment page table address by 4 B (each entry is 32 bits)
-	cmpl $(boot_page_table1 + 256 * 4), %edi # < 1 MiB covers the first 256 entries (0-255)
-	jl loop
-
-	# Unmap the identity mapping as it is now unnecessary. 
+kernel_start:
+    # At this point, paging is fully set up and enabled,
+	# so we can get rid of the identity mapping
 	movl $0, boot_page_directory + 0
 
 	# Reload cr3 to force a TLB flush so the changes to take effect.
  	movl %cr3, %ecx
 	movl %ecx, %cr3
-	ret
-
-
-# Setup and launch kernel C code
-.section .text
-kernel_start:
-    # At this point, paging is fully set up and enabled.
 
     # sets correct stack pointer (x86 stack grows downward)
     mov $stack_top, %esp

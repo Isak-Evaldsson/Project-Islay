@@ -11,10 +11,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* Each architecture is required to implement an assembly routine unmapping the identity mapping
- * that was setup as a part of the higher-half booting procedure */
-void unmap_identity_mapping();
-
 /*
     Kernel linker script is required to expose a start and end address for the kernel
 */
