@@ -64,14 +64,11 @@ bss_loop:
 	#       code as well?
 	movl $(boot_page_table1 - HIGHER_HALF_ADDR), %edi
 	
-    # First physical address to map is address 0.
-	# TODO: Start at the first kernel page instead. Alternatively map the first
-	#       1 MiB as it can be generally useful, and there's no need to
-	#       specially map the VGA buffer.	
-    movl $0, %esi
-
     # Page table setup loop	
 table_loop:
+	# Don't map initial 1 MiB
+	cmpl $_kernel_start, %esi
+	jl skip
 
     # Once the full kernel is mapped, exit loop
     cmpl $(_kernel_end - HIGHER_HALF_ADDR), %esi
