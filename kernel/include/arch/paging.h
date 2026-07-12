@@ -8,6 +8,7 @@
 #define ARCH_PAGING_H
 #include <arch/arch.h>
 #include <arch/boot.h>
+#include <utils.h>
 
 /* Architecture dependent paging properties */
 #if ARCH(i686)
