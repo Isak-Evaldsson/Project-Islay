@@ -6,7 +6,7 @@
 #
 #!/bin/bash
 
-set -e 
+set -e
 
 if [ $# -ne 1 ]; then
     echo "$0: missing argument <ARCH>"
@@ -18,16 +18,16 @@ source ./envsetup.sh
 echo "Installing toolchain for target $TARGET at $PREFIX"
 
 # Platform specfic dependencies
-case $OSTYPE in 
+case $OSTYPE in
     'darwin'*)
-        ./install-grub.sh
+	    brew install objconv automake pkg-config xorriso qemu
         ;;
 
     'linux-gnu')
         if ! command -v "apt" 2>&1 >/dev/null; then
             echo "Not a debain based distro, you need to handle depencies own your own"
         else
-            sudo apt install "qemu-system-i386" build-essential libmpfr-dev libgmp3-dev libmpc-dev xorriso mtools grub-pc-bin -y
+            sudo apt install "qemu-system-i386" build-essential libmpfr-dev libgmp3-dev libmpc-dev xorriso mtools grub-pc-bin zlib1g-dev m4 -y
         fi
         ;;
 esac
