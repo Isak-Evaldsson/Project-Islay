@@ -44,6 +44,12 @@ void list_entry_append_single_element(struct list_entry* entry, struct list_entr
     new_entry->prev = entry;
 }
 
+/* Prepend new_entry to an exsiting entry within the list */
+void list_entry_prepend_single_element(struct list_entry* entry, struct list_entry* new_entry)
+{
+    list_entry_append_single_element(entry->prev, new_entry);
+}
+
 /* Add entry to the start of the list */
 void list_add_first(struct list* list, struct list_entry* entry)
 {
@@ -82,4 +88,14 @@ struct list_entry* list_remove_last(struct list* list)
     e = list->head.prev;
     list_entry_remove(e);
     return e;
+}
+
+/* Get first item from list, returns NULL if empty */
+struct list_entry* list_get_first(struct list* list)
+{
+    if (LIST_EMPTY(list)) {
+        return NULL;
+    }
+
+    return list->head.next;
 }
