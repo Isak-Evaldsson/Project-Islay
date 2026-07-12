@@ -24,6 +24,9 @@ ARCH=i686
 RUN_TESTS=false
 QEMU_VARIANT=i386
 
+# Should we build a full ISO or just give the kernel+initrd directly to QEMU
+BUILD_ISO=false
+
 # Display script help text
 function help() {
     echo "Usage: $0 command [args]"
@@ -113,6 +116,7 @@ function build_iso() {
         (cd $PROJECT && DESTDIR="$SYSROOT" $MAKE install)
     done
 
+    if [ $BUILD_ISO = true ]; then
     # Merge them into an ISO
     mkdir -p isodir
     mkdir -p isodir/boot
@@ -127,6 +131,7 @@ menuentry "Project Islay" {
 EOF
     # Include i386-pc to make sure the iso is built for pc-bios and not efi
     grub-mkrescue /usr/lib/grub/i386-pc -o islayos.iso isodir
+    fi
 }
 
 # Starts the qemu session
@@ -142,8 +147,18 @@ function qemu() {
         -ex 'break *_start'
         -ex 'continue'
     )
+    if [ $BUILD_ISO = true ]; then
+        local qemu_boot_ops=(
+            -cdrom islayos.iso
+        )
+    else
+        local qemu_boot_ops=(
+            -kernel "$SYSROOT/$BOOTDIR/kernel.elf"
+	        -initrd "$SYSROOT/$BOOTDIR/project_islay.initrd"
+        )
+    fi
     local qemu_opts=(
-        -cdrom islayos.iso
+        ${qemu_boot_ops[@]}
         -no-shutdown
         -no-reboot
         -d int
