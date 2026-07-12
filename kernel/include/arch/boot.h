@@ -18,24 +18,11 @@
 #define KERNEL_END       GET_LINKER_SYMBOL(_kernel_end)         /* end symbol, virtual address since higher half kernel */
 #define HIGHER_HALF_ADDR GET_LINKER_SYMBOL(_higher_half_addr)   /* indicating the start of higher half area */
 
-#define MEMMAP_SEGMENT_MAX 10
-
-/* Memory segment in memory map */
-typedef struct memory_segment {
-    physaddr_t addr;
-    size_t     length;
-} memory_segment_t;
-
 /* Architecture independent boot data */
 struct boot_data {
     // Initrd
     physaddr_t initrd_start;
     size_t     initrd_size;
-
-    // Memory map
-    size_t           mem_size;
-    size_t           mmap_size;
-    memory_segment_t mmap_segments[MEMMAP_SEGMENT_MAX];
 };
 
 #endif /* ARCH_BOOT_H */

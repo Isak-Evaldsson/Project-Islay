@@ -8,7 +8,10 @@
 #include <memory/page_frame_manager.h>
 #include <stdbool.h>
 #include <tasks/locking.h>
+#include <uapi/errno.h>
 #include <utils.h>
+
+#include "internal.h"
 
 /*
     Page frame manger - responsible for the management of physical memory frames
@@ -18,10 +21,13 @@
 #define BITMAP_INDX(fnum)  ((fnum) >> 3)  // Division by 8
 #define BITMAP_BIT(fnum)   ((fnum) % 8)
 
+#define LOW_MEM_SIZE 1024 * 1024 * 512
+
 // Bitmap marking available page frames with a 1, not that fast (O(N) allocation) or space efficient
 // but simple to implement. Currently only stores the first 512 MiB of memory, i.e. low memory
 // exclusive for the kernel
-static unsigned char memory_bitmap[65536];
+static unsigned char    *memory_bitmap;
+static size_t           memory_bitmap_size;
 
 // Speeds up the bitmap search procedure by not always beginning at index 0
 static uint32_t first_available_frame_idx = 0;
@@ -93,7 +99,7 @@ static uint32_t find_available_page()
     size_t i = first_available_frame_idx & ~(0b11);  // round down to multiple of 4
 
     // Increase speed by searching 4 bytes at the time
-    for (; i < sizeof(memory_bitmap); i += 4) {
+    for (; i < memory_bitmap_size; i += 4) {
         uint32_t bytes = *(uint32_t *)(memory_bitmap + i);
         if (bytes > 0) {
             // save the index to speed up future searches
@@ -118,7 +124,7 @@ static uint32_t find_available_8n_pages(unsigned int n)
     size_t i = first_available_frame_idx & ~(0b11);  // round down to multiple of 4
 
     // Increase speed by searching 4 bytes at the time
-    for (; i < sizeof(memory_bitmap); i += 4) {
+    for (; i < memory_bitmap_size; i += 4) {
         uint32_t bytes = *(uint32_t *)(memory_bitmap + i);
 
         // Are there any free bits?
@@ -231,25 +237,29 @@ static void init_mark_segment(size_t addr, size_t length, bool available)
     Page frame manager api implementation
 */
 
-// Initialise the page frame manager based on the supplied memory map
-void page_frame_manager_init(struct boot_data *boot_data)
+int page_frame_manager_prepare(physaddr_t last_free_addr)
 {
-    // 1: Initialise bitmap by setting all bytes to zero (i.e. unavailable)
-    memset(memory_bitmap, 0, sizeof(memory_bitmap));
+    // Since the page frame manger only handles low mem, limit the allocation
+    size_t size = MIN(last_free_addr, LOW_MEM_SIZE) / (PAGE_SIZE * 8);
 
-    // 2: Parse the supplied memory map, marking segments as available
-    amount_of_memory = boot_data->mem_size;
-    for (size_t i = 0; i < boot_data->mmap_size; i++) {
-        memory_segment_t *segment = boot_data->mmap_segments + i;
-        init_mark_segment(segment->addr, segment->length, true);
-    }
-    n_frames = n_available_frames;
+    memory_bitmap = bootmem_alloc(size);
+    if (!memory_bitmap)
+        return -ENOMEM;
 
-    // 3: Mark kernel segments as unavailable
-    size_t addr   = KERNEL_START;
-    size_t length = KERNEL_END - HIGHER_HALF_ADDR - KERNEL_START;
-    init_mark_segment(addr, ALIGN_BY_PAGE_SIZE(length), false);
-    init_mark_segment(boot_data->initrd_start, ALIGN_BY_PAGE_SIZE(boot_data->initrd_size), false);
+    memset(memory_bitmap, 0, size);
+    memory_bitmap_size = size;
+    amount_of_memory = last_free_addr;
+    return 0;
+}
+
+int page_frame_manger_mark_free(struct memory_range *range)
+{
+    if (!memory_bitmap)
+        return -EINVAL;
+
+    init_mark_segment(range->addr, ALIGN_BY_PAGE_SIZE(range->size), true);
+    n_frames += range->size / PAGE_SIZE;
+    return 0;
 }
 
 // Returns memory statistics from the page frame manager

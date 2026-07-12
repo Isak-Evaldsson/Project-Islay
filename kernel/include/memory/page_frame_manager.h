@@ -26,9 +26,6 @@ typedef struct memory_stats {
     size_t n_available_frames;
 } memory_stats_t;
 
-// Initialise the page frame manager based on the supplied memory map
-void page_frame_manager_init(struct boot_data *boot_data);
-
 // Returns memory statistics from the page frame manager
 void page_frame_manger_memory_stats(memory_stats_t *stats);
 
