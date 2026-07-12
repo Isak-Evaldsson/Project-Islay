@@ -4,17 +4,35 @@
 #
 # Copyright (C) 2024 Isak Evaldsson
 #
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -e 
+source ./envsetup.sh
+
 #
 # Script downloading, building and installing grup on platsforms that not
 # come with grub pre-installed, such as macos 
 #
 
+GRUB_VERSION="2.14"
+GRUB_NAME="grub-$GRUB_VERSION"
+DOWNLOAD_URL="https://ftp.gnu.org/gnu/grub/$GRUB_NAME.tar.gz"
+SUB_DIR="grub"
+SRC_DIR="$TMP_DIR/$SUB_DIR/$GRUB_NAME"
+OBJ_DIR="$TMP_DIR/$SUB_DIR/objects"
+
 # Download grub src code
-mkdir grub-tmp
-cd grub-tmp
-git clone git://git.savannah.gnu.org/grub.git
-cd grub
+if [ ! -d $SRC_DIR ]; then
+    echo "Downloading sources..."
+    download_tar $DOWNLOAD_URL $SUB_DIR
+fi
+
+# Create objects dir
+if [ -d $OBJ_DIR ]; then
+    rm -rf $OBJ_DIR # Delete dir to avoid object missmatch
+fi
+mkdir -p $OBJ_DIR
+pushd $OBJ_DIR
 
 # grub needs gnulib and objconv, which is not preinstalled on macos
 if [[ $OSTYPE == 'darwin'* ]]; then
@@ -22,15 +40,17 @@ if [[ $OSTYPE == 'darwin'* ]]; then
   brew install automake
   brew install pkg-config
   brew install xorriso
-  ./bootstrap
 fi
-./autogen.sh
+
+"$SRC_DIR/bootstrap"
+"$SRC_DIR/autogen.sh"
+exit 1
 
 # Build grub in seperate folder
 cd ..
 mkdir build
 cd build
-../grub/configure --disable-werror TARGET_CC=i686-elf-gcc TARGET_OBJCOPY=i686-elf-objcopy \
+../grub/configure --disable-werror TARGET_CC=i686-elf-grub TARGET_OBJCOPY=i686-elf-objcopy \
 TARGET_STRIP=i686-elf-strip TARGET_NM=i686-elf-nm TARGET_RANLIB=i686-elf-ranlib --target=i686-elf
 make
 

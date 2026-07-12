@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-3-Clause
 #
 # See README.md and LICENSE.txt for license details.
@@ -8,7 +8,7 @@
 
 # make.sh: Project Islay OS build script
 #
-# Resposilble for configuring the build environment as well as calling the 
+# Resposilble for configuring the build environment as well as calling the
 # makefiles with the subfolders.
 set -e
 
@@ -31,7 +31,7 @@ BUILD_ISO=false
 function help() {
     echo "Usage: $0 command [args]"
     echo "Commands [supported args]:"
-    echo "  clean: Calls make clean on all sub-projects, useful when needing to" 
+    echo "  clean: Calls make clean on all sub-projects, useful when needing to"
     echo "         do a full re-build."
     echo ""
     echo "  build --arch <arch>: Builds the kernel/OS by calling make build on"
@@ -111,26 +111,26 @@ function build_iso() {
         (cd $PROJECT && DESTDIR="$SYSROOT" $MAKE install-headers)
     done
 
-    # Build all the subprojects 
+    # Build all the subprojects
     for PROJECT in $PROJECTS; do
         (cd $PROJECT && DESTDIR="$SYSROOT" $MAKE install)
     done
 
     if [ $BUILD_ISO = true ]; then
-    # Merge them into an ISO
-    mkdir -p isodir
-    mkdir -p isodir/boot
-    mkdir -p isodir/boot/grub
+        # Merge them into an ISO
+        mkdir -p isodir
+        mkdir -p isodir/boot
+        mkdir -p isodir/boot/grub
 
-    cp -r $SYSROOT/$BOOTDIR/. isodir/boot/
-    cat > isodir/boot/grub/grub.cfg << EOF
+        cp -r $SYSROOT/$BOOTDIR/. isodir/boot/
+        cat > isodir/boot/grub/grub.cfg << EOF
 menuentry "Project Islay" {
 	multiboot /boot/kernel.elf
 	module /boot/project_islay.initrd
 }
 EOF
-    # Include i386-pc to make sure the iso is built for pc-bios and not efi
-    grub-mkrescue /usr/lib/grub/i386-pc -o islayos.iso isodir
+        # Include i386-pc to make sure the iso is built for pc-bios and not efi
+        grub-mkrescue /usr/lib/grub/i386-pc -o islayos.iso isodir
     fi
 }
 
@@ -199,7 +199,7 @@ while [[ $# -gt 0 ]]; do
                 echo "error: unkown architecture '$2'"
                 exit 1
                 ;;
-            esac    
+            esac
             shift
             shift
             ;;
@@ -212,7 +212,7 @@ while [[ $# -gt 0 ]]; do
         -t|--run_tests)
             RUN_TESTS=true
             shift
-            ;;    
+            ;;
 
         *)
             echo "error: unkown option '$1'"
@@ -226,7 +226,7 @@ done
 config # Always needed since some makefiles depends on varibles defined here
 case $cmd in
     clean)
-        clean 
+        clean
         ;;
     build)
         build_iso

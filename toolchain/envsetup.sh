@@ -4,7 +4,7 @@
 #
 # Copyright (C) 2025 Isak Evaldsson
 #
-#!/bin/bash
+#!/usr/bin/env bash
 
 #
 # Common variables and functions used by multiple scripts
@@ -29,11 +29,18 @@ BIN_DIR="$TOOLCHAIN_ROOT/bin"
 PREFIX="$BIN_DIR/cross"
 TARGET="$ARCH-elf"
 PATH="$PREFIX/bin:$PREFIX/usr/bin:$PATH" # Ensure that the tools in prefix is used during buildsteps
-CORE_COUNT=$(nproc)
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+	CORE_COUNT=$(sysctl -n hw.logicalcpu)
+else 
+	CORE_COUNT=$(nproc)
+fi
+MAKE="make -j $CORE_COUNT"
 
 mkdir -p $BIN_DIR
 mkdir -p $TMP_DIR
 mkdir -p $PREFIX
+
 
 # Downloads the file at $1 and extract it into $TMP_DIR/$2
 function download_tar {
@@ -43,7 +50,13 @@ function download_tar {
 
     local url=$1
     local subdir="$TMP_DIR/$2"
-    local tar_path="$subdir/tmp.tar.gz"
+    if [[ $url == *.gz ]]; then
+        local tar_path="$subdir/tmp.tar.gz"
+        local comp_arg="--gzip"
+    else
+        local tar_path="$subdir/tmp.tar.xz"
+        local comp_arg="--xz"
+    fi
     mkdir -p $subdir
 
     if ! curl -L --output $tar_path $DOWNLOAD_URL; then
@@ -51,5 +64,5 @@ function download_tar {
         exit 1
     fi
 
-    tar -xzf $tar_path -C $subdir
+    tar -xf $tar_path -C $subdir $comp_arg
 }

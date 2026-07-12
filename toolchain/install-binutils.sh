@@ -4,7 +4,7 @@
 #
 # Copyright (C) 2025 Isak Evaldsson
 #
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -e 
 source ./envsetup.sh
@@ -33,8 +33,8 @@ mkdir -p $OBJ_DIR
 pushd $OBJ_DIR
 
 
-"$SRC_DIR/configure" --target=$TARGET --prefix="$PREFIX" --with-sysroot --disable-nls --disable-werror
+"$SRC_DIR/configure" --target=$TARGET --prefix="$PREFIX" --with-system-zlib --with-sysroot --disable-nls --disable-werror
 echo $(MAKE) $(ARCH)
-make -j $CORE_COUNT
-make PREFIX=$PREFIX install
+$MAKE
+$MAKE PREFIX=$PREFIX install
 popd

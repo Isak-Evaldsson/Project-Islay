@@ -4,7 +4,7 @@
 #
 # Copyright (C) 2024 Isak Evaldsson
 #
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -e 
 source ./envsetup.sh
@@ -26,5 +26,5 @@ fi
 
 # build/install
 pushd $SRC_DIR
-make -j $CORE_COUNT PREFIX=$PREFIX install
+$MAKE PREFIX=$PREFIX install
 popd
