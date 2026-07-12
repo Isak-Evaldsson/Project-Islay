@@ -65,6 +65,13 @@ struct list {
         _list_ptr->head.next == &_list_ptr->head; \
     })
 
+#define LIST_HAS_NEXT(list_ptr, entry_ptr)              \
+    ({                                                  \
+        struct list* _list_ptr = (list_ptr);            \
+        struct list_entry* _entry_ptr = (entry_ptr);    \
+        _entry_ptr->next != &_list_ptr->head;           \
+    })
+
 /* Macro to simplify list iteration */
 #define LIST_ITER(list_ptr, entry_ptr)                                      \
     for (entry_ptr = (list_ptr)->head.next; entry_ptr != &(list_ptr)->head; \
@@ -108,6 +115,9 @@ struct list_entry* list_remove_first(struct list* list);
 /* Remove last item from list, returns NULL if empty */
 struct list_entry* list_remove_last(struct list* list);
 
+/* Get first item from list, returns NULL if empty */
+struct list_entry* list_get_first(struct list* list);
+
 /*
     Operations on individual list entries, here it's up to the user to ensure that the links are
    consistent
@@ -122,5 +132,8 @@ void list_entry_append(struct list_entry* entry, struct list_entry* new_entry);
 /* Specialization of list_entry_append, if one knows that new_entry is a single element (i.e next
  * and prev points to itself), we can save some memory lookups. */
 void list_entry_append_single_element(struct list_entry* entry, struct list_entry* new_entry);
+
+/* Prepend a single new_entry to an exsiting entry within the list */
+void list_entry_prepend_single_element(struct list_entry* entry, struct list_entry* new_entry);
 
 #endif /* LIST_H */
