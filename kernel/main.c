@@ -10,7 +10,7 @@
 #include <devices/bus.h>
 #include <devices/device.h>
 #include <fs.h>
-#include <memory/page_frame_manager.h>
+#include <memory/memory_map.h>
 #include <tasks/scheduler.h>
 #include <utils.h>
 
@@ -19,8 +19,12 @@
 
 void kernel_main(struct boot_data* boot_data)
 {
+    int ret;
+
     kprintf("Starting boot sequence...\n");
-    page_frame_manager_init(boot_data);
+    ret = memory_map_init_page_frame_allocator();
+    if (ret)
+        kpanic("Failing to init the page frame manager: %i\n", ret);
 
     init_gdt();
     init_interrupts();
@@ -32,7 +36,7 @@ void kernel_main(struct boot_data* boot_data)
 
     kprintf("Kernel successfully booted at vaddr 0xE0100000 (3.5 GiB + 1 MiB)\n\n");
 
-    int ret = fs_init(boot_data);
+    ret = fs_init(boot_data);
     if (ret < 0) {
         kpanic("boot failure, failed to initialise vfs %i", ret);
     }

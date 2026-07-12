@@ -12,6 +12,7 @@
 #include <boot/multiboot.h>
 #include <devices/keyboard/ps2_keyboard.h>
 #include <initobj.h>
+#include <memory/memory_map.h>
 #include <memory/page_frame_manager.h>
 #include <stdint.h>
 #include <uapi/errno.h>
@@ -45,8 +46,8 @@ static void initrd_relocation(physaddr_t old, physaddr_t new, size_t size)
     }
 }
 
-static int map_range_unaligned(physaddr_t paddr, virtaddr_t vaddr, size_t size, uint16_t flags,
-        physaddr_t *start_page)
+static unsigned int map_range_unaligned(physaddr_t paddr, virtaddr_t vaddr, size_t size,
+        uint16_t flags, physaddr_t *start_page)
 {
     physaddr_t start;
     unsigned int page_count = ALIGN_BY_PAGE_SIZE(size) / PAGE_SIZE;
@@ -87,27 +88,15 @@ static int parse_multiboot_header(physaddr_t multiboot_addr, virtaddr_t vaddr)
     }
 
     mmap_size = mbd->mmap_length / sizeof(multiboot_memory_map_t);
-    if (mmap_size > MEMMAP_SEGMENT_MAX) {
-        ret = -ENOMEM;
-        goto unmap;
-    }
-    
-    boot_data.mem_size  = 0;
-    boot_data.mmap_size = 0;
 
-    offset = vaddr + (page_count * PAGE_SIZE);    
+    offset = vaddr + (page_count * PAGE_SIZE);
     page_count += map_range_unaligned(mbd->mmap_addr, offset, mbd->mmap_length, 0, &start);
     mmap_start = (struct multiboot_mmap_entry *)(offset + (mbd->mmap_addr - start));
     for (size_t i = 0; i < mmap_size; i++) {
         entry = mmap_start + i;
 
-        // Find available memory area above 1 MiB
-        if (entry->type == MULTIBOOT_MEMORY_AVAILABLE && entry->addr > MiB) {
-            boot_data.mem_size = entry->addr + entry->len;
-
-            boot_data.mmap_segments[boot_data.mmap_size++] =
-                (memory_segment_t){.addr = entry->addr, .length = entry->len};
-        }
+        memory_map_add_entry((physaddr_t)entry->addr, (physaddr_t)entry->len,
+                    entry->type == MULTIBOOT_MEMORY_AVAILABLE);
     }
 
     if (mbd->mods_count < 1) {
@@ -124,7 +113,7 @@ static int parse_multiboot_header(physaddr_t multiboot_addr, virtaddr_t vaddr)
 
 unmap:
     for (size_t i = 0; i < page_count; i++)
-        unmap_page(vaddr + i * PAGE_SIZE);   
+        unmap_page(vaddr + i * PAGE_SIZE);
 
     return ret;
 }
@@ -154,7 +143,7 @@ void kernel_init(physaddr_t multiboot_addr, uint32_t magic)
 
     kassert(KERNEL_END == INIT_SECTION_END);
     parse_init_section((struct init_object **)INIT_SECTION_START,
-            (struct init_object **)INIT_SECTION_END);  
+            (struct init_object **)INIT_SECTION_END);
     /*
      * Unmap init section since it's no longer needed, will be overwritten by initrd allocation.
      * If initrd size < init section size, there will be pages from the init section that is still
@@ -169,6 +158,14 @@ void kernel_init(physaddr_t multiboot_addr, uint32_t magic)
     physaddr_t new_initrd_addr = ALIGN_BY_PAGE_SIZE(INIT_SECTION_START - HIGHER_HALF_ADDR);
     initrd_relocation(boot_data.initrd_start, new_initrd_addr, boot_data.initrd_size);
     boot_data.initrd_start = new_initrd_addr;
+
+    struct memory_range reserved = {
+        .addr = KERNEL_START,
+        .size = (boot_data.initrd_start + boot_data.initrd_size) - KERNEL_START
+    };
+    ret = memory_map_reserve_initial_memory(&reserved, 1);
+    if (ret)
+        kpanic("Inital memory map reservation failed %i\n", ret);
 
     // Enter kernel main
     kernel_main(&boot_data);

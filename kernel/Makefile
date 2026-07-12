@@ -41,7 +41,9 @@ fs/pseudo_file.o \
 fs/devfs/devfs.o \
 fs/kinfo/kinfo.o \
 fs/romfs/romfs.o\
+memory/bootmem_allocator.o \
 memory/heap_allocator.o \
+memory/memory_map.o \
 memory/page_frame_allocator.o \
 memory/vmem_manager.o \
 tasks/interrupts.o \
@@ -92,7 +94,7 @@ all: $(KERNEL_ELF)
 
 $(KERNEL_ELF): $(BUILD) $(OBJS) $(ARCHDIR)/linker.ld
 	$(CC) -T $(ARCHDIR)/linker.ld -o $@ $(CFLAGS) $(LINK_LIST)
-	grub-file --is-x86-multiboot $(KERNEL_ELF)
+	#grub-file --is-x86-multiboot $(KERNEL_ELF)
 
 $(ARCHDIR)/crtbegin.o $(ARCHDIR)/crtend.o:
 	OBJ=`$(CC) $(CFLAGS) $(LDFLAGS) -print-file-name=$(@F)` && cp "$$OBJ" $@
@@ -107,7 +109,8 @@ $(BUILD):
 	mkdir $(BUILD)
 
 kernel_text_section: $(KERNEL_ELF)
-	objdump -S -dj .text  $(KERNEL_ELF) > $(BUILD)/kernel_text_section  
+	objdump -S -dj .text  $(KERNEL_ELF) > $(BUILD)/kernel_text_section
+	objdump -S -dj .multiboot.text  $(KERNEL_ELF) > $(BUILD)/kernel_multiboot_text_section  
 
 clean:
 	rm -rf $(BUILD)
