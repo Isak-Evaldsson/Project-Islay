@@ -9,26 +9,15 @@
 #
 # Common variables and functions used by multiple scripts
 #
+function error {
+    echo "error: $1"
+    exit 1
+}
 
-# Set by make.sh or other callers
-echo "Found: $ARCH"
-if [ -z "$ARCH" ]; then 
-    echo "No ARCH specified" && exit 1;
-fi
-
-# Handle that envsetup is called from both <git root> and <git root>/toolchain
-if [ $(basename $(pwd)) != "toolchain" ]; then
-    TOOLCHAIN_ROOT="$(pwd)/toolchain"
-else 
-    TOOLCHAIN_ROOT=$(pwd)
-fi
-
-# General configuration
-TMP_DIR="$TOOLCHAIN_ROOT/tmp"
-BIN_DIR="$TOOLCHAIN_ROOT/bin"
-PREFIX="$BIN_DIR/cross"
-TARGET="$ARCH-elf"
-PATH="$PREFIX/bin:$PREFIX/usr/bin:$PATH" # Ensure that the tools in prefix is used during buildsteps
+# Make sure the build environments is properly setup by caller
+[[ -z "${TARGET}"  ]] && error "Missing TARGET env variable"
+[[ -z "${PREFIX}"  ]] && error "Missing PREFIX env variable"
+[[ -z "${TMP_DIR}" ]] && error "Missing TOOLCHAIN_TMP env variable"
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
 	CORE_COUNT=$(sysctl -n hw.logicalcpu)
@@ -37,10 +26,8 @@ else
 fi
 MAKE="make -j $CORE_COUNT"
 
-mkdir -p $BIN_DIR
 mkdir -p $TMP_DIR
 mkdir -p $PREFIX
-
 
 # Downloads the file at $1 and extract it into $TMP_DIR/$2
 function download_tar {

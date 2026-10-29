@@ -1,6 +1,7 @@
 isodir
 sysroot
 *.iso
+out
 
 # Only backup important vscode files
 .vscode/**

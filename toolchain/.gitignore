@@ -1,6 +1,0 @@
-# Igore temp folders
-*-tmp
-tmp/**
-
-# Don't version control binares
-bin/**

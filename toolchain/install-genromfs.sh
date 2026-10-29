@@ -26,5 +26,6 @@ fi
 
 # build/install
 pushd $SRC_DIR
-$MAKE PREFIX=$PREFIX install
+$MAKE
+$MAKE PREFIX=$PREFIX install-bin
 popd

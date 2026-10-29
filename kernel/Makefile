@@ -1,136 +1,102 @@
-# Initial flags defined in make.sh
+# Initial flags inherited from top level makefile
 CFLAGS:=$(CFLAGS) -ffreestanding -Wall -Wextra
 CPPFLAGS:=$(CPPFLAGS) -D__is_kernel -I./include
 LDFLAGS:=$(LDFLAGS)
 LIBS:=$(LIBS) -nostdlib -lgcc
 
-# Inherited from make.sh
-ARCHDIR=arch/$(ARCH)
-DRIVER_DIR=devices
+ARCHDIR := arch/$(ARCH)
+DRIVER_DIR := devices
+KERNEL_OUT := $(HOST_DIR)/kernel
 
 include $(ARCHDIR)/make.config
 
-CFLAGS:=$(CFLAGS) $(KERNEL_ARCH_CFLAGS)
-CPPFLAGS:=$(CPPFLAGS) $(KERNEL_ARCH_CPPFLAGS)
-LDFLAGS:=$(LDFLAGS) $(KERNEL_ARCH_LDFLAGS)
-LIBS:=$(LIBS) $(KERNEL_ARCH_LIBS)
+KERNEL_SRC += \
+	main.c \
+	kshell.c \
+	ssp.c \
+	boot/init.c \
+	devices/builtin_bus.c \
+	devices/bus.c \
+	devices/tty.c \
+	devices/device.c \
+	devices/display/text_mode_display.c \
+	devices/input_manager.c \
+	devices/keyboard/keyboard.c \
+	devices/keyboard/keymaps.c \
+	devices/keyboard/ps2_keyboard.c\
+	devices/timer.c \
+	fs/file_operations.c \
+	fs/file_table.c \
+	fs/init.c \
+	fs/inode.c \
+	fs/mounting.c \
+	fs/pathwalker.c \
+	fs/pseudo_file.c \
+	fs/devfs/devfs.c \
+	fs/kinfo/kinfo.c \
+	fs/romfs/romfs.c \
+	memory/bootmem_allocator.c \
+	memory/heap_allocator.c \
+	memory/memory_map.c \
+	memory/page_frame_allocator.c \
+	memory/vmem_manager.c \
+	tasks/interrupts.c \
+	tasks/scheduler.c \
+	tasks/tasks.c \
+	tasks/task_queue.c \
+	tasks/locking.c \
+	tests/fs_tests.c \
+	tests/interrupt_tests.c \
+	tests/list_tests.c \
+	tests/post_boot_tests.c \
+	tests/scheduler_tests.c \
+	utils/endianness.c \
+	utils/initobj.c \
+	utils/kpanic.c \
+	utils/kprintf.c \
+	utils/libc.c \
+	utils/list.c \
+	utils/log.c \
+	utils/sleep.c \
+	utils/__fwriter.c \
 
-KERNEL_OBJS=\
-$(KERNEL_ARCH_OBJS) \
-main.o \
-kshell.o \
-ssp.o \
-boot/init.o \
-devices/builtin_bus.o \
-devices/bus.o \
-devices/tty.o \
-devices/device.o \
-devices/display/text_mode_display.o \
-devices/input_manager.o \
-devices/keyboard/keyboard.o\
-devices/keyboard/keymaps.o \
-devices/keyboard/ps2_keyboard.o\
-devices/timer.o \
-fs/file_operations.o \
-fs/file_table.o \
-fs/init.o \
-fs/inode.o \
-fs/mounting.o \
-fs/pathwalker.o \
-fs/pseudo_file.o \
-fs/devfs/devfs.o \
-fs/kinfo/kinfo.o \
-fs/romfs/romfs.o\
-memory/bootmem_allocator.o \
-memory/heap_allocator.o \
-memory/memory_map.o \
-memory/page_frame_allocator.o \
-memory/vmem_manager.o \
-tasks/interrupts.o \
-tasks/scheduler.o \
-tasks/tasks.o \
-tasks/task_queue.o \
-tasks/locking.o \
-tests/fs_tests.o \
-tests/interrupt_tests.o \
-tests/list_tests.o \
-tests/post_boot_tests.o \
-tests/scheduler_tests.o \
-utils/endianness.o \
-utils/initobj.o \
-utils/kpanic.o \
-utils/kprintf.o \
-utils/libc.o \
-utils/list.o \
-utils/log.o \
-utils/sleep.o \
-utils/__fwriter.o \
+KERNEL_OBJS += $(addprefix $(KERNEL_OUT)/, $(patsubst %.S,%.o, $(patsubst %.c,%.o, $(KERNEL_SRC))))
+KERNEL_ELF  := $(KERNEL_OUT)/kernel.elf
+KERNEL_TEXT := $(KERNEL_OUT)/kernel_text_section
 
-OBJS=\
-$(ARCHDIR)/crti.o \
-$(ARCHDIR)/crtbegin.o \
-$(KERNEL_OBJS) \
-$(ARCHDIR)/crtend.o \
-$(ARCHDIR)/crtn.o \
+UAPI_DIR     := include/uapi
+UAPI_HEADERS := $(shell find $(UAPI_DIR) -name '*.h')
+UAPI_LIB     := $(subst $(UAPI_DIR), $(TARGET_LIB), $(UAPI_HEADERS))
 
-LINK_LIST=\
-$(LDFLAGS) \
-$(ARCHDIR)/crti.o \
-$(ARCHDIR)/crtbegin.o \
-$(KERNEL_OBJS) \
-$(LIBS) \
-$(ARCHDIR)/crtend.o \
-$(ARCHDIR)/crtn.o \
+.PHONY: all clean
 
-BUILD=build
-KERNEL_ELF=$(BUILD)/kernel.elf
+all: $(TARGET_BOOT)/kernel.elf $(UAPI_LIB)
 
-QEMU_ARGS=-kernel $(KERNEL_ELF) -no-shutdown -no-reboot -d int -D $(BUILD)/log.txt -serial file:$(BUILD)/serial
+$(KERNEL_ELF): $(KERNEL_OBJS) $(ARCHDIR)/linker.ld
+	$(TARGET_CC) -T $(ARCHDIR)/linker.ld -o $@ $(CFLAGS) $(LDFLAGS) $(KERNEL_OBJS) $(LIBS)
 
-.PHONY: all clean install install-headers install-kernel qemu gdb cloc
-.SUFFIXES: .o .c .S
+$(KERNEL_OUT)/%.o: %.c
+	mkdir -p $(dir $@)
+	$(TARGET_CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS) $(CPPFLAGS)
 
-all: $(KERNEL_ELF)
+$(KERNEL_OUT)/%.o: %.S
+	mkdir -p $(dir $@)
+	$(TARGET_CC) -MD -c $< -o $@ $(CFLAGS) $(CPPFLAGS)
 
-$(KERNEL_ELF): $(BUILD) $(OBJS) $(ARCHDIR)/linker.ld
-	$(CC) -T $(ARCHDIR)/linker.ld -o $@ $(CFLAGS) $(LINK_LIST)
-	#grub-file --is-x86-multiboot $(KERNEL_ELF)
+$(KERNEL_TEXT): $(KERNEL_ELF)
+	objdump -S -dj .text  $(KERNEL_ELF) > $(KERNEL_TEXT)
+	objdump -S -dj .multiboot.text  $(KERNEL_ELF) > $(KERNEL_OUT)/kernel_multiboot_text_section
 
-$(ARCHDIR)/crtbegin.o $(ARCHDIR)/crtend.o:
-	OBJ=`$(CC) $(CFLAGS) $(LDFLAGS) -print-file-name=$(@F)` && cp "$$OBJ" $@
+$(TARGET_BOOT)/kernel.elf: $(KERNEL_ELF) $(KERNEL_TEXT)
+	mkdir -p $(TARGET_BOOT)
+	cp $(KERNEL_ELF) $(TARGET_BOOT)
 
-.c.o:
-	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS) $(CPPFLAGS)
-
-.S.o:
-	$(CC) -MD -c $< -o $@ $(CFLAGS) $(CPPFLAGS)
-
-$(BUILD):
-	mkdir $(BUILD)
-
-kernel_text_section: $(KERNEL_ELF)
-	objdump -S -dj .text  $(KERNEL_ELF) > $(BUILD)/kernel_text_section
-	objdump -S -dj .multiboot.text  $(KERNEL_ELF) > $(BUILD)/kernel_multiboot_text_section  
+# TODO: Currently, if a uapi file is removed, the rule is re-run, but we don't delete anything
+$(UAPI_LIB): $(UAPI_DIR)
+	mkdir -p $(TARGET_LIB)
+	cp -r $(UAPI_DIR)/. $(TARGET_LIB)/.
 
 clean:
-	rm -rf $(BUILD)
-	rm -f $(OBJS) *.o */*.o */*/*.o
-	rm -f $(OBJS:.o=.d) *.d */*.d */*/*.d 
+	rm -rf $(KERNEL_OUT)
 
-# Note, the install targets depends on DESTDIR, INCLUDEDIR and BOOTDIR which are
-# inherited from make.sh
-install: install-headers install-kernel
-
-# Do only install the userspaces headers from uapi
-install-headers:
-	mkdir -p $(DESTDIR)$(INCLUDEDIR)
-	cp -rp include/uapi/. $(DESTDIR)$(INCLUDEDIR)/.
-
-install-kernel: $(KERNEL_ELF) kernel_text_section 
-	mkdir -p $(DESTDIR)$(BOOTDIR)
-	cp $(KERNEL_ELF) $(DESTDIR)$(BOOTDIR)
-
-cloc:
-	cloc --exclude-dir=$(BUILD) --exclude-ext=d,md, .
-
--include $(OBJS:.o=.d)
+-include $(KERNEL_OBJS:.o=.d)

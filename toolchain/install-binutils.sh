@@ -27,14 +27,13 @@ fi
 
 # Create objects dir
 if [ -d $OBJ_DIR ]; then
-    rm -rf $OBJ_DIR # Delete dir to avoid object missmatch
+    rm -rf $OBJ_DIR # Delete dir to avoid object mismatch
 fi
 mkdir -p $OBJ_DIR
 pushd $OBJ_DIR
 
 
 "$SRC_DIR/configure" --target=$TARGET --prefix="$PREFIX" --with-system-zlib --with-sysroot --disable-nls --disable-werror
-echo $(MAKE) $(ARCH)
 $MAKE
 $MAKE PREFIX=$PREFIX install
 popd

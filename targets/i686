@@ -1,0 +1,2 @@
+export ARCH := i686
+export QEMU_VARIANT := i386
