@@ -23,7 +23,7 @@ struct keyboard {
 };
 
 /* Send keycodes received by the keyboard and pass then further up the input stack */
-inline void keyboard_send_key(uint16_t keycode, bool released)
+static inline void keyboard_send_key(uint16_t keycode, bool released)
 {
     input_event_t event;
     event.keycode = ((released & 0x01) << 15) | keycode;
